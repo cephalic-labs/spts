@@ -37,7 +37,7 @@ export default function DashboardPage() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             {/* Stat 1 */}
-            <div className="p-10 bg-[var(--bg-color)] rounded-[2.5rem] shadow-sm border border-cool-gray/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+            <div className="p-10 bg-[var(--card-bg)] rounded-[2.5rem] shadow-sm border border-[var(--card-border)] dark:border-white/5 hover:shadow-2xl dark:hover:shadow-primary/5 hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem]" />
                 <div className="flex items-center justify-between mb-8">
                     <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center group-hover:bg-primary transition-colors duration-500 group-hover:scale-110">
@@ -50,7 +50,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stat 2 */}
-            <div className="p-10 bg-[var(--bg-color)] rounded-[2.5rem] shadow-sm border border-cool-gray/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+            <div className="p-10 bg-[var(--card-bg)] rounded-[2.5rem] shadow-sm border border-[var(--card-border)] dark:border-white/5 hover:shadow-2xl dark:hover:shadow-accent/5 hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-bl-[5rem]" />
                 <div className="flex items-center justify-between mb-8">
                     <div className="w-16 h-16 bg-accent/10 rounded-2xl flex items-center justify-center group-hover:bg-accent transition-colors duration-500 group-hover:scale-110">
@@ -63,7 +63,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stat 3 */}
-            <div className="p-10 bg-[var(--bg-color)] rounded-[2.5rem] shadow-sm border border-cool-gray/50 hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
+            <div className="p-10 bg-[var(--card-bg)] rounded-[2.5rem] shadow-sm border border-[var(--card-border)] dark:border-white/5 hover:shadow-2xl dark:hover:shadow-success/5 hover:-translate-y-2 transition-all duration-500 group relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-success/5 rounded-bl-[5rem]" />
                 <div className="flex items-center justify-between mb-8">
                     <div className="w-16 h-16 bg-success/10 rounded-2xl flex items-center justify-center group-hover:bg-success transition-colors duration-500 group-hover:scale-110">
@@ -86,7 +86,7 @@ export default function DashboardPage() {
             </h3>
 
             <div className="space-y-6">
-                <div className="p-6 bg-[var(--bg-color)] rounded-2xl border border-cool-gray/50 hover:border-primary/50 transition-colors flex items-center gap-6 group/item">
+                <div className="p-6 bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] dark:border-white/5 hover:border-primary/50 dark:hover:border-primary/30 transition-colors flex items-center gap-6 group/item">
                     <div className="w-12 h-12 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover/item:bg-primary group-hover/item:text-white transition-all">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     </div>
@@ -97,7 +97,7 @@ export default function DashboardPage() {
                     <div className="text-primary font-bold">+50 pts</div>
                 </div>
 
-                 <div className="p-6 bg-[var(--bg-color)] rounded-2xl border border-cool-gray/50 hover:border-accent/50 transition-colors flex items-center gap-6 group/item">
+                 <div className="p-6 bg-[var(--card-bg)] rounded-2xl border border-[var(--card-border)] dark:border-white/5 hover:border-accent/50 dark:hover:border-accent/30 transition-colors flex items-center gap-6 group/item">
                     <div className="w-12 h-12 bg-accent/10 rounded-xl flex items-center justify-center text-accent group-hover/item:bg-accent group-hover/item:text-black transition-all">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" /></svg>
                     </div>

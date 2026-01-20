@@ -23,7 +23,7 @@ export default function Navbar() {
   const isAuthPage = pathname === "/signin" || pathname === "/signup";
 
   return (
-    <nav className="sticky top-0 z-50 glass-card border-b border-cool-gray/30 transition-all duration-300">
+    <nav className="sticky top-0 z-50 glass-card border-b border-cool-gray/30 dark:border-white/10 transition-all duration-300">
       <div className="container mx-auto px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:rotate-12 transition-transform duration-500">

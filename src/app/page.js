@@ -17,7 +17,7 @@ export default function Home() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-color)]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
@@ -96,7 +96,7 @@ export default function Home() {
 
           <div className="grid md:grid-cols-3 gap-12">
             {/* Feature 1 */}
-            <div className="p-10 bg-[var(--bg-color)] rounded-[2.5rem] shadow-sm border border-cool-gray/50 hover:shadow-2xl hover:-translate-y-4 transition-all duration-500 group relative overflow-hidden">
+            <div className="p-10 bg-[var(--card-bg)] rounded-[2.5rem] shadow-sm border border-[var(--card-border)] dark:border-white/5 hover:shadow-2xl dark:hover:shadow-primary/5 hover:-translate-y-4 transition-all duration-500 group relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-bl-[5rem] transition-all group-hover:bg-primary/10" />
               <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-primary transition-colors duration-500 group-hover:rotate-6">
                 <svg className="w-10 h-10 text-primary group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +110,7 @@ export default function Home() {
             </div>
 
             {/* Feature 2 */}
-            <div className="p-10 bg-[var(--bg-color)] rounded-[2.5rem] shadow-sm border border-cool-gray/50 hover:shadow-2xl hover:-translate-y-4 transition-all duration-500 group relative overflow-hidden">
+            <div className="p-10 bg-[var(--card-bg)] rounded-[2.5rem] shadow-sm border border-[var(--card-border)] dark:border-white/5 hover:shadow-2xl dark:hover:shadow-accent/5 hover:-translate-y-4 transition-all duration-500 group relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 rounded-bl-[5rem] transition-all group-hover:bg-accent/10" />
               <div className="w-20 h-20 bg-accent/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-accent transition-colors duration-500 group-hover:-rotate-6">
                 <svg className="w-10 h-10 text-accent group-hover:text-charcoal transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -124,7 +124,7 @@ export default function Home() {
             </div>
 
             {/* Feature 3 */}
-            <div className="p-10 bg-[var(--bg-color)] rounded-[2.5rem] shadow-sm border border-cool-gray/50 hover:shadow-2xl hover:-translate-y-4 transition-all duration-500 group relative overflow-hidden">
+            <div className="p-10 bg-[var(--card-bg)] rounded-[2.5rem] shadow-sm border border-[var(--card-border)] dark:border-white/5 hover:shadow-2xl dark:hover:shadow-success/5 hover:-translate-y-4 transition-all duration-500 group relative overflow-hidden">
                <div className="absolute top-0 right-0 w-32 h-32 bg-success/5 rounded-bl-[5rem] transition-all group-hover:bg-success/10" />
               <div className="w-20 h-20 bg-success/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-success transition-colors duration-500 group-hover:scale-110">
                 <svg className="w-10 h-10 text-success group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">

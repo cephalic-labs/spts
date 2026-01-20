@@ -37,7 +37,7 @@ export default function SignIn() {
       <div className="absolute top-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] -ml-32 -mt-32 animate-float" />
       <div className="absolute bottom-0 right-0 w-[30rem] h-[30rem] bg-accent/10 rounded-full blur-[100px] -mr-32 -mb-32 animate-float" style={{ animationDelay: '1s' }} />
 
-      <div className="w-full max-w-md p-0 bg-[var(--bg-color)] rounded-[2.5rem] shadow-2xl border border-cool-gray/50 overflow-hidden relative z-10 transition-all duration-500 hover:scale-[1.02] hover:shadow-primary/20 group">
+      <div className="w-full max-w-md p-0 bg-[var(--card-bg)] rounded-[2.5rem] shadow-2xl border border-[var(--card-border)] dark:border-white/5 overflow-hidden relative z-10 transition-all duration-500 hover:scale-[1.02] hover:shadow-primary/20 group">
         <div className="bg-primary p-12 text-center relative overflow-hidden">
             {/* Animated bg circles */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 animate-pulse-slow" />
@@ -57,7 +57,7 @@ export default function SignIn() {
         <div className="p-12">
             <button
             onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-4 bg-[var(--bg-color)] hover:bg-cool-gray/30 text-[var(--text-color)] font-black text-lg py-5 px-8 rounded-2xl border-2 border-cool-gray transition-all duration-300 shadow-sm hover:shadow-xl group/btn active:scale-95"
+            className="w-full flex items-center justify-center gap-4 bg-[var(--bg-color)] hover:bg-cool-gray/20 dark:hover:bg-white/5 text-[var(--text-color)] font-black text-lg py-5 px-8 rounded-2xl border-2 border-[var(--card-border)] dark:border-white/10 transition-all duration-300 shadow-sm hover:shadow-xl group/btn active:scale-95"
             >
             <div className="bg-white p-2 rounded-lg shadow-sm group-hover/btn:scale-110 transition-transform">
                 <svg
