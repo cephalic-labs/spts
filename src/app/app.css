@@ -1,21 +1,59 @@
 @import "tailwindcss";
 
-/* SECE SPTS Color Palette Variables */
+@theme {
+  --color-primary: #1F5AA6;
+  --color-accent: #F4C430;
+  --color-secondary: #3E7BCB;
+  --color-charcoal: #2B2B2B;
+  --color-cool-gray: #E6E9EE;
+  
+  --color-success: #2E8B57;
+  --color-warning: #F4A261;
+  --color-critical: #C94C4C;
+
+  --font-inter: "Inter", sans-serif;
+  --font-poppins: "Poppins", sans-serif;
+}
+
 :root {
   /* Core Brand Colors */
-  --primary-blue: #1F5AA6;
-  --torch-gold: #F4C430;
+  --primary: #1F5AA6;
+  --accent: #F4C430;
   --white: #FFFFFF;
   
   /* Supporting Neutrals */
-  --secondary-blue: #3E7BCB;
-  --charcoal-gray: #2B2B2B;
-  --light-cool-gray: #E6E9EE;
+  --secondary: #3E7BCB;
+  --charcoal: #2B2B2B;
+  --cool-gray: #E6E9EE;
   
   /* Status Colors */
   --success: #2E8B57;
   --warning: #F4A261;
   --critical: #C94C4C;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(230, 233, 238, 0.5);
+}
+
+@layer base {
+  body {
+    @apply bg-white text-charcoal font-inter antialiased;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-white/70 backdrop-blur-md border border-cool-gray/50 shadow-xl;
+  }
+  
+  .btn-primary {
+    @apply bg-primary hover:bg-secondary text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300 shadow-md hover:shadow-lg active:scale-95;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-white font-semibold py-2 px-6 rounded-lg transition-all duration-300;
+  }
 }
 
 summary::-webkit-details-marker {
@@ -44,14 +82,14 @@ summary::-webkit-details-marker {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--light-cool-gray);
+  background: var(--cool-gray);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--secondary-blue);
+  background: var(--secondary);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-blue);
+  background: var(--primary);
 }
