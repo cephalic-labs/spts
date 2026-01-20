@@ -1,5 +1,7 @@
 import { AuthProvider } from "@/lib/AuthContext";
 import "./app.css";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
 
 export const metadata = {
   title: "SPTS - Student Participation Tracking System",
@@ -14,13 +16,16 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:opsz,wght@14..32,100..900&family=Poppins:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,100..900&family=Poppins:wght@300;400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <link rel="icon" type="image/svg+xml" href="/appwrite.svg" />
       </head>
-      <body className="bg-white font-[Inter] text-[#2B2B2B]">
-        <AuthProvider>{children}</AuthProvider>
+      <body className="bg-white font-inter text-charcoal flex flex-col min-h-screen">
+        <AuthProvider>
+          <Navbar />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   );
