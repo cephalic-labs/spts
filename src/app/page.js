@@ -138,7 +138,7 @@ export default function Home() {
 
           {/* Footer info */}
           <p className="text-[#2B2B2B] text-sm">
-            St. Martin Engineering College - Empowering Student Excellence
+            Sri Eshwar College of Engineering - Empowering Student Excellence
           </p>
         </div>
       </div>
