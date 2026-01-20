@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="bg-white font-inter text-charcoal flex flex-col min-h-screen">
+      <body className="bg-[var(--bg-color)] font-inter text-[var(--text-color)] flex flex-col min-h-screen transition-colors duration-300">
         <AuthProvider>
           <Navbar />
           <main className="flex-grow">{children}</main>

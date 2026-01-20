@@ -56,15 +56,25 @@
   
   --bg-color: #FFFFFF;
   --text-color: #2B2B2B;
+  --card-bg: #FFFFFF;
+  --card-border: rgba(230, 233, 238, 0.6);
+  --shimmer-color: rgba(255, 255, 255, 0.1);
 }
 
 .dark {
   --primary: #3E7BCB;
-  --bg-color: #121212;
+  --secondary: #5A9BE0;
+  --accent: #F4C430;
+  --bg-color: #0D0D0D;
   --text-color: #F8F9FA;
-  --cool-gray: #2D2D2D;
-  --glass-bg: rgba(18, 18, 18, 0.8);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --charcoal: #1A1A1A;
+  --charcoal-light: #1E1E1E;
+  --cool-gray: #2A2A2A;
+  --glass-bg: rgba(26, 26, 26, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --card-bg: #1A1A1A;
+  --card-border: rgba(255, 255, 255, 0.06);
+  --shimmer-color: rgba(255, 255, 255, 0.03);
 }
 
 @layer base {
@@ -80,7 +90,7 @@
 
   .glass-card::after {
     content: "";
-    @apply absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 -translate-x-full transition-transform duration-1000;
+    @apply absolute inset-0 bg-gradient-to-tr from-transparent via-[var(--shimmer-color)] to-transparent -translate-x-full transition-transform duration-1000;
   }
 
   .glass-card:hover::after {
