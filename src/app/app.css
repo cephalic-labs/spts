@@ -1,5 +1,23 @@
 @import "tailwindcss";
 
+/* SECE SPTS Color Palette Variables */
+:root {
+  /* Core Brand Colors */
+  --primary-blue: #1F5AA6;
+  --torch-gold: #F4C430;
+  --white: #FFFFFF;
+  
+  /* Supporting Neutrals */
+  --secondary-blue: #3E7BCB;
+  --charcoal-gray: #2B2B2B;
+  --light-cool-gray: #E6E9EE;
+  
+  /* Status Colors */
+  --success: #2E8B57;
+  --warning: #F4A261;
+  --critical: #C94C4C;
+}
+
 summary::-webkit-details-marker {
   display: none
 }
@@ -17,4 +35,23 @@ summary::-webkit-details-marker {
   mask-image: radial-gradient(ellipse at 50% 40%, black 0%, transparent 55%);
   z-index: -1;
   background-position-x: center;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--light-cool-gray);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--secondary-blue);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-blue);
 }
