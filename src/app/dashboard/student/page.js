@@ -16,7 +16,7 @@ export default function StudentDashboard() {
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-[#2B2B2B] hidden md:block">
-                            Welcome, {user?.name || "Student"}
+                            Welcome, {user?.name.split(" ")[0] || "Student"}
                         </span>
                         <LogoutButton />
                     </div>

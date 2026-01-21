@@ -16,7 +16,7 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="text-sm text-[#2B2B2B] hidden md:block">
-                            {user?.name || "Admin"}
+                            {user?.name.split(" ")[0] || "Admin"}
                         </span>
                         <LogoutButton />
                     </div>

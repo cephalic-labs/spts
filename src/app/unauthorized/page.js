@@ -19,7 +19,7 @@ export default function UnauthorizedPage() {
             </p>
             <div className="flex gap-4">
                 <button
-                    onClick={() => router.back()}
+                    onClick={() => router.push("/dashboard")}
                     className="px-6 py-2 border border-[#003366] text-[#003366] rounded hover:bg-[#F0F4F8] transition-colors"
                 >
                     Go Back
