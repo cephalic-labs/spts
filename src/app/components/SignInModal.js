@@ -61,7 +61,7 @@ export default function SignInModal({ isOpen, onClose }) {
           </button>
           <div className="mt-12 pt-8 border-t border-cool-gray/50 dark:border-white/10">
             <p className="text-sm opacity-50 text-center leading-relaxed font-medium">
-              By signing in, you agree to our <a href="#" className="underline hover:text-primary transition-colors">Terms of Service</a> and <a href="#" className="underline hover:text-primary transition-colors">Privacy Policy</a>. This portal is restricted to Sri Eshwar College of Engineering members.
+              By signing in, you acknowledge our <span className="underline">Terms of Service</span> and <span className="underline">Privacy Policy</span>. This portal is restricted to Sri Eshwar College of Engineering members.
             </p>
           </div>
         </div>

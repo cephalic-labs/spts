@@ -22,6 +22,11 @@ export default function Home() {
     );
   }
 
+  if (!loading && user) {
+    // Prevent rendering the landing page for authenticated users while redirecting
+    return null;
+  }
+
   const stats = [
     { value: "2000+", label: "Students Joined" },
     { value: "500+", label: "Events Hosted" },
