@@ -2,8 +2,7 @@
 
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import Image from "next/image";
+import { useEffect } from "react";
 
 export default function Home() {
   const { user, loading } = useAuth();
