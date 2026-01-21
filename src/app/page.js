@@ -53,7 +53,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
-              className="btn-outline text-xl px-12 py-5 w-full sm:w-auto dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-charcoal group"
+              className="btn-outline text-xl px-12 py-5 w-full sm:w-auto dark:border-white/80 dark:text-white dark:hover:bg-white dark:hover:text-charcoal group"
             >
               Learn More
               <svg className="w-6 h-6 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" /></svg>

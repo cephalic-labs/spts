@@ -10,7 +10,7 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/appwrite.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -20,7 +20,7 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[var(--bg-color)] font-inter text-[var(--text-color)] flex flex-col min-h-screen transition-colors duration-300">
+      <body className="bg-[var(--bg-color)] font-inter text-[var(--text-color)] flex flex-col min-h-screen transition-colors duration-300" suppressHydrationWarning>
         <AuthProvider>
           <Navbar />
           <main className="flex-grow">{children}</main>

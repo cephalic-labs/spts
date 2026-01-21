@@ -4,8 +4,10 @@ import { useEffect, useState } from "react";
 
 export default function ThemeToggle() {
   const [dark, setDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (localStorage.theme === "dark" || (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
       setDark(true);
       document.documentElement.classList.add("dark");
@@ -26,6 +28,13 @@ export default function ThemeToggle() {
       setDark(true);
     }
   };
+
+  // Prevent hydration mismatch by rendering a placeholder during SSR
+  if (!mounted) {
+    return (
+      <div className="w-10 h-10 rounded-xl bg-cool-gray/30 dark:bg-white/10 border border-cool-gray/50 dark:border-white/10"></div>
+    );
+  }
 
   return (
     <button
