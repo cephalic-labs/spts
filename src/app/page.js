@@ -1,12 +1,13 @@
 "use client";
 
 import { useAuth } from "@/lib/AuthContext";
+import { useSignInModal } from "@/lib/SignInModalContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import Link from "next/link";
 
 export default function Home() {
   const { user, loading } = useAuth();
+  const { openSignIn } = useSignInModal();
   const router = useRouter();
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function Home() {
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
             <button
-              onClick={() => router.push("/signin")}
+              onClick={openSignIn}
               className="btn-primary text-xl px-12 py-5 w-full sm:w-auto hover:-translate-y-1 transition-transform"
             >
               Get Started Now
@@ -153,9 +154,9 @@ export default function Home() {
             <p className="text-white/90 text-2xl mb-12 max-w-2xl mx-auto leading-relaxed">
               Join thousands of students who are already shaping their legacy through SPTS.
             </p>
-            <Link href="/signin" className="bg-accent hover:bg-white text-charcoal font-black text-2xl py-6 px-16 rounded-2xl transition-all duration-500 shadow-2xl inline-block hover:scale-105 active:scale-95">
+            <button onClick={openSignIn} className="bg-accent hover:bg-white text-charcoal font-black text-2xl py-6 px-16 rounded-2xl transition-all duration-500 shadow-2xl inline-block hover:scale-105 active:scale-95">
               Register via Google Account
-            </Link>
+            </button>
          </div>
       </section>
     </div>

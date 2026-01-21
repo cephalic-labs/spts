@@ -1,7 +1,9 @@
 import { AuthProvider } from "@/lib/AuthContext";
+import { SignInModalProvider } from "@/lib/SignInModalContext";
 import "./app.css";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+import GlobalSignInModal from "./components/GlobalSignInModal";
 
 export const metadata = {
   title: "SPTS - Student Participation Tracking System",
@@ -22,9 +24,12 @@ export default function RootLayout({ children }) {
       </head>
       <body className="bg-[var(--bg-color)] font-inter text-[var(--text-color)] flex flex-col min-h-screen transition-colors duration-300" suppressHydrationWarning>
         <AuthProvider>
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          <Footer />
+          <SignInModalProvider>
+            <Navbar />
+            <main className="flex-grow">{children}</main>
+            <Footer />
+            <GlobalSignInModal />
+          </SignInModalProvider>
         </AuthProvider>
       </body>
     </html>

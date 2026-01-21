@@ -17,6 +17,8 @@
   --animate-float: float 6s ease-in-out infinite;
   --animate-pulse-slow: pulse-slow 4s ease-in-out infinite;
   --animate-glow: glow 2s ease-in-out infinite;
+  --animate-fadeIn: fadeIn 0.2s ease-out forwards;
+  --animate-scaleIn: scaleIn 0.3s ease-out forwards;
 
   @keyframes float {
     0%, 100% { transform: translateY(0px); }
@@ -31,6 +33,16 @@
   @keyframes glow {
     0%, 100% { box-shadow: 0 0 5px rgba(31, 90, 166, 0.2); }
     50% { box-shadow: 0 0 20px rgba(31, 90, 166, 0.5); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes scaleIn {
+    from { opacity: 0; transform: scale(0.9) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
   }
 }
 
