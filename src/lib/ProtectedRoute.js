@@ -9,22 +9,16 @@ export default function ProtectedRoute({ children }) {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/signin");
-    }
+    if (!loading && !user) router.push("/");
   }, [user, loading, router]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-color)] transition-colors duration-300">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary" />
       </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
-
-  return <>{children}</>;
+  return user ? children : null;
 }

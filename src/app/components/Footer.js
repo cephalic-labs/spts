@@ -17,12 +17,8 @@ export default function Footer() {
               </div>
               <span className="text-xl font-bold tracking-tight">SPTS</span>
             </div>
-            <p className="opacity-60 max-w-sm">
-              Sri Eshwar College of Engineering Student Participation Tracking System. 
-              Empowering students to track their academic journey and achievements.
-            </p>
+            <p className="opacity-60 max-w-sm">Sri Eshwar College of Engineering Student Participation Tracking System. Empowering students to track their academic journey and achievements.</p>
           </div>
-          
           <div>
             <h4 className="font-bold mb-4 text-primary dark:text-accent">Quick Links</h4>
             <ul className="space-y-2 opacity-60">
@@ -31,7 +27,6 @@ export default function Footer() {
               <li><Link href="/dashboard" className="hover:text-primary dark:hover:text-white transition-colors">Dashboard</Link></li>
             </ul>
           </div>
-
           <div>
             <h4 className="font-bold mb-4 text-primary dark:text-accent">Contact</h4>
             <ul className="space-y-2 opacity-60">
@@ -41,7 +36,6 @@ export default function Footer() {
             </ul>
           </div>
         </div>
-        
         <div className="pt-8 border-t border-[var(--card-border)] text-center opacity-40 text-sm">
           <p>© {new Date().getFullYear()} SECE SPTS. All rights reserved.</p>
         </div>
