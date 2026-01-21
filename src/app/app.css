@@ -3,14 +3,15 @@
 /* SECE SPTS Color Palette Variables */
 :root {
   /* Core Brand Colors */
-  --primary-blue: #1F5AA6;
-  --torch-gold: #F4C430;
+  --primary-blue: #003366; /* Deep Academic Blue */
+  --muted-gold: #C5B358;   /* Institutional Gold */
   --white: #FFFFFF;
   
   /* Supporting Neutrals */
-  --secondary-blue: #3E7BCB;
+  --secondary-blue: #3E7BCB; /* Keeping for accents/buttons if needed, or maybe darker */
   --charcoal-gray: #2B2B2B;
-  --light-cool-gray: #E6E9EE;
+  --light-cool-gray: #F8F9FA; /* Lighter background */
+  --border-gray: #E0E0E0;
   
   /* Status Colors */
   --success: #2E8B57;
