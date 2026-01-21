@@ -11,14 +11,12 @@ export default function ThemeToggle() {
     if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
       const isDark = localStorage.theme === "dark" || (!("theme" in localStorage) && window.matchMedia("(prefers-color-scheme: dark)").matches);
       setDark(isDark);
-      if (typeof document !== 'undefined') {
-        document.documentElement.classList.toggle("dark", isDark);
-      }
+      document.documentElement.classList.toggle("dark", isDark);
     }
   }, []);
 
   const toggleTheme = () => {
-    if (typeof window === 'undefined' || typeof localStorage === 'undefined' || typeof document === 'undefined') return;
+    if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
     
     const newDark = !dark;
     setDark(newDark);
