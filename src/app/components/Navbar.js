@@ -2,19 +2,21 @@
 
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
+import { useSignInModal } from "@/lib/SignInModalContext";
 import { account } from "@/lib/appwrite";
 import { useRouter, usePathname } from "next/navigation";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Navbar() {
   const { user, loading } = useAuth();
+  const { openSignIn } = useSignInModal();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
       await account.deleteSession("current");
-      router.push("/signin");
+      router.push("/");
     } catch (error) {
       console.error("Logout failed:", error);
     }
@@ -80,9 +82,12 @@ export default function Navbar() {
                    Logout
                  </button>
                 ) : (
-                    <Link href="/signin" className="btn-primary py-3 px-8 text-sm font-black uppercase tracking-widest">
+                    <button 
+                      onClick={openSignIn}
+                      className="btn-primary py-3 px-8 text-sm font-black uppercase tracking-widest"
+                    >
                         Sign In
-                    </Link>
+                    </button>
                 )}
             </div>
           </div>
@@ -91,3 +96,4 @@ export default function Navbar() {
     </nav>
   );
 }
+

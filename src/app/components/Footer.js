@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useSignInModal } from "@/lib/SignInModalContext";
 
 export default function Footer() {
+  const { openSignIn } = useSignInModal();
+
   return (
     <footer className="bg-[var(--card-bg)] border-t border-[var(--card-border)] text-[var(--text-color)] py-12 transition-colors duration-300">
       <div className="container mx-auto px-6">
@@ -22,7 +27,7 @@ export default function Footer() {
             <h4 className="font-bold mb-4 text-primary dark:text-accent">Quick Links</h4>
             <ul className="space-y-2 opacity-60">
               <li><Link href="/" className="hover:text-primary dark:hover:text-white transition-colors">Home</Link></li>
-              <li><Link href="/signin" className="hover:text-primary dark:hover:text-white transition-colors">Sign In</Link></li>
+              <li><button onClick={openSignIn} className="hover:text-primary dark:hover:text-white transition-colors">Sign In</button></li>
               <li><Link href="/dashboard" className="hover:text-primary dark:hover:text-white transition-colors">Dashboard</Link></li>
             </ul>
           </div>
