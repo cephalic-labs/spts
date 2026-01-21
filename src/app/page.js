@@ -53,7 +53,7 @@ export default function Home() {
           </div>
           <button
             onClick={() => router.push("/signin")}
-            className="bg-[#003366] hover:bg-[#002147] text-white px-6 py-2.5 rounded hover:shadow-md transition-all duration-200 font-medium text-sm"
+            className="bg-[#003366] hover:bg-[#002147] text-white cursor-pointer px-6 py-2.5 rounded hover:shadow-md transition-all duration-200 font-medium text-sm"
           >
             Login
           </button>
@@ -79,12 +79,12 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={() => router.push("/signin")}
-                className="bg-[#003366] hover:bg-[#002147] text-white px-8 py-4 rounded text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                className="bg-[#003366] hover:bg-[#002147] text-white cursor-pointer px-8 py-4 rounded text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
               >
                 Access Portal
               </button>
               <button
-                className="bg-white border border-[#E0E0E0] text-[#003366] hover:bg-[#F8F9FA] px-8 py-4 rounded text-base font-semibold transition-all duration-200"
+                className="bg-white border border-[#E0E0E0] cursor-pointer text-[#003366] hover:bg-[#F8F9FA] px-8 py-4 rounded text-base font-semibold transition-all duration-200"
               >
                 View Guidelines
               </button>
@@ -107,14 +107,17 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-bold text-[#2B2B2B] mb-3">For Students</h3>
               <ul className="space-y-3 text-[#555] text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> View approved upcoming events
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>View approved upcoming events</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Register for Hackathons & Conferences
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Register for Hackathons & Conferences</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Apply for On-Duty (OD) status digitally
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Apply for On-Duty (OD) status digitally</span>
                 </li>
               </ul>
             </div>
@@ -128,14 +131,17 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-bold text-[#2B2B2B] mb-3">For Coordinators</h3>
               <ul className="space-y-3 text-[#555] text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Review participation requests
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Review participation requests</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Verify event authenticity and value
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Verify event authenticity and value</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Manage department nominations
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Manage department nominations</span>
                 </li>
               </ul>
             </div>
@@ -149,14 +155,17 @@ export default function Home() {
               </div>
               <h3 className="text-lg font-bold text-[#2B2B2B] mb-3">Administration (HODs/Principal)</h3>
               <ul className="space-y-3 text-[#555] text-sm">
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Final approval workflow
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Final approval workflow</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Generate participation reports
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Generate participation reports</span>
                 </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-[#C5B358] mt-1">●</span> Monitor institutional performance
+                <li className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
+                  <span>Monitor institutional performance</span>
                 </li>
               </ul>
             </div>
@@ -170,7 +179,7 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-[#003366] mb-12 text-center">Supported Event Categories</h2>
           <div className="flex flex-wrap justify-center gap-4">
             {['Symposium', 'Conference', 'Hackathon', 'Competition', 'Workshop'].map((event) => (
-              <div key={event} className="px-8 py-4 bg-[#F8F9FA] rounded border border-[#E0E0E0] text-[#003366] font-semibold hover:bg-[#F0F4F8] transition-colors">
+              <div key={event} className="px-8 py-4 bg-[#F8F9FA] cursor-pointer rounded border border-[#E0E0E0] text-[#003366] font-semibold hover:bg-[#F0F4F8] transition-colors">
                 {event}
               </div>
             ))}
@@ -233,11 +242,6 @@ export default function Home() {
           <div className="text-center md:text-left">
             <h3 className="text-lg font-bold text-[#E6E9EE] mb-1">Sri Eshwar College of Engineering</h3>
             <p className="text-[#ffffff80] text-sm">Internal Academic Platform</p>
-          </div>
-          <div className="flex gap-8 text-sm text-[#ffffff80]">
-            <span className="cursor-not-allowed">Faculty Login</span>
-            <span className="cursor-not-allowed">Admin Portal</span>
-            <span className="hover:text-white cursor-pointer transition-colors">Support</span>
           </div>
           <p className="text-xs text-[#ffffff40]">
             © {new Date().getFullYear()} SECE. For internal use only.
