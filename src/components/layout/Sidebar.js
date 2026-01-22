@@ -55,7 +55,12 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
                             <img
                                 src={user.profile_url}
                                 alt={user?.name || "User profile"}
-                                className="w-full h-full object-cover
+                                className="w-full h-full object-cover"
+                            />
+                        ) : (
+                            <span>{(user?.name || role || "U")[0].toUpperCase()}</span>
+                        )}
+                    </div>
                     {!isCollapsed && (
                         <>
                             <h3 className="font-bold text-sm mb-0.5 text-center truncate w-full">{user?.name || getRoleDisplayName(role)}</h3>
