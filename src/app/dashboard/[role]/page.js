@@ -10,8 +10,9 @@ export function generateStaticParams() {
     }));
 }
 
-export default function RoleDashboardPage({ params }) {
-    const { role } = params;
+export default async function RoleDashboardPage({ params }) {
+    // Next.js 15 requires awaiting params
+    const { role } = await params;
 
     // Validate role
     if (!validRoles.includes(role)) {

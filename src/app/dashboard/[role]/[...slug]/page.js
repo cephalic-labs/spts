@@ -9,8 +9,9 @@ export function generateStaticParams() {
     return getAllStaticParams();
 }
 
-export default function CatchAllPage({ params }) {
-    const { role, slug } = params;
+export default async function CatchAllPage({ params }) {
+    // Next.js 15 requires awaiting params
+    const { role, slug } = await params;
 
     // Validate role
     if (!validRoles.includes(role)) {
