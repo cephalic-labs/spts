@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { account } from "./appwrite";
+import { assignUserRole } from "@/actions/auth";
 import { syncUserToDatabase, getUserByAppwriteId } from "./services/userService";
 
 const AuthContext = createContext();
@@ -18,7 +19,19 @@ export function AuthProvider({ children }) {
   async function checkUser() {
     try {
       // Get Appwrite auth user
-      const currentUser = await account.get();
+      let currentUser = await account.get();
+
+      // If user has no labels, try to assign them based on DB records
+      if (!currentUser.labels || currentUser.labels.length === 0) {
+        console.log("User has no labels, checking DB for role assignment...");
+        const result = await assignUserRole(currentUser.$id, currentUser.email);
+        if (result.success) {
+          // Refresh user to get new labels
+          // Or just manually update local state to avoid extra API call if we trust the result
+          currentUser = await account.get();
+        }
+      }
+
       setUser(currentUser);
 
       // Sync to database and get full user data
