@@ -19,7 +19,7 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
             queries.push(Query.equal("department", filters.department));
         }
         if (filters.year) {
-            queries.push(Query.equal("year", filters.year));
+            queries.push(Query.equal("year", parseInt(filters.year)));
         }
         if (filters.section) {
             queries.push(Query.equal("section", filters.section));
