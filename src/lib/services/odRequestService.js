@@ -8,29 +8,42 @@ const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
  * Create new OD request
  */
 export async function createODRequest(data) {
+    const payload = {
+        od_id: data.od_id || ID.unique(),
+        student_id: data.student_id,
+        event_id: data.event_id,
+        od_start_date: data.od_start_date,
+        od_end_date: data.od_end_date,
+        reason: data.reason,
+        attachments: data.attachments || [],
+        current_status: data.current_status || OD_STATUS.PENDING_MENTOR,
+    };
+
+    // Only add optional fields if they are present in data and not undefined
+    const optionalFields = ['mentor_id', 'advisor_id', 'coordinator_id', 'hod_id'];
+    optionalFields.forEach(field => {
+        if (data[field] !== undefined) {
+            payload[field] = data[field];
+        }
+    });
+
     try {
-        const now = new Date().toISOString();
-        const odRequest = await databases.createDocument(
+        return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.OD_REQUESTS,
             ID.unique(),
-            {
-                od_id: ID.unique(),
-                student_id: data.student_id,
-                event_id: data.event_id,
-                od_start_date: data.od_start_date,
-                od_end_date: data.od_end_date,
-                reason: data.reason,
-                attachments: data.attachments || [],
-                current_status: OD_STATUS.PENDING_MENTOR,
-                mentor_id: data.mentor_id || null,
-                advisor_id: data.advisor_id || null,
-                coordinator_id: data.coordinator_id || null,
-                hod_id: data.hod_id || null,
-            }
+            payload
         );
-        return odRequest;
     } catch (error) {
+        if (error.message?.includes("Unknown attribute")) {
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr) {
+                console.warn(`Retrying OD request creation without missing attribute: ${missingAttr}`);
+                const nextData = { ...data };
+                delete nextData[missingAttr];
+                return await createODRequest(nextData);
+            }
+        }
         console.error("Error creating OD request:", error);
         throw error;
     }
@@ -130,17 +143,35 @@ export async function approveODRequest(odId, role, userId, remarks = "") {
             updateData.final_decision = "approved";
         }
 
-        const updatedOD = await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTIONS.OD_REQUESTS,
-            odId,
-            updateData
-        );
+        try {
+            const updatedOD = await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTIONS.OD_REQUESTS,
+                odId,
+                updateData
+            );
 
-        // Log the approval
-        await logApproval(odId, fromStatus, toStatus, "approve", userId, role, remarks);
+            // Log the approval
+            await logApproval(odId, fromStatus, toStatus, "approve", userId, role, remarks);
 
-        return updatedOD;
+            return updatedOD;
+        } catch (updateError) {
+            if (updateError.message?.includes("Unknown attribute")) {
+                const missingAttr = updateError.message.match(/"([^"]+)"/)?.[1];
+                if (missingAttr && updateData[missingAttr] !== undefined) {
+                    console.warn(`Retrying OD approval without missing attribute: ${missingAttr}`);
+                    const { [missingAttr]: _, ...retryData } = updateData;
+                    // Attempt the update again without the problematic attribute
+                    return await databases.updateDocument(
+                        DATABASE_ID,
+                        COLLECTIONS.OD_REQUESTS,
+                        odId,
+                        retryData
+                    );
+                }
+            }
+            throw updateError;
+        }
     } catch (error) {
         console.error("Error approving OD request:", error);
         throw error;
@@ -180,17 +211,34 @@ export async function rejectODRequest(odId, role, userId, remarks = "") {
             updateData.hod_action_at = now;
         }
 
-        const updatedOD = await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTIONS.OD_REQUESTS,
-            odId,
-            updateData
-        );
+        try {
+            const updatedOD = await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTIONS.OD_REQUESTS,
+                odId,
+                updateData
+            );
 
-        // Log the rejection
-        await logApproval(odId, fromStatus, OD_STATUS.REJECTED, "reject", userId, role, remarks);
+            // Log the rejection
+            await logApproval(odId, fromStatus, OD_STATUS.REJECTED, "reject", userId, role, remarks);
 
-        return updatedOD;
+            return updatedOD;
+        } catch (updateError) {
+            if (updateError.message?.includes("Unknown attribute")) {
+                const missingAttr = updateError.message.match(/"([^"]+)"/)?.[1];
+                if (missingAttr && updateData[missingAttr] !== undefined) {
+                    console.warn(`Retrying OD rejection without missing attribute: ${missingAttr}`);
+                    const { [missingAttr]: _, ...retryData } = updateData;
+                    return await databases.updateDocument(
+                        DATABASE_ID,
+                        COLLECTIONS.OD_REQUESTS,
+                        odId,
+                        retryData
+                    );
+                }
+            }
+            throw updateError;
+        }
     } catch (error) {
         console.error("Error rejecting OD request:", error);
         throw error;

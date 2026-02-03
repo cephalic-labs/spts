@@ -81,6 +81,13 @@ export async function getStudentByRegNo(regNo) {
  * Create new student
  */
 export async function createStudent(data) {
+    // Sanitize roll_no to be used as document ID
+    const docId = String(data.roll_no).replace(/[^a-zA-Z0-9._-]/g, "").substring(0, 36);
+
+    // Ensure year is a valid integer, fallback to 1 if missing/invalid
+    const yearVal = parseInt(data.year);
+    const finalYear = !isNaN(yearVal) ? yearVal : 1;
+
     const payload = {
         student_register_no: data.student_register_no,
         appwrite_user_id: data.appwrite_user_id || null,
@@ -88,35 +95,40 @@ export async function createStudent(data) {
         name: data.name,
         email: data.email,
         department: data.department,
-        year: parseInt(data.year),
-        section: data.section,
-        phone: data.phone || "",
-        cgpa: (data.cgpa !== undefined && data.cgpa !== "" && data.cgpa !== null) ? parseFloat(data.cgpa) : null,
-        advisor_id: data.advisor_id || null,
-        mentor_id: data.mentor_id || null,
+        year: finalYear,
+        section: data.section || "A",
         status: data.status || "active",
     };
+
+    // Add optional fields only if they are provided in the current 'data' object
+    if (data.phone !== undefined) payload.phone = data.phone;
+    if (data.cgpa !== undefined && data.cgpa !== "" && data.cgpa !== null) {
+        payload.cgpa = parseFloat(data.cgpa);
+    }
+    if (data.advisor_id !== undefined) payload.advisor_id = data.advisor_id;
+    if (data.mentor_id !== undefined) payload.mentor_id = data.mentor_id;
 
     try {
         return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
-            ID.unique(),
+            docId,
             payload
         );
     } catch (error) {
+        // Handle existing record
+        if (error.code === 409) {
+            return await updateStudent(docId, payload);
+        }
+
+        // Handle unknown attributes surgically
         if (error.message?.includes("Unknown attribute")) {
             const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
-            if (missingAttr && payload[missingAttr] !== undefined) {
-                console.warn(`Retrying create without missing attribute: ${missingAttr}`);
-                const { [missingAttr]: _, ...retryPayload } = payload;
-                // Note: We need to handle the recursive case differently for create because ID.unique() should only be called once or we use a fixed ID
-                return await databases.createDocument(
-                    DATABASE_ID,
-                    COLLECTIONS.STUDENTS,
-                    ID.unique(),
-                    retryPayload
-                );
+            if (missingAttr) {
+                console.warn(`Retrying student create without missing attribute: ${missingAttr}`);
+                const nextData = { ...data };
+                delete nextData[missingAttr];
+                return await createStudent(nextData);
             }
         }
         console.error("Error creating student:", error);
@@ -128,8 +140,8 @@ export async function updateStudent(studentId, data) {
     const updateData = { ...data };
 
     // Type casting
-    if (updateData.year) updateData.year = parseInt(updateData.year);
-    if (updateData.cgpa !== undefined && updateData.cgpa !== "") {
+    if (updateData.year !== undefined) updateData.year = parseInt(updateData.year);
+    if (updateData.cgpa !== undefined && updateData.cgpa !== "" && updateData.cgpa !== null) {
         updateData.cgpa = parseFloat(updateData.cgpa);
     }
 
@@ -143,10 +155,11 @@ export async function updateStudent(studentId, data) {
     } catch (error) {
         if (error.message?.includes("Unknown attribute")) {
             const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
-            if (missingAttr && updateData[missingAttr] !== undefined) {
-                console.warn(`Retrying update without missing attribute: ${missingAttr}`);
-                const { [missingAttr]: _, ...retryData } = updateData;
-                return await updateStudent(studentId, retryData); // Recursive call with one less attribute
+            if (missingAttr) {
+                console.warn(`Retrying student update without missing attribute: ${missingAttr}`);
+                const nextUpdateData = { ...updateData };
+                delete nextUpdateData[missingAttr];
+                return await updateStudent(studentId, nextUpdateData);
             }
         }
         console.error("Error updating student:", error);
