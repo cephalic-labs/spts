@@ -228,6 +228,46 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
 }
 
 /**
+ * Get approval logs for a specific OD request
+ */
+export async function getApprovalLogsByODId(odId) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.APPROVAL_LOGS,
+            [
+                Query.equal("od_id", odId),
+                Query.orderAsc("action_at"),
+            ]
+        );
+        return response;
+    } catch (error) {
+        console.error("Error getting approval logs:", error);
+        throw error;
+    }
+}
+
+/**
+ * Get recent approval logs
+ */
+export async function getRecentApprovalLogs(limit = 20) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.APPROVAL_LOGS,
+            [
+                Query.orderDesc("action_at"),
+                Query.limit(limit),
+            ]
+        );
+        return response;
+    } catch (error) {
+        console.error("Error getting recent approval logs:", error);
+        throw error;
+    }
+}
+
+/**
  * Get all OD requests (for admin/sudo)
  */
 export async function getAllODRequests(limit = 100) {
@@ -255,4 +295,6 @@ export default {
     approveODRequest,
     rejectODRequest,
     getAllODRequests,
+    getApprovalLogsByODId,
+    getRecentApprovalLogs,
 };
