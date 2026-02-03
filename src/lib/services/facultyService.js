@@ -72,24 +72,25 @@ export async function getFacultyByAppwriteId(appwriteUserId) {
  * Create new faculty
  */
 export async function createFaculty(data) {
+    const payload = {
+        faculty_id: String(data.faculty_id || ID.unique()).substring(0, 36),
+        appwrite_user_id: data.appwrite_user_id || null,
+        name: String(data.name || "").substring(0, 100),
+        email: String(data.email || "").substring(0, 100),
+        department: String(data.department || "").substring(0, 4),
+        designation: String(data.designation || "").substring(0, 50),
+        role: String(data.role || "mentor").substring(0, 30),
+        assigned_sections: Array.isArray(data.assigned_sections) ? data.assigned_sections.map(s => String(s).substring(0, 10)) : [],
+        assigned_years: Array.isArray(data.assigned_years) ? data.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y)) : [],
+    };
+
     try {
-        const faculty = await databases.createDocument(
+        return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.FACULTIES,
             ID.unique(),
-            {
-                faculty_id: ID.unique(),
-                appwrite_user_id: data.appwrite_user_id || null,
-                name: data.name,
-                email: data.email,
-                department: data.department,
-                designation: data.designation,
-                role: data.role,
-                assigned_sections: data.assigned_sections || [],
-                assigned_years: data.assigned_years || [],
-            }
+            payload
         );
-        return faculty;
     } catch (error) {
         console.error("Error creating faculty:", error);
         throw error;
@@ -101,15 +102,35 @@ export async function createFaculty(data) {
  */
 export async function updateFaculty(facultyId, data) {
     try {
-        const faculty = await databases.updateDocument(
+        const updateData = { ...data };
+        if (updateData.assigned_years) {
+            updateData.assigned_years = updateData.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y));
+        }
+
+        return await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.FACULTIES,
             facultyId,
-            data
+            updateData
         );
-        return faculty;
     } catch (error) {
         console.error("Error updating faculty:", error);
+        throw error;
+    }
+}
+
+/**
+ * Delete faculty
+ */
+export async function deleteFaculty(facultyId) {
+    try {
+        await databases.deleteDocument(
+            DATABASE_ID,
+            COLLECTIONS.FACULTIES,
+            facultyId
+        );
+    } catch (error) {
+        console.error("Error deleting faculty:", error);
         throw error;
     }
 }
@@ -120,4 +141,5 @@ export default {
     getFacultyByAppwriteId,
     createFaculty,
     updateFaculty,
+    deleteFaculty,
 };

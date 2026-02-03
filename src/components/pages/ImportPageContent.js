@@ -40,6 +40,62 @@ export default function ImportPageContent({ role }) {
         }
     };
 
+    const downloadSample = () => {
+        let sampleData = [];
+        let fileName = "";
+
+        if (target === "Students") {
+            sampleData = [
+                {
+                    "Roll Number": "21CS001",
+                    "First Name": "John",
+                    "Last Name": "Doe",
+                    "Email": "john.doe@sece.ac.in",
+                    "Phone": "9876543210",
+                    "Department Code": "CSE",
+                    "Year": 3,
+                    "Section": "A",
+                    "CGPA": 8.5
+                }
+            ];
+            fileName = "student_import_sample.xlsx";
+        } else if (target === "Faculty") {
+            sampleData = [
+                {
+                    "Employee ID": "FAC001",
+                    "First Name": "Alice",
+                    "Last Name": "Smith",
+                    "Email": "alice.smith@sece.ac.in",
+                    "Department Code": "CSE",
+                    "Designation": "Associate Professor",
+                    "Phone": "9876543211",
+                    "Class Advisor (e.g., \"2 CSE A\" or leave blank)": "2 CSE A",
+                    "Is Innovation Coordinator (TRUE/FALSE)": "FALSE"
+                }
+            ];
+            fileName = "faculty_import_sample.xlsx";
+        } else if (target === "Events") {
+            sampleData = [
+                {
+                    EventName: "Tech Symposium 2026",
+                    Type: "Workshop",
+                    Date: "2026-03-15",
+                    Venue: "Main Auditorium",
+                    Description: "A national level technical symposium.",
+                    URL: "https://symposium.sece.ac.in"
+                }
+            ];
+            fileName = "event_import_sample.xlsx";
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(sampleData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, target);
+        XLSX.writeFile(workbook, fileName);
+    };
+
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     const processImport = async () => {
         if (!file) return;
 
@@ -70,25 +126,55 @@ export default function ImportPageContent({ role }) {
                     try {
                         const item = jsonData[i];
                         if (target === "Students") {
+                            const firstName = item["First Name"] || "";
+                            const lastName = item["Last Name"] || "";
+                            const fullName = `${firstName} ${lastName}`.trim();
+
                             await createStudent({
-                                student_register_no: String(item.RegisterNo || item.register_no),
-                                roll_no: String(item.RollNo || item.roll_no),
-                                name: item.Name || item.name,
+                                student_register_no: String(item["Roll Number"] || item.roll_no), // Using Roll Number as fallback for Reg No if not present
+                                roll_no: String(item["Roll Number"] || item.roll_no),
+                                name: fullName || item.Name || item.name,
                                 email: item.Email || item.email,
-                                department: item.Dept || item.department,
+                                department: item["Department Code"] || item.Dept || item.department,
                                 year: Number(item.Year || item.year),
                                 section: item.Section || item.section || "A",
+                                phone: item.Phone || "",
+                                cgpa: item.CGPA !== undefined ? item.CGPA : null,
                                 status: "active"
                             });
                         } else if (target === "Faculty") {
+                            const firstName = item["First Name"] || "";
+                            const lastName = item["Last Name"] || "";
+                            const fullName = `${firstName} ${lastName}`.trim();
+
+                            const advisorField = item["Class Advisor (e.g., \"2 CSE A\" or leave blank)"] || "";
+                            const isAdvisor = !!advisorField;
+                            const isInnovationCoord = String(item["Is Innovation Coordinator (TRUE/FALSE)"]).toUpperCase() === "TRUE";
+
+                            let role = "mentor";
+                            if (isInnovationCoord) role = "coordinator";
+                            else if (isAdvisor) role = "advisor";
+
+                            // Parse year and section from "2 CSE A" or similar
+                            let year = [];
+                            let section = [];
+                            if (isAdvisor) {
+                                const parts = advisorField.split(" ");
+                                const y = parseInt(parts[0]);
+                                if (!isNaN(y)) year = [y];
+                                const s = parts.pop();
+                                if (s && s.length === 1) section = [s.toUpperCase()];
+                            }
+
                             await createFaculty({
-                                name: item.Name || item.name,
+                                faculty_id: String(item["Employee ID"] || ""),
+                                name: fullName || item.Name || item.name,
                                 email: item.Email || item.email,
-                                department: item.Dept || item.department,
+                                department: item["Department Code"] || item.Dept || item.department,
                                 designation: item.Designation || item.designation || "Assistant Professor",
-                                role: (item.Role || item.role || "mentor").toLowerCase(),
-                                assigned_sections: item.Sections ? item.Sections.split(",") : [],
-                                assigned_years: item.Years ? item.Years.split(",") : []
+                                role: role,
+                                assigned_sections: section,
+                                assigned_years: year
                             });
                         } else if (target === "Events") {
                             await createEvent({
@@ -101,6 +187,8 @@ export default function ImportPageContent({ role }) {
                             });
                         }
                         success++;
+                        // Add a small delay to avoid rate limiting
+                        await sleep(200);
                     } catch (err) {
                         console.error("Row failed:", err);
                         failed++;
@@ -206,14 +294,14 @@ export default function ImportPageContent({ role }) {
                         <ul className="space-y-4 text-sm text-white/70 leading-relaxed">
                             {target === "Students" && (
                                 <>
-                                    <li className="flex gap-3">RegisterNo, RollNo, Name, Email</li>
-                                    <li className="flex gap-3">Dept (CSE, IT, etc.), Year (1-4)</li>
+                                    <li className="flex gap-3">Roll Number, First Name, Last Name, Email</li>
+                                    <li className="flex gap-3">Phone, Department Code, Year, Section, CGPA</li>
                                 </>
                             )}
                             {target === "Faculty" && (
                                 <>
-                                    <li className="flex gap-3">Name, Email, Dept</li>
-                                    <li className="flex gap-3">Role (hod, advisor, etc.)</li>
+                                    <li className="flex gap-3">Employee ID, First Name, Last Name, Email</li>
+                                    <li className="flex gap-3">Dept Code, Designation, Phone, Class Advisor, etc.</li>
                                 </>
                             )}
                             {target === "Events" && (
@@ -223,7 +311,10 @@ export default function ImportPageContent({ role }) {
                                 </>
                             )}
                         </ul>
-                        <button className="w-full mt-8 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-bold uppercase tracking-widest transition-colors">
+                        <button
+                            onClick={downloadSample}
+                            className="w-full mt-8 py-3 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-bold uppercase tracking-widest transition-colors"
+                        >
                             Download Sample
                         </button>
                     </div>

@@ -1,10 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { Icons } from "@/components/layout";
+import { updateUserProfile } from "@/lib/services/userService";
 
 export default function SettingsPageContent({ role }) {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
+    const [name, setName] = useState(user?.name || "");
+    const [saving, setSaving] = useState(false);
+    const [message, setMessage] = useState(null);
+
+    const handleUpdate = async () => {
+        try {
+            setSaving(true);
+            setMessage(null);
+
+            await updateUserProfile(user.dbId, {
+                user_name: name
+            });
+
+            await refreshUser();
+            setMessage({ type: 'success', text: 'Profile updated successfully!' });
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            setMessage({ type: 'error', text: 'Failed to update profile.' });
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="max-w-4xl">
@@ -46,7 +70,8 @@ export default function SettingsPageContent({ role }) {
                                 <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Display Name</label>
                                 <input
                                     type="text"
-                                    defaultValue={user?.name}
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
                                     className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/10 font-medium"
                                 />
                             </div>
@@ -71,9 +96,21 @@ export default function SettingsPageContent({ role }) {
                                 </p>
                             </div>
 
-                            <button className="w-full bg-[#1E2761] text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-[#1E2761]/20 hover:scale-[1.02] transition-transform">
-                                Update Profile
-                            </button>
+                            <div className="space-y-4">
+                                <button
+                                    onClick={handleUpdate}
+                                    disabled={saving || !name || name === user?.name}
+                                    className="w-full bg-[#1E2761] text-white font-black text-xs uppercase tracking-widest py-4 rounded-xl shadow-lg shadow-[#1E2761]/20 hover:scale-[1.02] transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {saving ? "Updating..." : "Update Profile"}
+                                </button>
+
+                                {message && (
+                                    <p className={`text-center text-xs font-bold ${message.type === 'success' ? 'text-emerald-600' : 'text-red-500'}`}>
+                                        {message.text}
+                                    </p>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>

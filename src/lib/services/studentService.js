@@ -19,7 +19,7 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
             queries.push(Query.equal("department", filters.department));
         }
         if (filters.year) {
-            queries.push(Query.equal("year", filters.year));
+            queries.push(Query.equal("year", parseInt(filters.year)));
         }
         if (filters.section) {
             queries.push(Query.equal("section", filters.section));
@@ -81,50 +81,74 @@ export async function getStudentByRegNo(regNo) {
  * Create new student
  */
 export async function createStudent(data) {
+    const payload = {
+        student_register_no: data.student_register_no,
+        appwrite_user_id: data.appwrite_user_id || null,
+        roll_no: data.roll_no,
+        name: data.name,
+        email: data.email,
+        department: data.department,
+        year: parseInt(data.year),
+        section: data.section,
+        phone: data.phone || "",
+        cgpa: (data.cgpa !== undefined && data.cgpa !== "" && data.cgpa !== null) ? parseFloat(data.cgpa) : null,
+        advisor_id: data.advisor_id || null,
+        mentor_id: data.mentor_id || null,
+        status: data.status || "active",
+    };
+
     try {
-        const student = await databases.createDocument(
+        return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
             ID.unique(),
-            {
-                student_register_no: data.student_register_no,
-                appwrite_user_id: data.appwrite_user_id || null,
-                roll_no: data.roll_no,
-                name: data.name,
-                email: data.email,
-                department: data.department,
-                year: parseInt(data.year),
-                section: data.section,
-                advisor_id: data.advisor_id || null,
-                mentor_id: data.mentor_id || null,
-                status: data.status || "active",
-            }
+            payload
         );
-        return student;
     } catch (error) {
+        if (error.message?.includes("Unknown attribute")) {
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr && payload[missingAttr] !== undefined) {
+                console.warn(`Retrying create without missing attribute: ${missingAttr}`);
+                const { [missingAttr]: _, ...retryPayload } = payload;
+                // Note: We need to handle the recursive case differently for create because ID.unique() should only be called once or we use a fixed ID
+                return await databases.createDocument(
+                    DATABASE_ID,
+                    COLLECTIONS.STUDENTS,
+                    ID.unique(),
+                    retryPayload
+                );
+            }
+        }
         console.error("Error creating student:", error);
         throw error;
     }
 }
 
-/**
- * Update student
- */
 export async function updateStudent(studentId, data) {
-    try {
-        const updateData = { ...data };
-        if (updateData.year) {
-            updateData.year = parseInt(updateData.year);
-        }
+    const updateData = { ...data };
 
-        const student = await databases.updateDocument(
+    // Type casting
+    if (updateData.year) updateData.year = parseInt(updateData.year);
+    if (updateData.cgpa !== undefined && updateData.cgpa !== "") {
+        updateData.cgpa = parseFloat(updateData.cgpa);
+    }
+
+    try {
+        return await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
             studentId,
             updateData
         );
-        return student;
     } catch (error) {
+        if (error.message?.includes("Unknown attribute")) {
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr && updateData[missingAttr] !== undefined) {
+                console.warn(`Retrying update without missing attribute: ${missingAttr}`);
+                const { [missingAttr]: _, ...retryData } = updateData;
+                return await updateStudent(studentId, retryData); // Recursive call with one less attribute
+            }
+        }
         console.error("Error updating student:", error);
         throw error;
     }
@@ -149,6 +173,22 @@ export async function getStudentStats() {
     }
 }
 
+/**
+ * Delete student
+ */
+export async function deleteStudent(studentId) {
+    try {
+        await databases.deleteDocument(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            studentId
+        );
+    } catch (error) {
+        console.error("Error deleting student:", error);
+        throw error;
+    }
+}
+
 export default {
     getStudents,
     getStudentById,
@@ -156,4 +196,5 @@ export default {
     createStudent,
     updateStudent,
     getStudentStats,
+    deleteStudent,
 };

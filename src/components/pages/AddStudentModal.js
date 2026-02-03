@@ -14,6 +14,8 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
         department: "",
         year: "",
         section: "",
+        phone: "",
+        cgpa: "",
         status: "active",
     });
 
@@ -27,6 +29,8 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 department: initialData.department || "",
                 year: initialData.year || "",
                 section: initialData.section || "",
+                phone: initialData.phone || "",
+                cgpa: initialData.cgpa || "",
                 status: initialData.status || "active",
             });
         } else {
@@ -38,6 +42,8 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 department: "",
                 year: "",
                 section: "",
+                phone: "",
+                cgpa: "",
                 status: "active",
             });
         }
@@ -164,6 +170,27 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                     onChange={(e) => setFormData({ ...formData, section: e.target.value })}
                                 />
                             </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
+                            <input
+                                type="text"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
+                                value={formData.phone}
+                                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">CGPA</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                max="10"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
+                                value={formData.cgpa}
+                                onChange={(e) => setFormData({ ...formData, cgpa: e.target.value })}
+                            />
                         </div>
                     </div>
 

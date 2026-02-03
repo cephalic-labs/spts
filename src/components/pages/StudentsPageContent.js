@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getStudents } from "@/lib/services/studentService";
+import { getStudents, deleteStudent } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
 
@@ -38,6 +38,18 @@ export default function StudentsPageContent({ role }) {
     const handleEdit = (student) => {
         setSelectedStudent(student);
         setIsModalOpen(true);
+    };
+
+    const handleDelete = async (studentId) => {
+        if (window.confirm("Are you sure you want to delete this student record?")) {
+            try {
+                await deleteStudent(studentId);
+                loadStudents();
+            } catch (error) {
+                alert("Failed to delete student");
+                console.error(error);
+            }
+        }
     };
 
     const canManageStudents = ["sudo", "admin", "hod", "coordinator"].includes(role);
@@ -124,6 +136,8 @@ export default function StudentsPageContent({ role }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reg No</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dept/Year</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CGPA</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
@@ -139,18 +153,32 @@ export default function StudentsPageContent({ role }) {
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {student.department} / {student.year} Year
                                         </td>
+                                        <td className="px-6 py-4 text-sm font-bold text-[#1E2761]">
+                                            {student.cgpa || "--"}
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-gray-500">
+                                            {student.phone || "--"}
+                                        </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
                                                 {student.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
                                             <button
                                                 onClick={() => handleEdit(student)}
                                                 className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
                                             >
                                                 Edit
                                             </button>
+                                            {role === "sudo" && (
+                                                <button
+                                                    onClick={() => handleDelete(student.$id)}
+                                                    className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

@@ -12,3 +12,4 @@ export { default as CreateODModal } from './CreateODModal';
 export { default as ODDetailsModal } from './ODDetailsModal';
 export { default as AddStudentModal } from './AddStudentModal';
 export { default as AddFacultyModal } from './AddFacultyModal';
+export { default as AddDepartmentModal } from './AddDepartmentModal';
