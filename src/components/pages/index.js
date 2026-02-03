@@ -9,3 +9,6 @@ export { default as DepartmentsPageContent } from './DepartmentsPageContent';
 export { default as ImportPageContent } from './ImportPageContent';
 export { default as ReportsPageContent } from './ReportsPageContent';
 export { default as CreateODModal } from './CreateODModal';
+export { default as ODDetailsModal } from './ODDetailsModal';
+export { default as AddStudentModal } from './AddStudentModal';
+export { default as AddFacultyModal } from './AddFacultyModal';

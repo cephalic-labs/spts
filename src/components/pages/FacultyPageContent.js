@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { getFaculties } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
+import AddFacultyModal from "./AddFacultyModal";
 
 export default function FacultyPageContent({ role }) {
     const [faculty, setFaculty] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ department: "", role: "" });
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedFaculty, setSelectedFaculty] = useState(null);
 
     useEffect(() => {
         loadFaculty();
@@ -26,6 +29,16 @@ export default function FacultyPageContent({ role }) {
             setLoading(false);
         }
     }
+
+    const handleAdd = () => {
+        setSelectedFaculty(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (member) => {
+        setSelectedFaculty(member);
+        setIsModalOpen(true);
+    };
 
     const canManageFaculty = ["sudo", "admin"].includes(role);
 
@@ -45,7 +58,10 @@ export default function FacultyPageContent({ role }) {
                     <p className="text-gray-500 text-sm mt-1">Manage and view faculty members</p>
                 </div>
                 {canManageFaculty && (
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors">
+                    <button
+                        onClick={handleAdd}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                    >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -53,6 +69,13 @@ export default function FacultyPageContent({ role }) {
                     </button>
                 )}
             </div>
+
+            <AddFacultyModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={loadFaculty}
+                initialData={selectedFaculty}
+            />
 
             {/* Filters */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -67,6 +90,7 @@ export default function FacultyPageContent({ role }) {
                     <option value="EEE">EEE</option>
                     <option value="MECH">MECH</option>
                     <option value="IT">IT</option>
+                    <option value="AIDS">AIDS</option>
                 </select>
                 <select
                     className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
@@ -118,7 +142,12 @@ export default function FacultyPageContent({ role }) {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-[#1E2761] hover:underline text-sm font-medium">Manage</button>
+                                            <button
+                                                onClick={() => handleEdit(member)}
+                                                className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                            >
+                                                Edit
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
