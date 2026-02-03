@@ -3,12 +3,15 @@
 import { useState, useEffect } from "react";
 import { getStudents } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
+import AddStudentModal from "./AddStudentModal";
 
 export default function StudentsPageContent({ role }) {
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ department: "", year: "" });
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState(null);
 
     useEffect(() => {
         loadStudents();
@@ -26,6 +29,16 @@ export default function StudentsPageContent({ role }) {
             setLoading(false);
         }
     }
+
+    const handleAdd = () => {
+        setSelectedStudent(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (student) => {
+        setSelectedStudent(student);
+        setIsModalOpen(true);
+    };
 
     const canManageStudents = ["sudo", "admin", "hod", "coordinator"].includes(role);
 
@@ -45,7 +58,10 @@ export default function StudentsPageContent({ role }) {
                     <p className="text-gray-500 text-sm mt-1">Manage and view student records</p>
                 </div>
                 {canManageStudents && (
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors">
+                    <button
+                        onClick={handleAdd}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                    >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -53,6 +69,13 @@ export default function StudentsPageContent({ role }) {
                     </button>
                 )}
             </div>
+
+            <AddStudentModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={loadStudents}
+                initialData={selectedStudent}
+            />
 
             {/* Filters */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -122,7 +145,12 @@ export default function StudentsPageContent({ role }) {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-[#1E2761] hover:underline text-sm font-medium">Edit</button>
+                                            <button
+                                                onClick={() => handleEdit(student)}
+                                                className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                            >
+                                                Edit
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}

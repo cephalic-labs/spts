@@ -55,9 +55,9 @@ export async function createEvent(data) {
                 event_name: data.event_name,
                 event_host: data.event_host || null,
                 event_description: data.event_description,
-                event_image_url: data.event_image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
                 event_reg_deadline: data.event_reg_deadline,
                 event_time: data.event_time,
+                event_url: data.event_url || null,
                 participation_count: 0,
                 view_count: 0,
             }
@@ -137,6 +137,25 @@ export async function deleteEvent(eventId) {
     }
 }
 
+/**
+ * Get event stats
+ */
+export async function getEventStats() {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.EVENTS,
+            [Query.limit(1)]
+        );
+        return {
+            total: response.total,
+        };
+    } catch (error) {
+        console.error("Error getting event stats:", error);
+        return { total: 0 };
+    }
+}
+
 export default {
     getEvents,
     getEventById,
@@ -145,4 +164,5 @@ export default {
     incrementViewCount,
     incrementParticipationCount,
     deleteEvent,
+    getEventStats,
 };

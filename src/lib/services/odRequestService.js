@@ -27,8 +27,6 @@ export async function createODRequest(data) {
                 advisor_id: data.advisor_id || null,
                 coordinator_id: data.coordinator_id || null,
                 hod_id: data.hod_id || null,
-                created_at: now,
-                updated_at: now,
             }
         );
         return odRequest;
@@ -110,7 +108,6 @@ export async function approveODRequest(odId, role, userId, remarks = "") {
         // Update OD request
         const updateData = {
             current_status: toStatus,
-            updated_at: now,
         };
 
         // Set role-specific fields
@@ -162,7 +159,6 @@ export async function rejectODRequest(odId, role, userId, remarks = "") {
         const updateData = {
             current_status: OD_STATUS.REJECTED,
             final_decision: "rejected",
-            updated_at: now,
         };
 
         // Set role-specific rejection fields
@@ -228,6 +224,46 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
 }
 
 /**
+ * Get approval logs for a specific OD request
+ */
+export async function getApprovalLogsByODId(odId) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.APPROVAL_LOGS,
+            [
+                Query.equal("od_id", odId),
+                Query.orderAsc("action_at"),
+            ]
+        );
+        return response;
+    } catch (error) {
+        console.error("Error getting approval logs:", error);
+        throw error;
+    }
+}
+
+/**
+ * Get recent approval logs
+ */
+export async function getRecentApprovalLogs(limit = 20) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.APPROVAL_LOGS,
+            [
+                Query.orderDesc("action_at"),
+                Query.limit(limit),
+            ]
+        );
+        return response;
+    } catch (error) {
+        console.error("Error getting recent approval logs:", error);
+        throw error;
+    }
+}
+
+/**
  * Get all OD requests (for admin/sudo)
  */
 export async function getAllODRequests(limit = 100) {
@@ -247,6 +283,36 @@ export async function getAllODRequests(limit = 100) {
     }
 }
 
+/**
+ * Get OD request stats (total, pending, approved, rejected)
+ */
+export async function getODStats(filter = {}) {
+    try {
+        const queries = [];
+        if (filter.student_id) {
+            queries.push(Query.equal("student_id", filter.student_id));
+        }
+
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.OD_REQUESTS,
+            queries
+        );
+
+        const stats = {
+            total: response.total,
+            pending: response.documents.filter(d => d.current_status.startsWith('pending')).length,
+            approved: response.documents.filter(d => d.current_status === OD_STATUS.APPROVED).length,
+            rejected: response.documents.filter(d => d.current_status === OD_STATUS.REJECTED).length,
+        };
+
+        return stats;
+    } catch (error) {
+        console.error("Error getting OD stats:", error);
+        return { total: 0, pending: 0, approved: 0, rejected: 0 };
+    }
+}
+
 export default {
     createODRequest,
     getODRequestsByStatus,
@@ -255,4 +321,7 @@ export default {
     approveODRequest,
     rejectODRequest,
     getAllODRequests,
+    getApprovalLogsByODId,
+    getRecentApprovalLogs,
+    getODStats,
 };

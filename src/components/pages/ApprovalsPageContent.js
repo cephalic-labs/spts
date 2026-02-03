@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getODRequestsByStatus, approveODRequest, rejectODRequest } from "@/lib/services/odRequestService";
+import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS, canRoleApprove } from "@/lib/dbConfig";
 
@@ -16,6 +16,7 @@ const roleToStatus = {
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
     const [pendingRequests, setPendingRequests] = useState([]);
+    const [recentLogs, setRecentLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
 
@@ -28,14 +29,17 @@ export default function ApprovalsPageContent({ role }) {
             setLoading(true);
             const status = roleToStatus[role];
 
-            if (!status) {
-                // For roles like sudo/admin, show all pending
+            // Fetch pending requests
+            if (status) {
+                const response = await getODRequestsByStatus(status, 50);
+                setPendingRequests(response?.documents || []);
+            } else {
                 setPendingRequests([]);
-                return;
             }
 
-            const response = await getODRequestsByStatus(status, 50);
-            setPendingRequests(response?.documents || []);
+            // Fetch recent logs
+            const logsResponse = await getRecentApprovalLogs(10);
+            setRecentLogs(logsResponse?.documents || []);
         } catch (err) {
             console.error("Error loading pending requests:", err);
         } finally {
@@ -173,6 +177,80 @@ export default function ApprovalsPageContent({ role }) {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Recent Activity Section */}
+            <div className="mt-12">
+                <div className="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 className="text-xl font-bold text-[#1E2761]">Recent Approval Activity</h2>
+                        <p className="text-gray-500 text-sm">Review recent actions taken on OD requests</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                    {recentLogs.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                            No recent activity found.
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left">
+                                <thead className="bg-gray-50 border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Log ID</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">OD ID</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action By</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {recentLogs.map((log) => (
+                                        <tr key={log.$id} className="hover:bg-gray-50 transition-colors text-sm">
+                                            <td className="px-6 py-4 text-gray-500">
+                                                {new Date(log.action_at).toLocaleString([], {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit'
+                                                })}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="font-mono text-xs text-gray-400">
+                                                    #{log.log_id?.slice(0, 8) || log.$id.slice(0, 8)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="font-mono text-xs text-blue-600">
+                                                    #{log.od_id?.slice(0, 8)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium text-gray-700 capitalize">{log.action_by_role}</span>
+                                                    <span className="text-xs text-gray-400">({log.action_by_user_id?.slice(0, 8)})</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${log.action === 'approve'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : 'bg-red-100 text-red-700'
+                                                    }`}>
+                                                    {log.action === 'approve' ? 'APPROVED' : 'REJECTED'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-gray-600 italic">
+                                                {log.remarks || "-"}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
             </div>
         </div>
     );

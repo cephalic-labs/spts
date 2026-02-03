@@ -82,7 +82,6 @@ export async function getStudentByRegNo(regNo) {
  */
 export async function createStudent(data) {
     try {
-        const now = new Date().toISOString();
         const student = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
@@ -94,13 +93,11 @@ export async function createStudent(data) {
                 name: data.name,
                 email: data.email,
                 department: data.department,
-                year: data.year,
+                year: parseInt(data.year),
                 section: data.section,
                 advisor_id: data.advisor_id || null,
                 mentor_id: data.mentor_id || null,
                 status: data.status || "active",
-                created_at: now,
-                updated_at: now,
             }
         );
         return student;
@@ -115,16 +112,40 @@ export async function createStudent(data) {
  */
 export async function updateStudent(studentId, data) {
     try {
+        const updateData = { ...data };
+        if (updateData.year) {
+            updateData.year = parseInt(updateData.year);
+        }
+
         const student = await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
             studentId,
-            { ...data, updated_at: new Date().toISOString() }
+            updateData
         );
         return student;
     } catch (error) {
         console.error("Error updating student:", error);
         throw error;
+    }
+}
+
+/**
+ * Get student stats
+ */
+export async function getStudentStats() {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.limit(1)]
+        );
+        return {
+            total: response.total,
+        };
+    } catch (error) {
+        console.error("Error getting student stats:", error);
+        return { total: 0 };
     }
 }
 
@@ -134,4 +155,5 @@ export default {
     getStudentByRegNo,
     createStudent,
     updateStudent,
+    getStudentStats,
 };
