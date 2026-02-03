@@ -95,6 +95,8 @@ export async function createStudent(data) {
                 department: data.department,
                 year: parseInt(data.year),
                 section: data.section,
+                phone: data.phone || "",
+                cgpa: data.cgpa ? parseFloat(data.cgpa) : null,
                 advisor_id: data.advisor_id || null,
                 mentor_id: data.mentor_id || null,
                 status: data.status || "active",
