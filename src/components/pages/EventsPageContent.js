@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react";
 import { getEvents } from "@/lib/services/eventService";
 import { Icons } from "@/components/layout";
+import CreateEventModal from "./CreateEventModal";
+import Link from "next/link";
 
 export default function EventsPageContent({ role }) {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
         loadEvents();
@@ -56,7 +59,10 @@ export default function EventsPageContent({ role }) {
                     <p className="text-gray-500 text-sm mt-1">Browse and manage events</p>
                 </div>
                 {canCreateEvent && (
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors">
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                    >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -64,6 +70,12 @@ export default function EventsPageContent({ role }) {
                     </button>
                 )}
             </div>
+
+            <CreateEventModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                onSuccess={loadEvents}
+            />
 
             {/* Events Grid */}
             {events.length === 0 ? (
@@ -75,44 +87,52 @@ export default function EventsPageContent({ role }) {
                     <p className="text-gray-500">Events will appear here once created.</p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="space-y-4">
                     {events.map((event) => (
                         <div
                             key={event.$id}
-                            className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow group"
+                            className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 hover:shadow-md transition-all group flex flex-col md:flex-row gap-6 items-center"
                         >
-                            {/* Event Image */}
-                            <div className="h-40 bg-gradient-to-br from-[#1E2761] to-[#3D4CAB] relative overflow-hidden">
+                            {/* Event Image - Smaller for list view */}
+                            <div className="w-full md:w-48 h-32 bg-gradient-to-br from-[#1E2761] to-[#3D4CAB] rounded-xl overflow-hidden flex-shrink-0">
                                 {event.event_image_url && (
                                     <img
                                         src={event.event_image_url}
                                         alt={event.event_name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                                     />
                                 )}
-                                <div className="absolute top-3 right-3 px-2 py-1 bg-white/90 rounded-lg text-xs font-bold text-[#1E2761]">
-                                    {event.participation_count || 0} joined
-                                </div>
                             </div>
 
                             {/* Event Details */}
-                            <div className="p-5">
-                                <h3 className="font-bold text-[#1E2761] text-lg mb-2 line-clamp-1">
-                                    {event.event_name}
-                                </h3>
-                                <p className="text-gray-500 text-sm line-clamp-2 mb-4">
+                            <div className="flex-grow text-center md:text-left">
+                                <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+                                    <h3 className="font-bold text-[#1E2761] text-xl">
+                                        {event.event_name}
+                                    </h3>
+                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 w-fit mx-auto md:mx-0">
+                                        {event.participation_count || 0} participants
+                                    </span>
+                                </div>
+                                <p className="text-gray-500 text-sm line-clamp-2 mb-4 max-w-2xl">
                                     {event.event_description}
                                 </p>
 
-                                <div className="flex items-center justify-between text-xs text-gray-400">
-                                    <div className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-gray-400 font-medium">
+                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        {new Date(event.event_time).toLocaleDateString()}
+                                        Date: {new Date(event.event_time).toLocaleDateString()}
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Deadline: {new Date(event.event_reg_deadline).toLocaleDateString()}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
+                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
@@ -121,16 +141,26 @@ export default function EventsPageContent({ role }) {
                                 </div>
                             </div>
 
-                            {/* Action Button */}
-                            <div className="px-5 pb-5">
-                                <button className="w-full py-2.5 bg-[#F8F9FA] hover:bg-[#1E2761] hover:text-white text-[#1E2761] rounded-lg font-medium text-sm transition-colors">
+                            {/* Action Buttons & URL */}
+                            <div className="flex flex-col gap-2 w-full md:w-auto">
+                                {event.event_url && (
+                                    <Link
+                                        href={event.event_url}
+                                        target="_blank"
+                                        className="px-6 py-2.5 bg-[#1E2761] text-white rounded-xl font-semibold text-sm transition-all hover:bg-[#2d3a7d] hover:shadow-lg text-center"
+                                    >
+                                        Register Link
+                                    </Link>
+                                )}
+                                <button className="px-6 py-2.5 bg-gray-50 text-gray-600 rounded-xl font-semibold text-sm transition-all hover:bg-gray-100 text-center">
                                     View Details
                                 </button>
                             </div>
                         </div>
                     ))}
                 </div>
-            )}
+            )
+            }
         </div>
     );
 }
