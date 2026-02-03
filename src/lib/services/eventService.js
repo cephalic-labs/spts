@@ -55,7 +55,6 @@ export async function createEvent(data) {
                 event_name: data.event_name,
                 event_host: data.event_host || null,
                 event_description: data.event_description,
-                event_image_url: data.event_image_url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
                 event_reg_deadline: data.event_reg_deadline,
                 event_time: data.event_time,
                 event_url: data.event_url || null,

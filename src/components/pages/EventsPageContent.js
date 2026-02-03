@@ -91,48 +91,39 @@ export default function EventsPageContent({ role }) {
                     {events.map((event) => (
                         <div
                             key={event.$id}
-                            className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 hover:shadow-md transition-all group flex flex-col md:flex-row gap-6 items-center"
+                            className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 hover:shadow-md transition-all group flex flex-col md:flex-row gap-6 items-center"
                         >
-                            {/* Event Image - Smaller for list view */}
-                            <div className="w-full md:w-48 h-32 bg-gradient-to-br from-[#1E2761] to-[#3D4CAB] rounded-xl overflow-hidden flex-shrink-0">
-                                {event.event_image_url && (
-                                    <img
-                                        src={event.event_image_url}
-                                        alt={event.event_name}
-                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                    />
-                                )}
-                            </div>
-
                             {/* Event Details */}
                             <div className="flex-grow text-center md:text-left">
-                                <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
-                                    <h3 className="font-bold text-[#1E2761] text-xl">
+                                <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                                    <h3 className="font-bold text-[#1E2761] text-2xl">
                                         {event.event_name}
                                     </h3>
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 w-fit mx-auto md:mx-0">
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 w-fit mx-auto md:mx-0">
                                         {event.participation_count || 0} participants
                                     </span>
                                 </div>
-                                <p className="text-gray-500 text-sm line-clamp-2 mb-4 max-w-2xl">
+                                <p className="text-gray-500 text-base line-clamp-2 mb-6 max-w-3xl">
                                     {event.event_description}
                                 </p>
 
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs text-gray-400 font-medium">
-                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-sm text-gray-500 font-medium">
+                                    <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl">
+                                        <svg className="w-5 h-5 text-[#1E2761]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        Date: {new Date(event.event_time).toLocaleDateString()}
+                                        <span className="text-gray-400 mr-1">Date:</span>
+                                        {new Date(event.event_time).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                                     </div>
-                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl">
+                                        <svg className="w-5 h-5 text-[#1E2761]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Deadline: {new Date(event.event_reg_deadline).toLocaleDateString()}
+                                        <span className="text-gray-400 mr-1">Deadline:</span>
+                                        {new Date(event.event_reg_deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
                                     </div>
-                                    <div className="flex items-center gap-1.5 bg-gray-50 px-3 py-1.5 rounded-lg">
-                                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl">
+                                        <svg className="w-5 h-5 text-[#1E2761]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                         </svg>
@@ -141,20 +132,24 @@ export default function EventsPageContent({ role }) {
                                 </div>
                             </div>
 
-                            {/* Action Buttons & URL */}
-                            <div className="flex flex-col gap-2 w-full md:w-auto">
-                                {event.event_url && (
+                            {/* Action Button */}
+                            <div className="w-full md:w-auto">
+                                {event.event_url ? (
                                     <Link
                                         href={event.event_url}
                                         target="_blank"
-                                        className="px-6 py-2.5 bg-[#1E2761] text-white rounded-xl font-semibold text-sm transition-all hover:bg-[#2d3a7d] hover:shadow-lg text-center"
+                                        className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1E2761] text-white rounded-2xl font-bold text-base transition-all hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 w-full md:w-auto"
                                     >
-                                        Register Link
+                                        Open Event
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                        </svg>
                                     </Link>
+                                ) : (
+                                    <button className="px-8 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-base cursor-not-allowed w-full md:w-auto">
+                                        No Link Available
+                                    </button>
                                 )}
-                                <button className="px-6 py-2.5 bg-gray-50 text-gray-600 rounded-xl font-semibold text-sm transition-all hover:bg-gray-100 text-center">
-                                    View Details
-                                </button>
                             </div>
                         </div>
                     ))}

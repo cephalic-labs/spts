@@ -10,7 +10,6 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess }) {
         event_description: "",
         event_time: "",
         event_reg_deadline: "",
-        event_image_url: "",
         event_url: "",
     });
 
@@ -28,7 +27,6 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess }) {
                 event_description: "",
                 event_time: "",
                 event_reg_deadline: "",
-                event_image_url: "",
                 event_url: "",
             });
         } catch (error) {
@@ -52,28 +50,16 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Event Name</label>
-                            <input
-                                required
-                                type="text"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
-                                placeholder="Enter event name"
-                                value={formData.event_name}
-                                onChange={(e) => setFormData({ ...formData, event_name: e.target.value })}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Event Image URL</label>
-                            <input
-                                type="url"
-                                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
-                                placeholder="https://..."
-                                value={formData.event_image_url}
-                                onChange={(e) => setFormData({ ...formData, event_image_url: e.target.value })}
-                            />
-                        </div>
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Event Name</label>
+                        <input
+                            required
+                            type="text"
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
+                            placeholder="Enter event name"
+                            value={formData.event_name}
+                            onChange={(e) => setFormData({ ...formData, event_name: e.target.value })}
+                        />
                     </div>
 
                     <div className="space-y-2">
