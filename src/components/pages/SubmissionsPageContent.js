@@ -5,6 +5,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { getStudentODRequests, getAllODRequests } from "@/lib/services/odRequestService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
+import CreateODModal from "./CreateODModal";
+import ODDetailsModal from "./ODDetailsModal";
 
 const statusColors = {
     [OD_STATUS.PENDING_MENTOR]: "bg-yellow-100 text-yellow-700",
@@ -29,9 +31,14 @@ export default function SubmissionsPageContent({ role }) {
     const [submissions, setSubmissions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [selectedODId, setSelectedODId] = useState(null);
+    const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
     useEffect(() => {
-        loadSubmissions();
+        if (user || role !== 'student') {
+            loadSubmissions();
+        }
     }, [role, user]);
 
     async function loadSubmissions() {
@@ -56,9 +63,14 @@ export default function SubmissionsPageContent({ role }) {
         }
     }
 
+    const openDetails = (id) => {
+        setSelectedODId(id);
+        setIsDetailsModalOpen(true);
+    };
+
     const canCreateSubmission = role === "student";
 
-    if (loading) {
+    if (loading && submissions.length === 0) {
         return (
             <div className="flex items-center justify-center py-20">
                 <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
@@ -77,7 +89,10 @@ export default function SubmissionsPageContent({ role }) {
                     </p>
                 </div>
                 {canCreateSubmission && (
-                    <button className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors">
+                    <button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                    >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
@@ -85,6 +100,18 @@ export default function SubmissionsPageContent({ role }) {
                     </button>
                 )}
             </div>
+
+            <CreateODModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={loadSubmissions}
+            />
+
+            <ODDetailsModal
+                isOpen={isDetailsModalOpen}
+                onClose={() => setIsDetailsModalOpen(false)}
+                odId={selectedODId}
+            />
 
             {/* Submissions Table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -104,7 +131,7 @@ export default function SubmissionsPageContent({ role }) {
                             <thead className="bg-[#F8F9FA] border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event ID</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Range</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Created</th>
@@ -114,26 +141,29 @@ export default function SubmissionsPageContent({ role }) {
                             <tbody className="divide-y divide-gray-50">
                                 {submissions.map((submission) => (
                                     <tr key={submission.$id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-sm font-mono text-gray-600">
-                                            {submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}...
+                                        <td className="px-6 py-4 text-sm font-mono text-gray-400">
+                                            #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-800 font-medium">
-                                            {submission.event_id?.slice(0, 12) || "N/A"}...
+                                            {submission.event_id?.slice(0, 12)}...
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {new Date(submission.od_start_date).toLocaleDateString()} - {new Date(submission.od_end_date).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-bold ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
                                                 {statusLabels[submission.current_status] || submission.current_status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-gray-500">
+                                        <td className="px-6 py-4 text-sm text-gray-400">
                                             {new Date(submission.$createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-[#1E2761] hover:underline text-sm font-medium">
-                                                View
+                                            <button
+                                                onClick={() => openDetails(submission.$id)}
+                                                className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                            >
+                                                Details
                                             </button>
                                         </td>
                                     </tr>
