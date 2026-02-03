@@ -76,7 +76,7 @@ export default function ImportPageContent({ role }) {
                                 name: item.Name || item.name,
                                 email: item.Email || item.email,
                                 department: item.Dept || item.department,
-                                year: String(item.Year || item.year),
+                                year: Number(item.Year || item.year),
                                 section: item.Section || item.section || "A",
                                 status: "active"
                             });

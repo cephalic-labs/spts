@@ -27,8 +27,6 @@ export async function createODRequest(data) {
                 advisor_id: data.advisor_id || null,
                 coordinator_id: data.coordinator_id || null,
                 hod_id: data.hod_id || null,
-                created_at: now,
-                updated_at: now,
             }
         );
         return odRequest;
@@ -110,7 +108,6 @@ export async function approveODRequest(odId, role, userId, remarks = "") {
         // Update OD request
         const updateData = {
             current_status: toStatus,
-            updated_at: now,
         };
 
         // Set role-specific fields
@@ -162,7 +159,6 @@ export async function rejectODRequest(odId, role, userId, remarks = "") {
         const updateData = {
             current_status: OD_STATUS.REJECTED,
             final_decision: "rejected",
-            updated_at: now,
         };
 
         // Set role-specific rejection fields

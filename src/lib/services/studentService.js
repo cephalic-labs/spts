@@ -82,7 +82,6 @@ export async function getStudentByRegNo(regNo) {
  */
 export async function createStudent(data) {
     try {
-        const now = new Date().toISOString();
         const student = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
@@ -94,13 +93,11 @@ export async function createStudent(data) {
                 name: data.name,
                 email: data.email,
                 department: data.department,
-                year: data.year,
+                year: parseInt(data.year),
                 section: data.section,
                 advisor_id: data.advisor_id || null,
                 mentor_id: data.mentor_id || null,
                 status: data.status || "active",
-                created_at: now,
-                updated_at: now,
             }
         );
         return student;
@@ -115,11 +112,16 @@ export async function createStudent(data) {
  */
 export async function updateStudent(studentId, data) {
     try {
+        const updateData = { ...data };
+        if (updateData.year) {
+            updateData.year = parseInt(updateData.year);
+        }
+
         const student = await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
             studentId,
-            { ...data, updated_at: new Date().toISOString() }
+            updateData
         );
         return student;
     } catch (error) {
