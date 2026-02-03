@@ -81,23 +81,23 @@ export async function getStudentByRegNo(regNo) {
  * Create new student
  */
 export async function createStudent(data) {
-    try {
-        const payload = {
-            student_register_no: data.student_register_no,
-            appwrite_user_id: data.appwrite_user_id || null,
-            roll_no: data.roll_no,
-            name: data.name,
-            email: data.email,
-            department: data.department,
-            year: parseInt(data.year),
-            section: data.section,
-            phone: data.phone || "",
-            cgpa: data.cgpa ? parseFloat(data.cgpa) : null,
-            advisor_id: data.advisor_id || null,
-            mentor_id: data.mentor_id || null,
-            status: data.status || "active",
-        };
+    const payload = {
+        student_register_no: data.student_register_no,
+        appwrite_user_id: data.appwrite_user_id || null,
+        roll_no: data.roll_no,
+        name: data.name,
+        email: data.email,
+        department: data.department,
+        year: parseInt(data.year),
+        section: data.section,
+        phone: data.phone || "",
+        cgpa: (data.cgpa !== undefined && data.cgpa !== "" && data.cgpa !== null) ? parseFloat(data.cgpa) : null,
+        advisor_id: data.advisor_id || null,
+        mentor_id: data.mentor_id || null,
+        status: data.status || "active",
+    };
 
+    try {
         return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
@@ -105,27 +105,19 @@ export async function createStudent(data) {
             payload
         );
     } catch (error) {
-        // If the error is due to missing attributes in the schema, try falling back to the basic schema
         if (error.message?.includes("Unknown attribute")) {
-            console.warn("Retrying import without new attributes (phone/cgpa). Please add these to your Appwrite collection.");
-            return await databases.createDocument(
-                DATABASE_ID,
-                COLLECTIONS.STUDENTS,
-                ID.unique(),
-                {
-                    student_register_no: data.student_register_no,
-                    appwrite_user_id: data.appwrite_user_id || null,
-                    roll_no: data.roll_no,
-                    name: data.name,
-                    email: data.email,
-                    department: data.department,
-                    year: parseInt(data.year),
-                    section: data.section,
-                    advisor_id: data.advisor_id || null,
-                    mentor_id: data.mentor_id || null,
-                    status: data.status || "active",
-                }
-            );
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr && payload[missingAttr] !== undefined) {
+                console.warn(`Retrying create without missing attribute: ${missingAttr}`);
+                const { [missingAttr]: _, ...retryPayload } = payload;
+                // Note: We need to handle the recursive case differently for create because ID.unique() should only be called once or we use a fixed ID
+                return await databases.createDocument(
+                    DATABASE_ID,
+                    COLLECTIONS.STUDENTS,
+                    ID.unique(),
+                    retryPayload
+                );
+            }
         }
         console.error("Error creating student:", error);
         throw error;
@@ -133,15 +125,15 @@ export async function createStudent(data) {
 }
 
 export async function updateStudent(studentId, data) {
-    try {
-        const updateData = { ...data };
-        if (updateData.year) {
-            updateData.year = parseInt(updateData.year);
-        }
-        if (updateData.cgpa) {
-            updateData.cgpa = parseFloat(updateData.cgpa);
-        }
+    const updateData = { ...data };
 
+    // Type casting
+    if (updateData.year) updateData.year = parseInt(updateData.year);
+    if (updateData.cgpa !== undefined && updateData.cgpa !== "") {
+        updateData.cgpa = parseFloat(updateData.cgpa);
+    }
+
+    try {
         return await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
@@ -150,14 +142,12 @@ export async function updateStudent(studentId, data) {
         );
     } catch (error) {
         if (error.message?.includes("Unknown attribute")) {
-            const { phone, cgpa, ...safeData } = data;
-            console.warn("Retrying update without new attributes (phone/cgpa).");
-            return await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTIONS.STUDENTS,
-                studentId,
-                safeData
-            );
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr && updateData[missingAttr] !== undefined) {
+                console.warn(`Retrying update without missing attribute: ${missingAttr}`);
+                const { [missingAttr]: _, ...retryData } = updateData;
+                return await updateStudent(studentId, retryData); // Recursive call with one less attribute
+            }
         }
         console.error("Error updating student:", error);
         throw error;

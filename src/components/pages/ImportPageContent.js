@@ -92,6 +92,8 @@ export default function ImportPageContent({ role }) {
         XLSX.writeFile(workbook, fileName);
     };
 
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
     const processImport = async () => {
         if (!file) return;
 
@@ -135,7 +137,7 @@ export default function ImportPageContent({ role }) {
                                 year: Number(item.Year || item.year),
                                 section: item.Section || item.section || "A",
                                 phone: item.Phone || "",
-                                cgpa: item.CGPA || null,
+                                cgpa: item.CGPA !== undefined ? item.CGPA : null,
                                 status: "active"
                             });
                         } else if (target === "Faculty") {
@@ -159,6 +161,8 @@ export default function ImportPageContent({ role }) {
                             });
                         }
                         success++;
+                        // Add a small delay to avoid rate limiting
+                        await sleep(200);
                     } catch (err) {
                         console.error("Row failed:", err);
                         failed++;

@@ -136,6 +136,8 @@ export default function StudentsPageContent({ role }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reg No</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Dept/Year</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CGPA</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
@@ -150,6 +152,12 @@ export default function StudentsPageContent({ role }) {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {student.department} / {student.year} Year
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-bold text-[#1E2761]">
+                                            {student.cgpa || "--"}
+                                        </td>
+                                        <td className="px-6 py-4 text-xs text-gray-500">
+                                            {student.phone || "--"}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${student.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>

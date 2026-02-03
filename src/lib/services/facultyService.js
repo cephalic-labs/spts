@@ -72,25 +72,39 @@ export async function getFacultyByAppwriteId(appwriteUserId) {
  * Create new faculty
  */
 export async function createFaculty(data) {
+    const payload = {
+        faculty_id: ID.unique(),
+        appwrite_user_id: data.appwrite_user_id || null,
+        name: data.name,
+        email: data.email,
+        department: data.department,
+        designation: data.designation,
+        role: data.role,
+        assigned_sections: data.assigned_sections || [],
+        assigned_years: data.assigned_years || [],
+    };
+
     try {
-        const faculty = await databases.createDocument(
+        return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.FACULTIES,
             ID.unique(),
-            {
-                faculty_id: ID.unique(),
-                appwrite_user_id: data.appwrite_user_id || null,
-                name: data.name,
-                email: data.email,
-                department: data.department,
-                designation: data.designation,
-                role: data.role,
-                assigned_sections: data.assigned_sections || [],
-                assigned_years: data.assigned_years || [],
-            }
+            payload
         );
-        return faculty;
     } catch (error) {
+        if (error.message?.includes("Unknown attribute")) {
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr && payload[missingAttr] !== undefined) {
+                console.warn(`Retrying faculty create without missing attribute: ${missingAttr}`);
+                const { [missingAttr]: _, ...retryPayload } = payload;
+                return await databases.createDocument(
+                    DATABASE_ID,
+                    COLLECTIONS.FACULTIES,
+                    ID.unique(),
+                    retryPayload
+                );
+            }
+        }
         console.error("Error creating faculty:", error);
         throw error;
     }
@@ -101,14 +115,21 @@ export async function createFaculty(data) {
  */
 export async function updateFaculty(facultyId, data) {
     try {
-        const faculty = await databases.updateDocument(
+        return await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.FACULTIES,
             facultyId,
             data
         );
-        return faculty;
     } catch (error) {
+        if (error.message?.includes("Unknown attribute")) {
+            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
+            if (missingAttr && data[missingAttr] !== undefined) {
+                console.warn(`Retrying faculty update without missing attribute: ${missingAttr}`);
+                const { [missingAttr]: _, ...retryData } = data;
+                return await updateFaculty(facultyId, retryData);
+            }
+        }
         console.error("Error updating faculty:", error);
         throw error;
     }
