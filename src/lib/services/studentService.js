@@ -82,51 +82,83 @@ export async function getStudentByRegNo(regNo) {
  */
 export async function createStudent(data) {
     try {
-        const student = await databases.createDocument(
+        const payload = {
+            student_register_no: data.student_register_no,
+            appwrite_user_id: data.appwrite_user_id || null,
+            roll_no: data.roll_no,
+            name: data.name,
+            email: data.email,
+            department: data.department,
+            year: parseInt(data.year),
+            section: data.section,
+            phone: data.phone || "",
+            cgpa: data.cgpa ? parseFloat(data.cgpa) : null,
+            advisor_id: data.advisor_id || null,
+            mentor_id: data.mentor_id || null,
+            status: data.status || "active",
+        };
+
+        return await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
             ID.unique(),
-            {
-                student_register_no: data.student_register_no,
-                appwrite_user_id: data.appwrite_user_id || null,
-                roll_no: data.roll_no,
-                name: data.name,
-                email: data.email,
-                department: data.department,
-                year: parseInt(data.year),
-                section: data.section,
-                phone: data.phone || "",
-                cgpa: data.cgpa ? parseFloat(data.cgpa) : null,
-                advisor_id: data.advisor_id || null,
-                mentor_id: data.mentor_id || null,
-                status: data.status || "active",
-            }
+            payload
         );
-        return student;
     } catch (error) {
+        // If the error is due to missing attributes in the schema, try falling back to the basic schema
+        if (error.message?.includes("Unknown attribute")) {
+            console.warn("Retrying import without new attributes (phone/cgpa). Please add these to your Appwrite collection.");
+            return await databases.createDocument(
+                DATABASE_ID,
+                COLLECTIONS.STUDENTS,
+                ID.unique(),
+                {
+                    student_register_no: data.student_register_no,
+                    appwrite_user_id: data.appwrite_user_id || null,
+                    roll_no: data.roll_no,
+                    name: data.name,
+                    email: data.email,
+                    department: data.department,
+                    year: parseInt(data.year),
+                    section: data.section,
+                    advisor_id: data.advisor_id || null,
+                    mentor_id: data.mentor_id || null,
+                    status: data.status || "active",
+                }
+            );
+        }
         console.error("Error creating student:", error);
         throw error;
     }
 }
 
-/**
- * Update student
- */
 export async function updateStudent(studentId, data) {
     try {
         const updateData = { ...data };
         if (updateData.year) {
             updateData.year = parseInt(updateData.year);
         }
+        if (updateData.cgpa) {
+            updateData.cgpa = parseFloat(updateData.cgpa);
+        }
 
-        const student = await databases.updateDocument(
+        return await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.STUDENTS,
             studentId,
             updateData
         );
-        return student;
     } catch (error) {
+        if (error.message?.includes("Unknown attribute")) {
+            const { phone, cgpa, ...safeData } = data;
+            console.warn("Retrying update without new attributes (phone/cgpa).");
+            return await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTIONS.STUDENTS,
+                studentId,
+                safeData
+            );
+        }
         console.error("Error updating student:", error);
         throw error;
     }
