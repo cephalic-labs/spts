@@ -73,15 +73,15 @@ export async function getFacultyByAppwriteId(appwriteUserId) {
  */
 export async function createFaculty(data) {
     const payload = {
-        faculty_id: ID.unique(),
+        faculty_id: String(data.faculty_id || ID.unique()).substring(0, 36),
         appwrite_user_id: data.appwrite_user_id || null,
-        name: data.name,
-        email: data.email,
-        department: data.department,
-        designation: data.designation,
-        role: data.role,
-        assigned_sections: data.assigned_sections || [],
-        assigned_years: data.assigned_years || [],
+        name: String(data.name || "").substring(0, 100),
+        email: String(data.email || "").substring(0, 100),
+        department: String(data.department || "").substring(0, 4),
+        designation: String(data.designation || "").substring(0, 50),
+        role: String(data.role || "mentor").substring(0, 30),
+        assigned_sections: Array.isArray(data.assigned_sections) ? data.assigned_sections.map(s => String(s).substring(0, 10)) : [],
+        assigned_years: Array.isArray(data.assigned_years) ? data.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y)) : [],
     };
 
     try {
@@ -92,19 +92,6 @@ export async function createFaculty(data) {
             payload
         );
     } catch (error) {
-        if (error.message?.includes("Unknown attribute")) {
-            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
-            if (missingAttr && payload[missingAttr] !== undefined) {
-                console.warn(`Retrying faculty create without missing attribute: ${missingAttr}`);
-                const { [missingAttr]: _, ...retryPayload } = payload;
-                return await databases.createDocument(
-                    DATABASE_ID,
-                    COLLECTIONS.FACULTIES,
-                    ID.unique(),
-                    retryPayload
-                );
-            }
-        }
         console.error("Error creating faculty:", error);
         throw error;
     }
@@ -115,21 +102,18 @@ export async function createFaculty(data) {
  */
 export async function updateFaculty(facultyId, data) {
     try {
+        const updateData = { ...data };
+        if (updateData.assigned_years) {
+            updateData.assigned_years = updateData.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y));
+        }
+
         return await databases.updateDocument(
             DATABASE_ID,
             COLLECTIONS.FACULTIES,
             facultyId,
-            data
+            updateData
         );
     } catch (error) {
-        if (error.message?.includes("Unknown attribute")) {
-            const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
-            if (missingAttr && data[missingAttr] !== undefined) {
-                console.warn(`Retrying faculty update without missing attribute: ${missingAttr}`);
-                const { [missingAttr]: _, ...retryData } = data;
-                return await updateFaculty(facultyId, retryData);
-            }
-        }
         console.error("Error updating faculty:", error);
         throw error;
     }

@@ -62,13 +62,15 @@ export default function ImportPageContent({ role }) {
         } else if (target === "Faculty") {
             sampleData = [
                 {
-                    Name: "Dr. Alice Smith",
-                    Email: "alice.smith@sece.ac.in",
-                    Dept: "CSE",
-                    Designation: "Associate Professor",
-                    Role: "advisor",
-                    Sections: "A,B",
-                    Years: "2,3"
+                    "Employee ID": "FAC001",
+                    "First Name": "Alice",
+                    "Last Name": "Smith",
+                    "Email": "alice.smith@sece.ac.in",
+                    "Department Code": "CSE",
+                    "Designation": "Associate Professor",
+                    "Phone": "9876543211",
+                    "Class Advisor (e.g., \"2 CSE A\" or leave blank)": "2 CSE A",
+                    "Is Innovation Coordinator (TRUE/FALSE)": "FALSE"
                 }
             ];
             fileName = "faculty_import_sample.xlsx";
@@ -141,14 +143,38 @@ export default function ImportPageContent({ role }) {
                                 status: "active"
                             });
                         } else if (target === "Faculty") {
+                            const firstName = item["First Name"] || "";
+                            const lastName = item["Last Name"] || "";
+                            const fullName = `${firstName} ${lastName}`.trim();
+
+                            const advisorField = item["Class Advisor (e.g., \"2 CSE A\" or leave blank)"] || "";
+                            const isAdvisor = !!advisorField;
+                            const isInnovationCoord = String(item["Is Innovation Coordinator (TRUE/FALSE)"]).toUpperCase() === "TRUE";
+
+                            let role = "mentor";
+                            if (isInnovationCoord) role = "coordinator";
+                            else if (isAdvisor) role = "advisor";
+
+                            // Parse year and section from "2 CSE A" or similar
+                            let year = [];
+                            let section = [];
+                            if (isAdvisor) {
+                                const parts = advisorField.split(" ");
+                                const y = parseInt(parts[0]);
+                                if (!isNaN(y)) year = [y];
+                                const s = parts.pop();
+                                if (s && s.length === 1) section = [s.toUpperCase()];
+                            }
+
                             await createFaculty({
-                                name: item.Name || item.name,
+                                faculty_id: String(item["Employee ID"] || ""),
+                                name: fullName || item.Name || item.name,
                                 email: item.Email || item.email,
-                                department: item.Dept || item.department,
+                                department: item["Department Code"] || item.Dept || item.department,
                                 designation: item.Designation || item.designation || "Assistant Professor",
-                                role: (item.Role || item.role || "mentor").toLowerCase(),
-                                assigned_sections: item.Sections ? item.Sections.split(",") : [],
-                                assigned_years: item.Years ? item.Years.split(",") : []
+                                role: role,
+                                assigned_sections: section,
+                                assigned_years: year
                             });
                         } else if (target === "Events") {
                             await createEvent({
@@ -274,8 +300,8 @@ export default function ImportPageContent({ role }) {
                             )}
                             {target === "Faculty" && (
                                 <>
-                                    <li className="flex gap-3">Name, Email, Dept</li>
-                                    <li className="flex gap-3">Role (hod, advisor, etc.)</li>
+                                    <li className="flex gap-3">Employee ID, First Name, Last Name, Email</li>
+                                    <li className="flex gap-3">Dept Code, Designation, Phone, Class Advisor, etc.</li>
                                 </>
                             )}
                             {target === "Events" && (
