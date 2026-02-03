@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getStudents } from "@/lib/services/studentService";
+import { getStudents, deleteStudent } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
 
@@ -38,6 +38,18 @@ export default function StudentsPageContent({ role }) {
     const handleEdit = (student) => {
         setSelectedStudent(student);
         setIsModalOpen(true);
+    };
+
+    const handleDelete = async (studentId) => {
+        if (window.confirm("Are you sure you want to delete this student record?")) {
+            try {
+                await deleteStudent(studentId);
+                loadStudents();
+            } catch (error) {
+                alert("Failed to delete student");
+                console.error(error);
+            }
+        }
     };
 
     const canManageStudents = ["sudo", "admin", "hod", "coordinator"].includes(role);
@@ -144,13 +156,21 @@ export default function StudentsPageContent({ role }) {
                                                 {student.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
                                             <button
                                                 onClick={() => handleEdit(student)}
                                                 className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
                                             >
                                                 Edit
                                             </button>
+                                            {role === "sudo" && (
+                                                <button
+                                                    onClick={() => handleDelete(student.$id)}
+                                                    className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

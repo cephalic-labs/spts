@@ -114,10 +114,27 @@ export async function updateFaculty(facultyId, data) {
     }
 }
 
+/**
+ * Delete faculty
+ */
+export async function deleteFaculty(facultyId) {
+    try {
+        await databases.deleteDocument(
+            DATABASE_ID,
+            COLLECTIONS.FACULTIES,
+            facultyId
+        );
+    } catch (error) {
+        console.error("Error deleting faculty:", error);
+        throw error;
+    }
+}
+
 export default {
     getFaculties,
     getFacultyById,
     getFacultyByAppwriteId,
     createFaculty,
     updateFaculty,
+    deleteFaculty,
 };

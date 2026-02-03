@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getFaculties } from "@/lib/services/facultyService";
+import { getFaculties, deleteFaculty } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 
@@ -38,6 +38,18 @@ export default function FacultyPageContent({ role }) {
     const handleEdit = (member) => {
         setSelectedFaculty(member);
         setIsModalOpen(true);
+    };
+
+    const handleDelete = async (memberId) => {
+        if (window.confirm("Are you sure you want to delete this faculty record?")) {
+            try {
+                await deleteFaculty(memberId);
+                loadFaculty();
+            } catch (error) {
+                alert("Failed to delete faculty");
+                console.error(error);
+            }
+        }
     };
 
     const canManageFaculty = ["sudo", "admin"].includes(role);
@@ -141,13 +153,21 @@ export default function FacultyPageContent({ role }) {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
                                             <button
                                                 onClick={() => handleEdit(member)}
                                                 className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
                                             >
                                                 Edit
                                             </button>
+                                            {role === "sudo" && (
+                                                <button
+                                                    onClick={() => handleDelete(member.$id)}
+                                                    className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                >
+                                                    Delete
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}

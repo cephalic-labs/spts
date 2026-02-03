@@ -149,6 +149,22 @@ export async function getStudentStats() {
     }
 }
 
+/**
+ * Delete student
+ */
+export async function deleteStudent(studentId) {
+    try {
+        await databases.deleteDocument(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            studentId
+        );
+    } catch (error) {
+        console.error("Error deleting student:", error);
+        throw error;
+    }
+}
+
 export default {
     getStudents,
     getStudentById,
@@ -156,4 +172,5 @@ export default {
     createStudent,
     updateStudent,
     getStudentStats,
+    deleteStudent,
 };

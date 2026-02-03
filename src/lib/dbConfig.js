@@ -11,6 +11,7 @@ export const DB_CONFIG = {
         EVENTS: "events",
         OD_REQUESTS: "od-requests",
         APPROVAL_LOGS: "approval_logs",
+        DEPARTMENTS: "departments",
     },
 };
 
