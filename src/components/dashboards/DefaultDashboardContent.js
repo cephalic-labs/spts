@@ -1,12 +1,50 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { Icons } from "@/components/layout";
 import { getRoleDisplayName } from "@/lib/sidebarConfig";
+import { getODStats } from "@/lib/services/odRequestService";
+import { getEventStats } from "@/lib/services/eventService";
 
 export default function DefaultDashboardContent({ role }) {
     const { user } = useAuth();
     const displayName = getRoleDisplayName(role);
+    const [stats, setStats] = useState({
+        events: 0,
+        submissions: 0,
+        pending: 0,
+        approved: 0
+    });
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        async function fetchStats() {
+            try {
+                setLoading(true);
+                const eventData = await getEventStats();
+
+                // If student, filter by their ID
+                const odFilter = role === 'student' ? { student_id: user?.$id || user?.dbId } : {};
+                const odData = await getODStats(odFilter);
+
+                setStats({
+                    events: eventData.total,
+                    submissions: odData.total,
+                    pending: odData.pending,
+                    approved: odData.approved
+                });
+            } catch (error) {
+                console.error("Error fetching dashboard stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        if (user) {
+            fetchStats();
+        }
+    }, [role, user]);
 
     const getEmoji = (role) => {
         const emojis = {
@@ -38,7 +76,9 @@ export default function DefaultDashboardContent({ role }) {
                             <Icons.Events />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold text-gray-800">--</div>
+                            <div className="text-2xl font-bold text-gray-800">
+                                {loading ? "..." : stats.events}
+                            </div>
                             <div className="text-sm text-gray-500">Events</div>
                         </div>
                     </div>
@@ -49,7 +89,9 @@ export default function DefaultDashboardContent({ role }) {
                             <Icons.Submissions />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold text-gray-800">--</div>
+                            <div className="text-2xl font-bold text-gray-800">
+                                {loading ? "..." : stats.submissions}
+                            </div>
                             <div className="text-sm text-gray-500">Submissions</div>
                         </div>
                     </div>
@@ -60,7 +102,9 @@ export default function DefaultDashboardContent({ role }) {
                             <Icons.Approvals />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold text-gray-800">--</div>
+                            <div className="text-2xl font-bold text-gray-800">
+                                {loading ? "..." : stats.pending}
+                            </div>
                             <div className="text-sm text-gray-500">Pending</div>
                         </div>
                     </div>
@@ -71,7 +115,9 @@ export default function DefaultDashboardContent({ role }) {
                             <Icons.Certificate />
                         </div>
                         <div>
-                            <div className="text-2xl font-bold text-gray-800">--</div>
+                            <div className="text-2xl font-bold text-gray-800">
+                                {loading ? "..." : stats.approved}
+                            </div>
                             <div className="text-sm text-gray-500">Approved</div>
                         </div>
                     </div>

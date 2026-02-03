@@ -128,10 +128,30 @@ export async function updateStudent(studentId, data) {
     }
 }
 
+/**
+ * Get student stats
+ */
+export async function getStudentStats() {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.limit(1)]
+        );
+        return {
+            total: response.total,
+        };
+    } catch (error) {
+        console.error("Error getting student stats:", error);
+        return { total: 0 };
+    }
+}
+
 export default {
     getStudents,
     getStudentById,
     getStudentByRegNo,
     createStudent,
     updateStudent,
+    getStudentStats,
 };

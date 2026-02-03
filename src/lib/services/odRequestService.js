@@ -287,6 +287,36 @@ export async function getAllODRequests(limit = 100) {
     }
 }
 
+/**
+ * Get OD request stats (total, pending, approved, rejected)
+ */
+export async function getODStats(filter = {}) {
+    try {
+        const queries = [];
+        if (filter.student_id) {
+            queries.push(Query.equal("student_id", filter.student_id));
+        }
+
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.OD_REQUESTS,
+            queries
+        );
+
+        const stats = {
+            total: response.total,
+            pending: response.documents.filter(d => d.current_status.startsWith('pending')).length,
+            approved: response.documents.filter(d => d.current_status === OD_STATUS.APPROVED).length,
+            rejected: response.documents.filter(d => d.current_status === OD_STATUS.REJECTED).length,
+        };
+
+        return stats;
+    } catch (error) {
+        console.error("Error getting OD stats:", error);
+        return { total: 0, pending: 0, approved: 0, rejected: 0 };
+    }
+}
+
 export default {
     createODRequest,
     getODRequestsByStatus,
@@ -297,4 +327,5 @@ export default {
     getAllODRequests,
     getApprovalLogsByODId,
     getRecentApprovalLogs,
+    getODStats,
 };

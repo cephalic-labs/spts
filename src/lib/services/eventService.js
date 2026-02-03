@@ -137,6 +137,25 @@ export async function deleteEvent(eventId) {
     }
 }
 
+/**
+ * Get event stats
+ */
+export async function getEventStats() {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.EVENTS,
+            [Query.limit(1)]
+        );
+        return {
+            total: response.total,
+        };
+    } catch (error) {
+        console.error("Error getting event stats:", error);
+        return { total: 0 };
+    }
+}
+
 export default {
     getEvents,
     getEventById,
@@ -145,4 +164,5 @@ export default {
     incrementViewCount,
     incrementParticipationCount,
     deleteEvent,
+    getEventStats,
 };
