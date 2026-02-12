@@ -64,6 +64,7 @@ export function AuthProvider({ children }) {
         setDbUser(userData);
         setUser((prev) => ({
           ...prev,
+          name: currentUser.name,
           profile_url: userData.profile_url,
           role: userData.role,
           dbId: userData.$id,
