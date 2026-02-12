@@ -69,6 +69,23 @@ export async function getFacultyByAppwriteId(appwriteUserId) {
 }
 
 /**
+ * Get faculty by email
+ */
+export async function getFacultyByEmail(email) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FACULTIES,
+            [Query.equal("email", email), Query.limit(1)]
+        );
+        return response.documents.length > 0 ? response.documents[0] : null;
+    } catch (error) {
+        console.error("Error getting faculty by email:", error);
+        throw error;
+    }
+}
+
+/**
  * Create new faculty
  */
 export async function createFaculty(data) {
@@ -139,6 +156,7 @@ export default {
     getFaculties,
     getFacultyById,
     getFacultyByAppwriteId,
+    getFacultyByEmail,
     createFaculty,
     updateFaculty,
     deleteFaculty,

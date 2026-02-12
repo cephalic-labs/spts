@@ -9,6 +9,7 @@ const statusColors = {
     [OD_STATUS.PENDING_ADVISOR]: "bg-yellow-100 text-yellow-700",
     [OD_STATUS.PENDING_COORDINATOR]: "bg-orange-100 text-orange-700",
     [OD_STATUS.PENDING_HOD]: "bg-blue-100 text-blue-700",
+    [OD_STATUS.GRANTED]: "bg-green-100 text-green-700",
     [OD_STATUS.APPROVED]: "bg-green-100 text-green-700",
     [OD_STATUS.REJECTED]: "bg-red-100 text-red-700",
 };
@@ -67,13 +68,13 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                             <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
                                 <div>
                                     <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Current Status</div>
-                                    <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${statusColors[odRequest.current_status]}`}>
-                                        {odRequest.current_status.replace('_', ' ')}
+                                    <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${statusColors[odRequest.current_status] || "bg-gray-100 text-gray-700"}`}>
+                                        {String(odRequest.current_status || "pending").replace(/_/g, " ")}
                                     </span>
                                 </div>
                                 <div className="text-right">
                                     <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Final Decision</div>
-                                    <span className={`text-xs font-black uppercase ${odRequest.final_decision === 'approved' ? 'text-green-600' : odRequest.final_decision === 'rejected' ? 'text-red-600' : 'text-gray-500'}`}>
+                                    <span className={`text-xs font-black uppercase ${(odRequest.final_decision === 'approved' || odRequest.final_decision === 'granted') ? 'text-green-600' : odRequest.final_decision === 'rejected' ? 'text-red-600' : 'text-gray-500'}`}>
                                         {odRequest.final_decision || 'Pending'}
                                     </span>
                                 </div>

@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
+import { getFacultyByEmail } from "@/lib/services/facultyService";
+import { getUserByAppwriteId } from "@/lib/services/userService";
 import { Icons } from "@/components/layout";
-import { OD_STATUS, canRoleApprove } from "@/lib/dbConfig";
+import { OD_STATUS } from "@/lib/dbConfig";
 
 const roleToStatus = {
-    mentor: OD_STATUS.PENDING_MENTOR,
     advisor: OD_STATUS.PENDING_ADVISOR,
     coordinator: OD_STATUS.PENDING_COORDINATOR,
     hod: OD_STATUS.PENDING_HOD,
@@ -19,19 +20,36 @@ export default function ApprovalsPageContent({ role }) {
     const [recentLogs, setRecentLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
+    const [approverFacultyId, setApproverFacultyId] = useState(null);
 
     useEffect(() => {
-        loadPendingRequests();
-    }, [role]);
+        if (user) {
+            loadPendingRequests();
+        }
+    }, [role, user?.$id]);
 
     async function loadPendingRequests() {
         try {
             setLoading(true);
             const status = roleToStatus[role];
+            let facultyId = null;
+
+            if (status && user?.$id) {
+                const dbUser = await getUserByAppwriteId(user.$id);
+                const approverEmail = dbUser?.user_email || user?.email || null;
+                const faculty = approverEmail ? await getFacultyByEmail(approverEmail) : null;
+                facultyId = faculty?.faculty_id || null;
+                setApproverFacultyId(facultyId);
+            } else {
+                setApproverFacultyId(null);
+            }
 
             // Fetch pending requests
-            if (status) {
-                const response = await getODRequestsByStatus(status, 50);
+            if (status && facultyId) {
+                const response = await getODRequestsByStatus(status, 50, {
+                    approverRole: role,
+                    approverId: facultyId,
+                });
                 setPendingRequests(response?.documents || []);
             } else {
                 setPendingRequests([]);
@@ -50,11 +68,11 @@ export default function ApprovalsPageContent({ role }) {
     async function handleApprove(odId) {
         try {
             setActionLoading(odId);
-            await approveODRequest(odId, role, user?.$id || user?.dbId, "Approved");
+            await approveODRequest(odId, role, user?.$id || user?.dbId, "Approved", approverFacultyId);
             await loadPendingRequests();
         } catch (err) {
             console.error("Error approving request:", err);
-            alert("Failed to approve request");
+            alert(err?.message || "Failed to approve request");
         } finally {
             setActionLoading(null);
         }
@@ -66,11 +84,11 @@ export default function ApprovalsPageContent({ role }) {
 
         try {
             setActionLoading(odId);
-            await rejectODRequest(odId, role, user?.$id || user?.dbId, remarks);
+            await rejectODRequest(odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
             await loadPendingRequests();
         } catch (err) {
             console.error("Error rejecting request:", err);
-            alert("Failed to reject request");
+            alert(err?.message || "Failed to reject request");
         } finally {
             setActionLoading(null);
         }
@@ -84,7 +102,7 @@ export default function ApprovalsPageContent({ role }) {
         );
     }
 
-    const canApprove = ["mentor", "advisor", "coordinator", "hod"].includes(role);
+    const canApprove = ["advisor", "coordinator", "hod"].includes(role);
 
     return (
         <div>

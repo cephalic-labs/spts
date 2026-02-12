@@ -78,6 +78,43 @@ export async function getStudentByRegNo(regNo) {
 }
 
 /**
+ * Get student by Appwrite user ID
+ */
+export async function getStudentByAppwriteUserId(appwriteUserId) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.equal("appwrite_user_id", appwriteUserId), Query.limit(1)]
+        );
+        return response.documents.length > 0 ? response.documents[0] : null;
+    } catch (error) {
+        if (String(error?.message || "").includes("Attribute not found in schema")) {
+            return null;
+        }
+        console.error("Error getting student by Appwrite user ID:", error);
+        throw error;
+    }
+}
+
+/**
+ * Get student by email
+ */
+export async function getStudentByEmail(email) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.equal("email", email), Query.limit(1)]
+        );
+        return response.documents.length > 0 ? response.documents[0] : null;
+    } catch (error) {
+        console.error("Error getting student by email:", error);
+        throw error;
+    }
+}
+
+/**
  * Create new student
  */
 export async function createStudent(data) {
@@ -193,6 +230,8 @@ export default {
     getStudents,
     getStudentById,
     getStudentByRegNo,
+    getStudentByAppwriteUserId,
+    getStudentByEmail,
     createStudent,
     updateStudent,
     getStudentStats,

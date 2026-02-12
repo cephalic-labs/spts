@@ -13,15 +13,17 @@ const statusColors = {
     [OD_STATUS.PENDING_ADVISOR]: "bg-yellow-100 text-yellow-700",
     [OD_STATUS.PENDING_COORDINATOR]: "bg-orange-100 text-orange-700",
     [OD_STATUS.PENDING_HOD]: "bg-blue-100 text-blue-700",
+    [OD_STATUS.GRANTED]: "bg-green-100 text-green-700",
     [OD_STATUS.APPROVED]: "bg-green-100 text-green-700",
     [OD_STATUS.REJECTED]: "bg-red-100 text-red-700",
 };
 
 const statusLabels = {
-    [OD_STATUS.PENDING_MENTOR]: "Pending Mentor",
+    [OD_STATUS.PENDING_MENTOR]: "Pending Mentor (Legacy)",
     [OD_STATUS.PENDING_ADVISOR]: "Pending Advisor",
     [OD_STATUS.PENDING_COORDINATOR]: "Pending Coordinator",
     [OD_STATUS.PENDING_HOD]: "Pending HOD",
+    [OD_STATUS.GRANTED]: "Granted",
     [OD_STATUS.APPROVED]: "Approved",
     [OD_STATUS.REJECTED]: "Rejected",
 };
