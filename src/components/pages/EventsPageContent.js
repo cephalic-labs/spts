@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getEvents } from "@/lib/services/eventService";
+import { deleteEvent, getEvents } from "@/lib/services/eventService";
 import { Icons } from "@/components/layout";
 import CreateEventModal from "./CreateEventModal";
 import Link from "next/link";
@@ -11,6 +11,7 @@ export default function EventsPageContent({ role }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedEvent, setSelectedEvent] = useState(null);
 
     useEffect(() => {
         loadEvents();
@@ -29,7 +30,32 @@ export default function EventsPageContent({ role }) {
         }
     }
 
+    const handleCreate = () => {
+        setSelectedEvent(null);
+        setIsModalOpen(true);
+    };
+
+    const handleEdit = (eventData) => {
+        setSelectedEvent(eventData);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (eventId) => {
+        if (!window.confirm("Are you sure you want to delete this event?")) {
+            return;
+        }
+
+        try {
+            await deleteEvent(eventId);
+            await loadEvents();
+        } catch (err) {
+            alert("Failed to delete event. Please try again.");
+            console.error(err);
+        }
+    };
+
     const canCreateEvent = ["sudo", "admin", "coordinator"].includes(role);
+    const canManageEvents = ["sudo", "admin"].includes(role);
 
     if (loading) {
         return (
@@ -60,7 +86,7 @@ export default function EventsPageContent({ role }) {
                 </div>
                 {canCreateEvent && (
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleCreate}
                         className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,6 +101,7 @@ export default function EventsPageContent({ role }) {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSuccess={loadEvents}
+                initialData={selectedEvent}
             />
 
             {/* Events Grid */}
@@ -133,7 +160,7 @@ export default function EventsPageContent({ role }) {
                             </div>
 
                             {/* Action Button */}
-                            <div className="w-full md:w-auto">
+                            <div className="w-full md:w-auto flex flex-col gap-3">
                                 {event.event_url ? (
                                     <Link
                                         href={event.event_url}
@@ -149,6 +176,23 @@ export default function EventsPageContent({ role }) {
                                     <button className="px-8 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-base cursor-not-allowed w-full md:w-auto">
                                         No Link Available
                                     </button>
+                                )}
+
+                                {canManageEvents && (
+                                    <div className="flex items-center gap-3 w-full">
+                                        <button
+                                            onClick={() => handleEdit(event)}
+                                            className="flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-[#1E2761] border border-[#1E2761]/20 rounded-xl hover:bg-[#1E2761]/5 transition-colors"
+                                        >
+                                            Edit
+                                        </button>
+                                        <button
+                                            onClick={() => handleDelete(event.$id)}
+                                            className="flex-1 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors"
+                                        >
+                                            Delete
+                                        </button>
+                                    </div>
                                 )}
                             </div>
                         </div>
