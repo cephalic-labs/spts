@@ -9,6 +9,7 @@ export const DB_CONFIG = {
         STUDENTS: "sece-students",
         FACULTIES: "sece-faculties",
         EVENTS: "events",
+        EVENT_PARTICIPATIONS: "event-participations",
         OD_REQUESTS: "od-requests",
         APPROVAL_LOGS: "approval_logs",
         DEPARTMENTS: "sece-departments",

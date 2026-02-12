@@ -122,6 +122,23 @@ export async function incrementParticipationCount(eventId) {
 }
 
 /**
+ * Decrement participation count
+ */
+export async function decrementParticipationCount(eventId) {
+    try {
+        const event = await getEventById(eventId);
+        await databases.updateDocument(
+            DATABASE_ID,
+            COLLECTIONS.EVENTS,
+            eventId,
+            { participation_count: Math.max((event.participation_count || 0) - 1, 0) }
+        );
+    } catch (error) {
+        console.error("Error decrementing participation count:", error);
+    }
+}
+
+/**
  * Delete event
  */
 export async function deleteEvent(eventId) {
@@ -163,6 +180,7 @@ export default {
     updateEvent,
     incrementViewCount,
     incrementParticipationCount,
+    decrementParticipationCount,
     deleteEvent,
     getEventStats,
 };

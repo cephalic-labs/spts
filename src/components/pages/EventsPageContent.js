@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { deleteEvent, getEvents } from "@/lib/services/eventService";
+import { useAuth } from "@/lib/AuthContext";
+import {
+    deleteEvent,
+    getEvents,
+    incrementViewCount,
+} from "@/lib/services/eventService";
+import {
+    getStudentEventParticipations,
+    PARTICIPATION_STATUS,
+    setStudentParticipationStatus,
+} from "@/lib/services/eventParticipationService";
 import { Icons } from "@/components/layout";
 import CreateEventModal from "./CreateEventModal";
 import Link from "next/link";
@@ -27,16 +37,57 @@ function formatEventDate(value) {
     return parsedDate.toLocaleDateString(undefined, { dateStyle: "medium" });
 }
 
+function getStatusBadgeClass(status) {
+    if (status === PARTICIPATION_STATUS.PARTICIPATED) {
+        return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+    }
+
+    if (status === PARTICIPATION_STATUS.NOT_PARTICIPATED) {
+        return "bg-rose-50 text-rose-700 border border-rose-100";
+    }
+
+    return "bg-gray-100 text-gray-600 border border-gray-200";
+}
+
+function getStatusLabel(status) {
+    if (status === PARTICIPATION_STATUS.PARTICIPATED) return "Participated";
+    if (status === PARTICIPATION_STATUS.NOT_PARTICIPATED) return "Not Participated";
+    return "Not Updated";
+}
+
+function getParticipationButtonClass(currentStatus, buttonStatus) {
+    const isSelected = currentStatus === buttonStatus;
+
+    if (buttonStatus === PARTICIPATION_STATUS.PARTICIPATED) {
+        return isSelected
+            ? "bg-emerald-800 text-white"
+            : "bg-emerald-100 text-emerald-800 hover:bg-emerald-200";
+    }
+
+    return isSelected
+        ? "bg-rose-800 text-white"
+        : "bg-rose-100 text-rose-800 hover:bg-rose-200";
+}
+
 export default function EventsPageContent({ role }) {
+    const { user } = useAuth();
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedEvent, setSelectedEvent] = useState(null);
+    const [participationByEvent, setParticipationByEvent] = useState({});
+    const [savingParticipationFor, setSavingParticipationFor] = useState(null);
 
     useEffect(() => {
         loadEvents();
     }, []);
+
+    useEffect(() => {
+        if (role === "student" && user?.$id) {
+            loadStudentParticipations(user.$id);
+        }
+    }, [role, user?.$id]);
 
     async function loadEvents() {
         try {
@@ -48,6 +99,19 @@ export default function EventsPageContent({ role }) {
             console.error(err);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function loadStudentParticipations(studentId) {
+        try {
+            const response = await getStudentEventParticipations(studentId);
+            const nextMap = {};
+            for (const participation of response.documents || []) {
+                nextMap[participation.event_id] = participation;
+            }
+            setParticipationByEvent(nextMap);
+        } catch (err) {
+            console.error("Failed to load student participation statuses:", err);
         }
     }
 
@@ -75,8 +139,63 @@ export default function EventsPageContent({ role }) {
         }
     };
 
+    const handleOpenEvent = async (eventId) => {
+        try {
+            await incrementViewCount(eventId);
+            setEvents((prev) =>
+                prev.map((event) =>
+                    event.$id === eventId
+                        ? { ...event, view_count: (event.view_count || 0) + 1 }
+                        : event
+                )
+            );
+        } catch (err) {
+            console.error("Failed to increment view count:", err);
+        }
+    };
+
+    const handleParticipationChange = async (eventId, status) => {
+        const studentId = user?.$id;
+        if (!studentId) return;
+
+        setSavingParticipationFor(eventId);
+
+        try {
+            const result = await setStudentParticipationStatus(eventId, studentId, status);
+
+            setParticipationByEvent((prev) => ({
+                ...prev,
+                [eventId]: {
+                    ...prev[eventId],
+                    ...result.document,
+                    event_id: eventId,
+                    student_id: studentId,
+                    status,
+                },
+            }));
+
+            if (result.countDelta !== 0) {
+                setEvents((prev) =>
+                    prev.map((event) => {
+                        if (event.$id !== eventId) return event;
+                        return {
+                            ...event,
+                            participation_count: Math.max((event.participation_count || 0) + result.countDelta, 0),
+                        };
+                    })
+                );
+            }
+        } catch (err) {
+            alert("Failed to update your participation status.");
+            console.error(err);
+        } finally {
+            setSavingParticipationFor(null);
+        }
+    };
+
     const canCreateEvent = ["sudo", "admin", "coordinator"].includes(role);
     const canManageEvents = ["sudo", "admin"].includes(role);
+    const canSelfReportParticipation = role === "student" && Boolean(user?.$id);
 
     if (loading) {
         return (
@@ -139,10 +258,10 @@ export default function EventsPageContent({ role }) {
                     {events.map((event) => (
                         <div
                             key={event.$id}
-                            className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 hover:shadow-md transition-all group flex flex-col md:flex-row gap-6 items-center"
+                            className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 hover:shadow-md transition-all group flex flex-col md:flex-row gap-6 md:items-start"
                         >
                             {/* Event Details */}
-                            <div className="flex-grow text-center md:text-left">
+                            <div className="flex-grow min-w-0 text-center md:text-left">
                                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
                                     <h3 className="font-bold text-[#1E2761] text-2xl">
                                         {event.event_name}
@@ -181,12 +300,13 @@ export default function EventsPageContent({ role }) {
                             </div>
 
                             {/* Action Button */}
-                            <div className="w-full md:w-auto flex flex-col gap-3">
+                            <div className="w-full md:w-[320px] md:flex-none flex flex-col gap-3">
                                 {event.event_url ? (
                                     <Link
                                         href={event.event_url}
                                         target="_blank"
-                                        className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1E2761] text-white rounded-2xl font-bold text-base transition-all hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 w-full md:w-auto"
+                                        onClick={() => handleOpenEvent(event.$id)}
+                                        className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1E2761] text-white rounded-2xl font-bold text-base transition-all hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 w-full"
                                     >
                                         Open Event
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,9 +314,55 @@ export default function EventsPageContent({ role }) {
                                         </svg>
                                     </Link>
                                 ) : (
-                                    <button className="px-8 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-base cursor-not-allowed w-full md:w-auto">
+                                    <button className="px-8 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-base cursor-not-allowed w-full">
                                         No Link Available
                                     </button>
+                                )}
+
+                                {canSelfReportParticipation && (
+                                    <div className="w-full rounded-xl border border-gray-100 bg-gray-50 p-3">
+                                        {(() => {
+                                            const currentStatus = participationByEvent[event.$id]?.status;
+                                            return (
+                                                <>
+                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                                Your Status
+                                            </p>
+                                            <span
+                                                className={`max-w-full px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadgeClass(currentStatus)}`}
+                                            >
+                                                {getStatusLabel(currentStatus)}
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.PARTICIPATED)}
+                                                disabled={
+                                                    savingParticipationFor === event.$id ||
+                                                    currentStatus === PARTICIPATION_STATUS.PARTICIPATED
+                                                }
+                                                className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.PARTICIPATED)}`}
+                                            >
+                                                Participated
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.NOT_PARTICIPATED)}
+                                                disabled={
+                                                    savingParticipationFor === event.$id ||
+                                                    currentStatus === PARTICIPATION_STATUS.NOT_PARTICIPATED
+                                                }
+                                                className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.NOT_PARTICIPATED)}`}
+                                            >
+                                                Not Participated
+                                            </button>
+                                        </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
                                 )}
 
                                 {canManageEvents && (
