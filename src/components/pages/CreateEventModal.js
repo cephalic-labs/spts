@@ -3,20 +3,31 @@
 import { useEffect, useState } from "react";
 import { createEvent, updateEvent } from "@/lib/services/eventService";
 
-function formatDateTimeLocal(value) {
+function formatDateOnly(value) {
     if (!value) return "";
-    const parsedDate = new Date(value);
 
+    if (typeof value === "string") {
+        const matchedDate = value.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (matchedDate) {
+            return matchedDate[1];
+        }
+    }
+
+    const parsedDate = new Date(value);
     if (Number.isNaN(parsedDate.getTime())) {
         return "";
     }
 
-    return parsedDate.toISOString().slice(0, 16);
+    const year = parsedDate.getFullYear();
+    const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+    const day = String(parsedDate.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
 }
 
 export default function CreateEventModal({ isOpen, onClose, onSuccess, initialData = null }) {
     const isEdit = Boolean(initialData);
     const [loading, setLoading] = useState(false);
+    const [dateError, setDateError] = useState("");
     const [formData, setFormData] = useState({
         event_name: "",
         event_description: "",
@@ -30,8 +41,8 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
             setFormData({
                 event_name: initialData.event_name || "",
                 event_description: initialData.event_description || "",
-                event_time: formatDateTimeLocal(initialData.event_time),
-                event_reg_deadline: formatDateTimeLocal(initialData.event_reg_deadline),
+                event_time: formatDateOnly(initialData.event_time),
+                event_reg_deadline: formatDateOnly(initialData.event_reg_deadline),
                 event_url: initialData.event_url || "",
             });
             return;
@@ -50,6 +61,13 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        setDateError("");
+
+        if (formData.event_reg_deadline && formData.event_time && formData.event_reg_deadline > formData.event_time) {
+            setDateError("Registration deadline must be on or before the event date.");
+            return;
+        }
+
         setLoading(true);
         try {
             if (isEdit) {
@@ -107,26 +125,32 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                            <label className="text-sm font-semibold text-gray-700">Event Date & Time</label>
+                            <label className="text-sm font-semibold text-gray-700">Event Date</label>
                             <input
                                 required
-                                type="datetime-local"
+                                type="date"
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
                                 value={formData.event_time}
                                 onChange={(e) => setFormData({ ...formData, event_time: e.target.value })}
+                                min={formData.event_reg_deadline || undefined}
                             />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700">Registration Deadline</label>
                             <input
                                 required
-                                type="datetime-local"
+                                type="date"
                                 className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
                                 value={formData.event_reg_deadline}
                                 onChange={(e) => setFormData({ ...formData, event_reg_deadline: e.target.value })}
+                                max={formData.event_time || undefined}
                             />
                         </div>
                     </div>
+
+                    {dateError && (
+                        <p className="text-sm text-red-600 font-medium">{dateError}</p>
+                    )}
 
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">Event URL / Registration Link</label>

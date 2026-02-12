@@ -6,6 +6,27 @@ import { Icons } from "@/components/layout";
 import CreateEventModal from "./CreateEventModal";
 import Link from "next/link";
 
+function formatEventDate(value) {
+    if (!value) return "N/A";
+
+    if (typeof value === "string") {
+        const matchedDate = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (matchedDate) {
+            const year = Number(matchedDate[1]);
+            const month = Number(matchedDate[2]);
+            const day = Number(matchedDate[3]);
+            return new Date(year, month - 1, day).toLocaleDateString(undefined, { dateStyle: "medium" });
+        }
+    }
+
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+        return String(value);
+    }
+
+    return parsedDate.toLocaleDateString(undefined, { dateStyle: "medium" });
+}
+
 export default function EventsPageContent({ role }) {
     const [events, setEvents] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -140,14 +161,14 @@ export default function EventsPageContent({ role }) {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
                                         <span className="text-gray-400 mr-1">Date:</span>
-                                        {new Date(event.event_time).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                        {formatEventDate(event.event_time)}
                                     </div>
                                     <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl">
                                         <svg className="w-5 h-5 text-[#1E2761]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                         <span className="text-gray-400 mr-1">Deadline:</span>
-                                        {new Date(event.event_reg_deadline).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                                        {formatEventDate(event.event_reg_deadline)}
                                     </div>
                                     <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl">
                                         <svg className="w-5 h-5 text-[#1E2761]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
