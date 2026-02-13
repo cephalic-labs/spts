@@ -126,7 +126,9 @@ export async function createFaculty(data) {
         email: String(data.email || "").substring(0, 100),
         department: String(data.department || "").substring(0, 4),
         designation: String(data.designation || "").substring(0, 50),
-        role: String(data.role || "mentor").substring(0, 30),
+        role: Array.isArray(data.role)
+            ? data.role.map(r => String(r).substring(0, 30))
+            : [String(data.role || "mentor").substring(0, 30)],
         assigned_sections: Array.isArray(data.assigned_sections) ? data.assigned_sections.map(s => String(s).substring(0, 10)) : [],
         assigned_years: Array.isArray(data.assigned_years) ? data.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y)) : [],
     };

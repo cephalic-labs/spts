@@ -166,9 +166,10 @@ export default function ImportPageContent({ role }) {
                             const isAdvisor = !!advisorField;
                             const isInnovationCoord = String(item["Is Innovation Coordinator (TRUE/FALSE)"]).toUpperCase() === "TRUE";
 
-                            let role = "mentor";
-                            if (isInnovationCoord) role = "coordinator";
-                            else if (isAdvisor) role = "advisor";
+                            let roles = ["mentor"];
+                            if (isInnovationCoord) roles.push("coordinator");
+                            if (isAdvisor) roles.push("advisor");
+                            roles = [...new Set(roles)];
 
                             // Parse year and section from "2 CSE A" or similar
                             let year = [];
@@ -187,7 +188,7 @@ export default function ImportPageContent({ role }) {
                                 email: item.Email || item.email,
                                 department: item["Department Code"] || item.Dept || item.department,
                                 designation: item.Designation || item.designation || "Assistant Professor",
-                                role: role,
+                                role: roles,
                                 assigned_sections: section,
                                 assigned_years: year
                             });

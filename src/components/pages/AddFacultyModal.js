@@ -11,18 +11,28 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
         email: "",
         department: "",
         designation: "",
-        role: "mentor",
+        roles: ["mentor"],
         assigned_sections: "", // Store as string for input, convert to array for save
     });
 
     useEffect(() => {
         if (initialData) {
+            let initialRoles = initialData.role || [];
+            if (!Array.isArray(initialRoles)) {
+                initialRoles = [initialRoles].filter(Boolean);
+            }
+            if (initialRoles.length === 0 && preselectedRole) {
+                initialRoles = [preselectedRole];
+            } else if (initialRoles.length === 0) {
+                initialRoles = ["mentor"];
+            }
+
             setFormData({
                 name: initialData.name || "",
                 email: initialData.email || "",
                 department: initialData.department || "",
                 designation: initialData.designation || "",
-                role: initialData.role || preselectedRole || "mentor",
+                roles: initialRoles,
                 assigned_sections: (initialData.assigned_sections || []).join(", "),
             });
         } else {
@@ -31,7 +41,7 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
                 email: "",
                 department: "",
                 designation: "",
-                role: preselectedRole || "mentor",
+                roles: preselectedRole ? [preselectedRole] : ["mentor"],
                 assigned_sections: "",
             });
         }
@@ -43,6 +53,7 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
             setLoading(true);
             const dataToSave = {
                 ...formData,
+                role: formData.roles,
                 assigned_sections: formData.assigned_sections.split(",").map(s => s.trim()).filter(s => s),
             };
 
@@ -128,20 +139,27 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
                                 onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                             />
                         </div>
-                        <div>
-                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Portal Role</label>
-                            <select
-                                required
-                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium font-bold text-orange-600"
-                                value={formData.role}
-                                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                            >
-                                <option value="mentor">Mentor</option>
-                                <option value="advisor">Advisor</option>
-                                <option value="coordinator">Coordinator</option>
-                                <option value="hod">HOD</option>
-                                <option value="admin">Admin</option>
-                            </select>
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Portal Roles</label>
+                            <div className="flex flex-wrap gap-4 bg-gray-50 border border-gray-100 rounded-xl p-4">
+                                {['mentor', 'advisor', 'coordinator', 'hod', 'admin'].map((roleOption) => (
+                                    <label key={roleOption} className="flex items-center space-x-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            value={roleOption}
+                                            checked={formData.roles.includes(roleOption)}
+                                            onChange={(e) => {
+                                                const newRoles = e.target.checked
+                                                    ? [...formData.roles, roleOption]
+                                                    : formData.roles.filter(r => r !== roleOption);
+                                                setFormData({ ...formData, roles: newRoles });
+                                            }}
+                                            className="w-4 h-4 text-[#1E2761] bg-gray-100 border-gray-300 rounded focus:ring-[#1E2761]"
+                                        />
+                                        <span className="text-sm font-medium capitalize text-gray-700">{roleOption}</span>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                         <div>
                             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Assigned Sections</label>

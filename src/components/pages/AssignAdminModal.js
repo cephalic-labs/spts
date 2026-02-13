@@ -22,9 +22,12 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
             setLoading(true);
             // Fetch all faculty. Filtering for non-admins is done client-side for simplicity
             // or we could add a "role not equal" query if supported/needed.
-            const response = await getFaculties({}, 1000); 
+            const response = await getFaculties({}, 1000);
             // Filter out existing admins
-            const nonAdmins = (response.documents || []).filter(f => f.role !== "admin" && f.role !== "sudo");
+            const nonAdmins = (response.documents || []).filter(f => {
+                const roles = Array.isArray(f.role) ? f.role : [f.role];
+                return !roles.includes("admin") && !roles.includes("sudo");
+            });
             setFaculty(nonAdmins);
         } catch (err) {
             console.error(err);
@@ -38,7 +41,9 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
 
         try {
             setAssigningId(member.$id);
-            await updateFaculty(member.$id, { role: "admin" });
+            const currentRoles = Array.isArray(member.role) ? member.role : [member.role];
+            const newRoles = [...new Set([...currentRoles, "admin"])];
+            await updateFaculty(member.$id, { role: newRoles });
             onSuccess();
             onClose();
         } catch (error) {
@@ -49,7 +54,7 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
         }
     };
 
-    const filteredFaculty = faculty.filter(f => 
+    const filteredFaculty = faculty.filter(f =>
         f.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         f.email.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -85,7 +90,7 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
                 <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2">
                     {loading ? (
                         <div className="flex justify-center p-10">
-                             <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
+                            <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
                         </div>
                     ) : filteredFaculty.length === 0 ? (
                         <div className="text-center p-10 text-gray-400">

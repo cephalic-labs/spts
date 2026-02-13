@@ -73,29 +73,29 @@ export default function FacultyPageContent({ role, filterRole }) {
                 </div>
                 {canManageFaculty && (
                     <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
-                    <button
-                        onClick={handleAdd}
-                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        {filterRole === "admin" ? "Add New Admin" : "Add Faculty"}
-                    </button>
-                    {filterRole === "admin" && canManageFaculty && (
                         <button
-                            onClick={() => setIsAssignModalOpen(true)}
-                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#1E2761] text-[#1E2761] rounded-xl hover:bg-gray-50 transition-colors shadow-sm font-bold"
+                            onClick={handleAdd}
+                            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                             </svg>
-                            Assign Existing
+                            {filterRole === "admin" ? "Add New Admin" : "Add Faculty"}
                         </button>
-                    )}
-                </div>
-            )}
-        </div>
+                        {filterRole === "admin" && canManageFaculty && (
+                            <button
+                                onClick={() => setIsAssignModalOpen(true)}
+                                className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#1E2761] text-[#1E2761] rounded-xl hover:bg-gray-50 transition-colors shadow-sm font-bold"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                </svg>
+                                Assign Existing
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
 
             <AddFacultyModal
                 isOpen={isModalOpen}
@@ -174,9 +174,13 @@ export default function FacultyPageContent({ role, filterRole }) {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600 font-bold">{member.department}</td>
                                         <td className="px-6 py-4">
-                                            <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-black uppercase tracking-wider">
-                                                {member.role}
-                                            </span>
+                                            <div className="flex flex-wrap gap-1">
+                                                {(Array.isArray(member.role) ? member.role : [member.role]).map((r, idx) => (
+                                                    <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-[10px] font-black uppercase tracking-wider">
+                                                        {r}
+                                                    </span>
+                                                ))}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
                                         <td className="px-6 py-4 text-right">
