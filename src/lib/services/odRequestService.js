@@ -238,9 +238,9 @@ export async function createODRequest(data) {
                 attachments: data.attachments || [],
                 current_status: OD_STATUS.PENDING_MENTOR,
                 mentor_id: data.mentor_id || studentRecord.mentor_id,
-                advisor_id: advisor.faculty_id || advisorId,
-                coordinator_id: coordinator.faculty_id || coordinator.$id,
-                hod_id: hod.faculty_id || hod.$id,
+                advisor_id: advisor ? advisor.$id : (advisorId || null),
+                coordinator_id: coordinator ? coordinator.$id : null,
+                hod_id: hod ? hod.$id : null,
                 final_decision: null,
             }
         );

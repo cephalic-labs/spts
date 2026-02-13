@@ -117,6 +117,14 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                     // Filters duplicates based on $id
                     const uniqueFaculty = Array.from(new Map(combined.map(item => [item.$id, item])).values());
                     setMentors(uniqueFaculty);
+
+                    // Ensure form uses $id even if student profile has faculty_id (legacy)
+                    if (student.mentor_id) {
+                        const assignedMentor = uniqueFaculty.find(f => f.faculty_id === student.mentor_id || f.$id === student.mentor_id);
+                        if (assignedMentor) {
+                            setFormData(prev => ({ ...prev, mentor_id: assignedMentor.$id }));
+                        }
+                    }
                 } catch (err) {
                     console.error("Failed to fetch faculty:", err);
                     setMentors([]);
@@ -340,7 +348,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                                 {fetchingMentors ? "Loading mentors..." : "Select your mentor or advisor..."}
                             </option>
                             {mentors.map(faculty => (
-                                <option key={faculty.$id} value={faculty.faculty_id || faculty.$id}>
+                                <option key={faculty.$id} value={faculty.$id}>
                                     {faculty.name} ({faculty.role} - {faculty.department})
                                 </option>
                             ))}
