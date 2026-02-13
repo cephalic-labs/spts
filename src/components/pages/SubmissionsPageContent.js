@@ -19,7 +19,7 @@ const statusColors = {
 };
 
 const statusLabels = {
-    [OD_STATUS.PENDING_MENTOR]: "Pending Mentor (Legacy)",
+    [OD_STATUS.PENDING_MENTOR]: "Pending Mentor",
     [OD_STATUS.PENDING_ADVISOR]: "Pending Advisor",
     [OD_STATUS.PENDING_COORDINATOR]: "Pending Coordinator",
     [OD_STATUS.PENDING_HOD]: "Pending HOD",

@@ -9,6 +9,7 @@ import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 
 const roleToStatus = {
+    mentor: OD_STATUS.PENDING_MENTOR,
     advisor: OD_STATUS.PENDING_ADVISOR,
     coordinator: OD_STATUS.PENDING_COORDINATOR,
     hod: OD_STATUS.PENDING_HOD,
@@ -102,7 +103,7 @@ export default function ApprovalsPageContent({ role }) {
         );
     }
 
-    const canApprove = ["advisor", "coordinator", "hod"].includes(role);
+    const canApprove = ["mentor", "advisor", "coordinator", "hod"].includes(role);
 
     return (
         <div>
