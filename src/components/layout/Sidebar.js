@@ -1,15 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { sidebarConfig, getRoleDisplayName } from "@/lib/sidebarConfig";
 import { Icons } from "./Icons";
 import LogoutButton from "../LogoutButton";
+import ProfileDialog from "./ProfileDialog";
 
 export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCollapse }) {
     const { user } = useAuth();
     const pathname = usePathname();
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
 
     // Get navigation items for the current role
     const navItems = sidebarConfig[role] || [];
@@ -51,8 +54,11 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
                 </div>
 
                 {/* User Profile Section */}
-                <div className={`px-4 py-6 flex flex-col items-center border-b border-white/5 ${isCollapsed ? "py-4" : ""}`}>
-                    <div className={`bg-white/20 rounded-full flex items-center justify-center text-white font-bold border border-white/30 overflow-hidden ${isCollapsed ? "w-10 h-10 text-sm" : "w-12 h-12 text-lg mb-2"}`}>
+                <div
+                    onClick={() => setIsProfileOpen(true)}
+                    className={`px-4 py-6 flex flex-col items-center border-b border-white/5 cursor-pointer hover:bg-white/5 transition-colors group relative ${isCollapsed ? "py-4" : ""}`}
+                >
+                    <div className={`bg-white/20 rounded-full flex items-center justify-center text-white font-bold border border-white/30 overflow-hidden transition-all group-hover:scale-105 group-hover:border-white/50 ${isCollapsed ? "w-10 h-10 text-sm" : "w-12 h-12 text-lg mb-2"}`}>
                         {user?.profile_url ? (
                             <img
                                 src={user.profile_url}
@@ -65,13 +71,28 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
                     </div>
                     {!isCollapsed && (
                         <>
-                            <h3 className="font-bold text-sm mb-0.5 text-center truncate w-full">{user?.name || getRoleDisplayName(role)}</h3>
-                            <span className="px-2 py-0.5 bg-white/10 rounded-md text-[9px] font-black tracking-[0.1em] text-white/70 uppercase">
-                                {role}
-                            </span>
+                            <h3 className="font-bold text-sm mb-0.5 text-center truncate w-full group-hover:text-amber-400 transition-colors">
+                                {user?.name || getRoleDisplayName(role)}
+                            </h3>
+                            <div className="flex items-center gap-1">
+                                <span className="px-2 py-0.5 bg-white/10 rounded-md text-[9px] font-black tracking-[0.1em] text-white/70 uppercase group-hover:bg-white/20 transition-colors">
+                                    {role}
+                                </span>
+                                {(Array.isArray(user?.role) && user.role.length > 1) && (
+                                    <svg className="w-3 h-3 text-white/40 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                )}
+                            </div>
                         </>
                     )}
                 </div>
+
+                <ProfileDialog
+                    isOpen={isProfileOpen}
+                    onClose={() => setIsProfileOpen(false)}
+                    currentRole={role}
+                />
 
                 {/* Navigation */}
                 <nav className="flex-1 overflow-y-auto py-4 space-y-1">
