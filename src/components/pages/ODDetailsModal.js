@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { getODRequestById, getApprovalLogsByODId } from "@/lib/services/odRequestService";
 import { getEventById } from "@/lib/services/eventService";
 import { getStudentByAppwriteUserId, getStudentByEmail } from "@/lib/services/studentService";
+import { getFacultyById, getFacultyByFacultyId } from "@/lib/services/facultyService";
+import { getUserByAppwriteId } from "@/lib/services/userService";
 import { OD_STATUS } from "@/lib/dbConfig";
 
 const statusColors = {
@@ -90,6 +92,8 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const [logs, setLogs] = useState([]);
     const [eventDetails, setEventDetails] = useState(null);
     const [studentDetails, setStudentDetails] = useState(null);
+    const [submitterEmail, setSubmitterEmail] = useState("");
+    const [advisorName, setAdvisorName] = useState("N/A");
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -104,29 +108,48 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
             const data = await getODRequestById(odId);
             setOdRequest(data);
 
-            // Fetch related details in parallel
-            // Determine how to fetch student:
-            // The student_id in OD Request is typically the Appwrite User ID.
-            // But the user requested to search by email if possible/relevant, or maybe student_id IS the email in some cases.
-            // We'll try to detect if it's an email, otherwise assume it's a User ID.
-
-            const fetchStudent = async (id) => {
-                if (!id) return null;
-                if (id.includes("@")) {
-                    return await getStudentByEmail(id).catch(() => null);
+            // Prefer querying sece-students by submitter email (more reliable than appwrite_user_id in some setups).
+            const resolveSubmitterEmail = async (odRequestData) => {
+                if (!odRequestData) return "";
+                if (odRequestData.student_email && odRequestData.student_email.includes("@")) {
+                    return odRequestData.student_email;
                 }
-                return await getStudentByAppwriteUserId(id).catch(() => null);
+                if (odRequestData.student_id && odRequestData.student_id.includes("@")) {
+                    return odRequestData.student_id;
+                }
+                if (!odRequestData.student_id) return "";
+
+                const dbUser = await getUserByAppwriteId(odRequestData.student_id).catch(() => null);
+                return dbUser?.user_email || "";
             };
 
-            const [logsData, eventData, studentData] = await Promise.all([
+            const resolvedEmail = await resolveSubmitterEmail(data);
+            setSubmitterEmail(resolvedEmail || "");
+
+            let studentData = null;
+            if (resolvedEmail) {
+                studentData = await getStudentByEmail(resolvedEmail).catch(() => null);
+            }
+            if (!studentData && data.student_id) {
+                studentData = await getStudentByAppwriteUserId(data.student_id).catch(() => null);
+            }
+
+            const [logsData, eventData] = await Promise.all([
                 getApprovalLogsByODId(odId),
                 data.event_id ? getEventById(data.event_id).catch(() => null) : Promise.resolve(null),
-                data.student_id ? fetchStudent(data.student_id) : Promise.resolve(null)
             ]);
+
+            let resolvedAdvisorName = "N/A";
+            if (studentData?.advisor_id) {
+                const advisorByDocId = await getFacultyById(studentData.advisor_id).catch(() => null);
+                const advisorByFacultyId = advisorByDocId ? null : await getFacultyByFacultyId(studentData.advisor_id).catch(() => null);
+                resolvedAdvisorName = advisorByDocId?.name || advisorByFacultyId?.name || studentData.advisor_id;
+            }
 
             setLogs(logsData.documents || []);
             setEventDetails(eventData);
             setStudentDetails(studentData);
+            setAdvisorName(resolvedAdvisorName);
         } catch (error) {
             console.error("Error loading OD details:", error);
         } finally {
@@ -277,31 +300,39 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                             </div>
 
                             {/* Student Details */}
-                            {studentDetails && (
-                                <div className="bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
-                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">Student Details</h4>
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg shrink-0">
-                                            {studentDetails.name?.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h3 className="font-black text-[#1E2761] text-lg leading-tight">{studentDetails.name}</h3>
-                                            <p className="text-sm text-blue-600 font-medium mt-0.5">{studentDetails.student_register_no}</p>
-                                            <div className="flex flex-wrap gap-2 mt-2">
-                                                <span className="px-2 py-1 bg-white rounded-md text-[10px] font-bold text-gray-500 border border-gray-100 shadow-sm uppercase">
-                                                    {studentDetails.department}
-                                                </span>
-                                                <span className="px-2 py-1 bg-white rounded-md text-[10px] font-bold text-gray-500 border border-gray-100 shadow-sm uppercase">
-                                                    Year {studentDetails.year}
-                                                </span>
-                                                <span className="px-2 py-1 bg-white rounded-md text-[10px] font-bold text-gray-500 border border-gray-100 shadow-sm uppercase">
-                                                    Sec {studentDetails.section}
-                                                </span>
-                                            </div>
-                                        </div>
+                            <div className="bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                                <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">Student Details</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Student Name</p>
+                                        <p className="text-sm font-bold text-[#1E2761]">{studentDetails?.name || "N/A"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Roll Number</p>
+                                        <p className="text-sm font-bold text-[#1E2761]">
+                                            {studentDetails?.roll_no || studentDetails?.student_register_no || "N/A"}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Email</p>
+                                        <p className="text-sm font-bold text-[#1E2761] break-all">
+                                            {studentDetails?.email || submitterEmail || (odRequest?.student_id?.includes("@") ? odRequest.student_id : "N/A")}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Year</p>
+                                        <p className="text-sm font-bold text-[#1E2761]">{studentDetails?.year ?? "N/A"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Section</p>
+                                        <p className="text-sm font-bold text-[#1E2761]">{studentDetails?.section || "N/A"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Advisor</p>
+                                        <p className="text-sm font-bold text-[#1E2761]">{advisorName || "N/A"}</p>
                                     </div>
                                 </div>
-                            )}
+                            </div>
 
                             {/* Info Grid */}
                             <div className="grid grid-cols-2 gap-8">

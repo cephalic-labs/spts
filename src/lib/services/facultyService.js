@@ -99,6 +99,23 @@ export async function getFacultyByEmail(email) {
 }
 
 /**
+ * Get faculty by faculty ID (employee ID style field)
+ */
+export async function getFacultyByFacultyId(facultyId) {
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FACULTIES,
+            [Query.equal("faculty_id", facultyId), Query.limit(1)]
+        );
+        return response.documents.length > 0 ? response.documents[0] : null;
+    } catch (error) {
+        console.error("Error getting faculty by faculty ID:", error);
+        throw error;
+    }
+}
+
+/**
  * Create new faculty
  */
 export async function createFaculty(data) {
@@ -170,6 +187,7 @@ export default {
     getFacultyById,
     getFacultyByAppwriteId,
     getFacultyByEmail,
+    getFacultyByFacultyId,
     createFaculty,
     updateFaculty,
     deleteFaculty,
