@@ -87,9 +87,14 @@ export async function assignUserRole(userId, email) {
 
             // Normalize role from DB to match system expectations
             let roles = ["faculty"];
-            if (faculty.role) {
-                const normalizedRole = faculty.role.toLowerCase().trim();
-                // Map known DB role values to system roles
+            let dbRoles = faculty.role;
+
+            // Ensure dbRoles is an array
+            if (!Array.isArray(dbRoles)) {
+                dbRoles = dbRoles ? [dbRoles] : [];
+            }
+
+            if (dbRoles.length > 0) {
                 const roleMap = {
                     "hod": "hod",
                     "head of department": "hod",
@@ -101,8 +106,17 @@ export async function assignUserRole(userId, email) {
                     "principal": "principal",
                     "faculty": "faculty",
                 };
-                const mappedRole = roleMap[normalizedRole] || normalizedRole;
-                roles = [mappedRole];
+
+                const mappedRoles = dbRoles
+                    .map(r => {
+                        const normalized = String(r).toLowerCase().trim();
+                        return roleMap[normalized] || normalized;
+                    })
+                    .filter(r => r); // Remove empty strings
+
+                if (mappedRoles.length > 0) {
+                    roles = [...new Set(mappedRoles)]; // Unique roles
+                }
             }
 
             console.log(`Found in faculty table. Assigning labels: ${roles.join(", ")}`);

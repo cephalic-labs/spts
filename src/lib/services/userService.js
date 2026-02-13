@@ -29,7 +29,7 @@ export async function syncUserToDatabase(appwriteUser) {
                     user_name: appwriteUser.name || "User",
                     user_email: appwriteUser.email,
                     profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
-                    role: "unassigned",
+                    role: ["unassigned"],
                 }
             );
             return newUser;
