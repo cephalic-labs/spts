@@ -23,14 +23,16 @@ export function AuthProvider({ children }) {
 
       // If user has no labels, try to assign them based on DB records
       if (!currentUser.labels || currentUser.labels.length === 0) {
-        console.log("User has no labels, checking DB for role assignment...");
+        console.log("User has no labels, checking DB for role assignment...", currentUser.email);
         try {
           const result = await assignUserRole(currentUser.$id, currentUser.email);
+          console.log("Role assignment result:", result);
+
           if (result.success) {
             // Refresh user to get new labels
             currentUser = await account.get();
           } else {
-            console.warn("Role assignment returned:", result.error);
+            console.warn("Role assignment returned error or no match:", result.error);
           }
         } catch (roleErr) {
           console.error("Role assignment failed (non-fatal):", roleErr);

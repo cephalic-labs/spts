@@ -3,7 +3,15 @@ import { Client, Databases, Users } from "node-appwrite";
 const client = new Client()
     .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT)
     .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID)
-    .setKey(process.env.NEXT_PUBLIC_APPWRITE_API_KEY);
+    .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID);
+
+const apiKey = process.env.APPWRITE_API_KEY || process.env.NEXT_PUBLIC_APPWRITE_API_KEY;
+
+if (apiKey) {
+    client.setKey(apiKey);
+} else {
+    console.warn("⚠️ WARNING: No APPWRITE_API_KEY found. Server actions requiring admin privileges (like assigning roles) will fail.");
+}
 
 const databases = new Databases(client);
 const users = new Users(client);

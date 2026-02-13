@@ -16,11 +16,18 @@ export default function RoleProtected({ children, allowedRoles = [] }) {
             return;
         }
 
-        const userLabels = user.labels || [];
+        // Treat empty labels as "unassigned"
+        const userLabels = (user.labels && user.labels.length > 0) ? user.labels : ["unassigned"];
         const hasPermission = allowedRoles.some((role) => userLabels.includes(role));
 
         if (!hasPermission) {
-            router.push("/unauthorized");
+            // Check if user has legitimate roles but is trying to access a different one
+            // vs unassigned user trying to access secure page
+            if (userLabels.includes("unassigned")) {
+                router.push("/dashboard/unassigned");
+            } else {
+                router.push("/unauthorized");
+            }
         }
     }, [user, loading, router, allowedRoles]);
 
@@ -33,7 +40,7 @@ export default function RoleProtected({ children, allowedRoles = [] }) {
     }
 
     // Double check to prevent flash before redirect effect runs
-    const userLabels = user?.labels || [];
+    const userLabels = (user?.labels && user.labels.length > 0) ? user.labels : ["unassigned"];
     const hasPermission = allowedRoles.some((role) => userLabels.includes(role));
 
     if (!user || !hasPermission) {
