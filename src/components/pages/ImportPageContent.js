@@ -84,8 +84,7 @@ export default function ImportPageContent({ role }) {
                     "Designation": "Associate Professor",
                     "Phone": "9876543211",
                     "Class Advisor (e.g., \"2 CSE A\" or leave blank)": "2 CSE A",
-                    "Is Innovation Coordinator (TRUE/FALSE)": "FALSE",
-                    "Role": "guide,advisor"
+                    "Is Innovation Coordinator (TRUE/FALSE)": "FALSE"
                 }
             ];
             fileName = "faculty_import_sample.xlsx";
@@ -167,12 +166,9 @@ export default function ImportPageContent({ role }) {
                             const isAdvisor = !!advisorField;
                             const isInnovationCoord = String(item["Is Innovation Coordinator (TRUE/FALSE)"]).toUpperCase() === "TRUE";
 
-                            let role = item.Role || item.Roles || item.role;
-                            if (!role) {
-                                role = "mentor";
-                                if (isInnovationCoord) role = "coordinator";
-                                else if (isAdvisor) role = "advisor";
-                            }
+                            let role = "mentor";
+                            if (isInnovationCoord) role = "coordinator";
+                            else if (isAdvisor) role = "advisor";
 
                             // Parse year and section from "2 CSE A" or similar
                             let year = [];

@@ -85,11 +85,11 @@ export async function assignUserRole(userId, email) {
                 }
             }
 
-            // Normalize roles from DB
-            let roles = [];
+            // Normalize role from DB to match system expectations
+            let roles = ["faculty"];
             if (faculty.role) {
-                const dbRoles = Array.isArray(faculty.role) ? faculty.role : [faculty.role];
-
+                const normalizedRole = faculty.role.toLowerCase().trim();
+                // Map known DB role values to system roles
                 const roleMap = {
                     "hod": "hod",
                     "head of department": "hod",
@@ -101,16 +101,8 @@ export async function assignUserRole(userId, email) {
                     "principal": "principal",
                     "faculty": "faculty",
                 };
-
-                roles = dbRoles.map(r => {
-                    const normalized = String(r).toLowerCase().trim();
-                    return roleMap[normalized] || normalized;
-                });
-
-                // Remove duplicates
-                roles = [...new Set(roles)];
-            } else {
-                roles = ["faculty"];
+                const mappedRole = roleMap[normalizedRole] || normalizedRole;
+                roles = [mappedRole];
             }
 
             console.log(`Found in faculty table. Assigning labels: ${roles.join(", ")}`);

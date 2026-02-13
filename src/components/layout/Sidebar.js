@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { sidebarConfig, getRoleDisplayName } from "@/lib/sidebarConfig";
 import { Icons } from "./Icons";
@@ -23,10 +22,6 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
 
     const desktopWidthClass = isCollapsed ? "lg:w-20" : "lg:w-64";
 
-    const [showRoleDialog, setShowRoleDialog] = useState(false);
-    const availableRoles = user?.roles || [];
-    const hasMultipleRoles = availableRoles.length > 1;
-
     return (
         <>
             {/* Mobile overlay */}
@@ -35,34 +30,6 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
                     className="fixed inset-0 bg-black/50 z-30 lg:hidden"
                     onClick={onClose}
                 />
-            )}
-
-            {/* Role Switcher Dialog */}
-            {showRoleDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowRoleDialog(false)}>
-                    <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-                        <div className="p-6 border-b border-gray-100">
-                            <h3 className="text-lg font-black text-[#1E2761]">Switch Portal</h3>
-                            <p className="text-sm text-gray-500">Select a role to switch to</p>
-                        </div>
-                        <div className="p-4 space-y-2">
-                            {availableRoles.map(r => (
-                                <Link
-                                    key={r}
-                                    href={`/dashboard/${r}`}
-                                    onClick={() => setShowRoleDialog(false)}
-                                    className={`flex items-center justify-between p-4 rounded-xl border transition-all ${role === r ? 'border-[#1E2761] bg-blue-50' : 'border-gray-100 hover:border-gray-300 hover:bg-gray-50'}`}
-                                >
-                                    <span className="font-bold text-[#1E2761] capitalize">{getRoleDisplayName(r)}</span>
-                                    {role === r && <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>}
-                                </Link>
-                            ))}
-                        </div>
-                        <div className="p-4 bg-gray-50 text-center">
-                            <button onClick={() => setShowRoleDialog(false)} className="text-sm font-bold text-gray-500 hover:text-gray-700">Cancel</button>
-                        </div>
-                    </div>
-                </div>
             )}
 
             {/* Sidebar */}
@@ -99,22 +66,9 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
                     {!isCollapsed && (
                         <>
                             <h3 className="font-bold text-sm mb-0.5 text-center truncate w-full">{user?.name || getRoleDisplayName(role)}</h3>
-                            <div className="flex items-center gap-2">
-                                <span className="px-2 py-0.5 bg-white/10 rounded-md text-[9px] font-black tracking-[0.1em] text-white/70 uppercase">
-                                    {role}
-                                </span>
-                                {hasMultipleRoles && (
-                                    <button
-                                        onClick={() => setShowRoleDialog(true)}
-                                        className="p-1 hover:bg-white/20 rounded transition-colors text-white/70 hover:text-white"
-                                        title="Switch Role"
-                                    >
-                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                        </svg>
-                                    </button>
-                                )}
-                            </div>
+                            <span className="px-2 py-0.5 bg-white/10 rounded-md text-[9px] font-black tracking-[0.1em] text-white/70 uppercase">
+                                {role}
+                            </span>
                         </>
                     )}
                 </div>
