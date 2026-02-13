@@ -59,16 +59,16 @@ export default function SudoDashboardContent() {
 
     return (
         <>
-            <div className="flex justify-between items-start mb-10">
-                <div>
-                    <h1 className="text-4xl font-black text-[#1E2761] flex items-center gap-3 tracking-tight">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8 md:mb-10">
+                <div className="min-w-0">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1E2761] flex flex-wrap items-center gap-2 sm:gap-3 tracking-tight">
                         System Dashboard, {user?.name?.split(" ")[0]} <span className="animate-bounce">🚀</span>
                     </h1>
-                    <div className="mt-3 flex items-center gap-3">
+                    <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
                         <div className="bg-[#1E2761] text-white text-[10px] font-black px-3 py-1 rounded shadow-sm tracking-wider uppercase">
                             Role: {user?.labels?.[0]}
                         </div>
-                        <div className="text-gray-400 text-sm font-medium border-l border-gray-200 pl-3">
+                        <div className="text-gray-400 text-sm font-medium sm:border-l border-gray-200 sm:pl-3">
                             Full system overview and control
                         </div>
                     </div>
@@ -93,14 +93,14 @@ export default function SudoDashboardContent() {
 
             {/* Participation Table - Still Placeholder for now */}
             <section className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden mb-10">
-                <div className="p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="p-4 sm:p-6 md:p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div>
-                        <h2 className="text-2xl font-black text-[#1E2761]">Participation & Prize by Class</h2>
+                        <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">Participation & Prize by Class</h2>
                         <p className="text-gray-400 text-sm font-medium mt-1">Real-time participation metrics by academic year</p>
                     </div>
                 </div>
                 <div className="overflow-x-auto min-h-[200px]">
-                    <table className="w-full text-left">
+                    <table className="w-full min-w-[560px] text-left">
                         <thead className="bg-[#F8F9FA]">
                             <tr>
                                 <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Class</th>
@@ -126,33 +126,33 @@ export default function SudoDashboardContent() {
 
             {/* Bottom Cards */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
-                <div className="bg-gradient-to-br from-[#00BCD4] to-[#0097A7] rounded-3xl p-10 text-white relative overflow-hidden shadow-xl">
+                <div className="bg-gradient-to-br from-[#00BCD4] to-[#0097A7] rounded-3xl p-6 sm:p-8 md:p-10 text-white relative overflow-hidden shadow-xl">
                     <div className="relative z-10">
-                        <div className="flex items-center gap-4 mb-10">
+                        <div className="flex items-center gap-4 mb-8 md:mb-10">
                             <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
                                 <Icons.Dashboard />
                             </div>
-                            <h3 className="text-2xl font-black tracking-tight">Real-Time Analytics</h3>
+                            <h3 className="text-xl sm:text-2xl font-black tracking-tight">Real-Time Analytics</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-10">
+                        <div className="grid grid-cols-2 gap-4 sm:gap-8 md:gap-10">
                             <div>
                                 <div className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em] mb-3">Live Connections</div>
-                                <div className="text-6xl font-black tracking-tighter">1</div>
+                                <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter">1</div>
                             </div>
                             <div>
                                 <div className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em] mb-3">Recent Activity</div>
-                                <div className="text-6xl font-black tracking-tighter">{statsData.totalSubmissions}</div>
+                                <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter">{statsData.totalSubmissions}</div>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div className="bg-gradient-to-br from-[#7986CB] to-[#5C6BC0] rounded-3xl p-10 text-white relative overflow-hidden shadow-xl">
+                <div className="bg-gradient-to-br from-[#7986CB] to-[#5C6BC0] rounded-3xl p-6 sm:p-8 md:p-10 text-white relative overflow-hidden shadow-xl">
                     <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
                         <div className="flex items-center gap-4 mb-4">
                             <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
                                 <Icons.Reports />
                             </div>
-                            <h3 className="text-2xl font-black tracking-tight">System Health</h3>
+                            <h3 className="text-xl sm:text-2xl font-black tracking-tight">System Health</h3>
                         </div>
                         <div className="mt-6">
                             <div className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em] mb-4">Database Status</div>

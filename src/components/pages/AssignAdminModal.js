@@ -58,10 +58,10 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-2xl h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <div className="bg-white rounded-3xl w-full max-w-2xl h-[85vh] sm:h-[80vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                     <div>
-                        <h2 className="text-xl font-black text-[#1E2761]">Assign Existing Admin</h2>
+                        <h2 className="text-lg sm:text-xl font-black text-[#1E2761]">Assign Existing Admin</h2>
                         <p className="text-gray-400 text-sm font-medium">Select a faculty member to promote</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -71,7 +71,7 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
                     </button>
                 </div>
 
-                <div className="p-4 border-b border-gray-100">
+                <div className="p-3 sm:p-4 border-b border-gray-100">
                     <input
                         type="text"
                         placeholder="Search by name or email..."
@@ -82,7 +82,7 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
                     />
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-2">
                     {loading ? (
                         <div className="flex justify-center p-10">
                              <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
@@ -93,10 +93,10 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
                         </div>
                     ) : (
                         filteredFaculty.map(member => (
-                            <div key={member.$id} className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-all group">
+                            <div key={member.$id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 hover:bg-gray-50 rounded-xl border border-transparent hover:border-gray-100 transition-all group">
                                 <div>
                                     <div className="font-bold text-gray-800">{member.name}</div>
-                                    <div className="text-xs text-gray-400 flex gap-2">
+                                    <div className="text-xs text-gray-400 flex flex-wrap gap-2">
                                         <span>{member.email}</span>
                                         <span>•</span>
                                         <span className="uppercase text-[#1E2761] font-bold">{member.department}</span>
@@ -105,7 +105,7 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
                                 <button
                                     onClick={() => handleAssign(member)}
                                     disabled={assigningId === member.$id}
-                                    className="px-4 py-2 bg-[#1E2761]/5 text-[#1E2761] font-bold text-sm rounded-lg hover:bg-[#1E2761] hover:text-white transition-colors disabled:opacity-50"
+                                    className="w-full sm:w-auto px-4 py-2 bg-[#1E2761]/5 text-[#1E2761] font-bold text-sm rounded-lg hover:bg-[#1E2761] hover:text-white transition-colors disabled:opacity-50"
                                 >
                                     {assigningId === member.$id ? "Assigning..." : "Promote"}
                                 </button>

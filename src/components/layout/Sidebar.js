@@ -20,6 +20,8 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
         return IconComponent ? <IconComponent /> : null;
     };
 
+    const desktopWidthClass = isCollapsed ? "lg:w-20" : "lg:w-64";
+
     return (
         <>
             {/* Mobile overlay */}
@@ -35,7 +37,7 @@ export default function Sidebar({ role, isOpen, onClose, isCollapsed, onToggleCo
                 className={`
           bg-[#1E2761] text-white flex flex-col fixed h-full z-40 shadow-xl
           transition-all duration-300 ease-in-out
-          ${isCollapsed ? "w-20" : "w-64"}
+          w-64 ${desktopWidthClass}
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0
         `}

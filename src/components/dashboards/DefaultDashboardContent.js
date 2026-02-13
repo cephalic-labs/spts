@@ -61,8 +61,8 @@ export default function DefaultDashboardContent({ role }) {
 
     return (
         <>
-            <div className="mb-8">
-                <h1 className="text-3xl font-black text-[#1E2761] mb-2">
+            <div className="mb-6 md:mb-8">
+                <h1 className="text-2xl md:text-3xl font-black text-[#1E2761] mb-2">
                     Welcome, {user?.name?.split(" ")[0] || displayName}! {getEmoji(role)}
                 </h1>
                 <p className="text-gray-500">Your {displayName.toLowerCase()} dashboard overview.</p>
@@ -125,7 +125,7 @@ export default function DefaultDashboardContent({ role }) {
             </div>
 
             {/* Main Content */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 md:p-8">
                 <h2 className="text-xl font-bold text-[#1E2761] mb-4">Recent Activity</h2>
                 <div className="text-center py-12 text-gray-400">
                     <div className="w-16 h-16 mx-auto bg-gray-50 rounded-full flex items-center justify-center mb-4">

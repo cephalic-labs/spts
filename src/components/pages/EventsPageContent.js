@@ -219,7 +219,7 @@ export default function EventsPageContent({ role }) {
     return (
         <div>
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-[#1E2761]">Events</h1>
                     <p className="text-gray-500 text-sm mt-1">Browse and manage events</p>
@@ -227,7 +227,7 @@ export default function EventsPageContent({ role }) {
                 {canCreateEvent && (
                     <button
                         onClick={handleCreate}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -264,7 +264,7 @@ export default function EventsPageContent({ role }) {
                             <div className="flex-grow min-w-0 text-center md:text-left">
                                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
                                     <div className="flex flex-col">
-                                        <h3 className="font-bold text-[#1E2761] text-2xl">
+                                        <h3 className="font-bold text-[#1E2761] text-xl sm:text-2xl">
                                             {event.event_name}
                                         </h3>
                                         {event.event_host && (
@@ -277,7 +277,7 @@ export default function EventsPageContent({ role }) {
                                         {event.participation_count || 0} participants
                                     </span>
                                 </div>
-                                <p className="text-gray-500 text-base line-clamp-2 mb-6 max-w-3xl">
+                                <p className="text-gray-500 text-sm sm:text-base line-clamp-2 mb-6 max-w-3xl">
                                     {event.event_description}
                                 </p>
 
@@ -307,13 +307,13 @@ export default function EventsPageContent({ role }) {
                             </div>
 
                             {/* Action Button */}
-                            <div className="w-full md:w-[320px] md:flex-none flex flex-col gap-3">
+                            <div className="w-full md:w-[300px] lg:w-[320px] md:flex-none flex flex-col gap-3">
                                 {event.event_url ? (
                                     <Link
                                         href={event.event_url}
                                         target="_blank"
                                         onClick={() => handleOpenEvent(event.$id)}
-                                        className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#1E2761] text-white rounded-2xl font-bold text-base transition-all hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 w-full"
+                                        className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-[#1E2761] text-white rounded-2xl font-bold text-sm sm:text-base transition-all hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 w-full"
                                     >
                                         Open Event
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -321,7 +321,7 @@ export default function EventsPageContent({ role }) {
                                         </svg>
                                     </Link>
                                 ) : (
-                                    <button className="px-8 py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-base cursor-not-allowed w-full">
+                                    <button className="px-6 sm:px-8 py-3 sm:py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-sm sm:text-base cursor-not-allowed w-full">
                                         No Link Available
                                     </button>
                                 )}

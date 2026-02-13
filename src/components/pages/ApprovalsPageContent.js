@@ -270,7 +270,7 @@ export default function ApprovalsPageContent({ role }) {
                     <div className="divide-y divide-gray-50">
                         {pendingRequests.map((request) => (
                             <div key={request.$id} className="p-6 hover:bg-gray-50 transition-colors">
-                                <div className="flex items-start justify-between gap-4">
+                                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
                                     <div className="flex-1">
                                         <div className="flex items-center gap-3 mb-2">
                                             <span className="font-mono text-sm text-gray-400">
@@ -284,7 +284,7 @@ export default function ApprovalsPageContent({ role }) {
                                             OD Request - Student: {request.student_id?.slice(0, 12)}...
                                         </h4>
                                         <p className="text-sm text-gray-500 mb-2">{request.reason}</p>
-                                        <div className="flex items-center gap-4 text-xs text-gray-400">
+                                        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
                                             <span>
                                                 📅 {new Date(request.od_start_date).toLocaleDateString()} - {new Date(request.od_end_date).toLocaleDateString()}
                                             </span>
@@ -295,7 +295,7 @@ export default function ApprovalsPageContent({ role }) {
                                     </div>
 
                                     {canApprove && (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 self-end lg:self-auto">
                                             <button
                                                 onClick={() => openRejectDialog(request.$id)}
                                                 disabled={actionLoading === request.$id}
@@ -335,7 +335,7 @@ export default function ApprovalsPageContent({ role }) {
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="w-full min-w-[940px] text-left">
                                 <thead className="bg-gray-50 border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
@@ -408,7 +408,7 @@ export default function ApprovalsPageContent({ role }) {
                         {rejectFormError && (
                             <p className="mt-2 text-xs text-red-600 font-semibold">{rejectFormError}</p>
                         )}
-                        <div className="mt-6 flex items-center justify-end gap-3">
+                        <div className="mt-6 flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
                             <button
                                 onClick={closeRejectDialog}
                                 disabled={Boolean(actionLoading)}
@@ -436,7 +436,7 @@ export default function ApprovalsPageContent({ role }) {
                         <div className="flex justify-end">
                             <button
                                 onClick={() => setErrorModalMessage("")}
-                                className="px-4 py-2 rounded-lg bg-[#1E2761] text-white font-semibold hover:bg-[#2d3a7d]"
+                                className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#1E2761] text-white font-semibold hover:bg-[#2d3a7d]"
                             >
                                 Close
                             </button>

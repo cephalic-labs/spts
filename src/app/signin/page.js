@@ -35,8 +35,8 @@ export default function SignIn() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-[#E6E9EE]">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-lg border border-[#E6E9EE]">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-[#E6E9EE] p-4">
+      <div className="w-full max-w-md p-6 sm:p-8 bg-white rounded-lg shadow-lg border border-[#E6E9EE]">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-[#1F5AA6] mb-2">
             Welcome Back

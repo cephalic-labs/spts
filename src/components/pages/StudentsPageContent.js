@@ -64,7 +64,7 @@ export default function StudentsPageContent({ role }) {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-[#1E2761]">Students</h1>
                     <p className="text-gray-500 text-sm mt-1">Manage and view student records</p>
@@ -72,7 +72,7 @@ export default function StudentsPageContent({ role }) {
                 {canManageStudents && (
                     <button
                         onClick={handleAdd}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -90,7 +90,7 @@ export default function StudentsPageContent({ role }) {
             />
 
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <select
                     className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                     value={filter.department}
@@ -130,7 +130,7 @@ export default function StudentsPageContent({ role }) {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full">
+                        <table className="w-full min-w-[920px]">
                             <thead className="bg-[#F8F9FA] border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reg No</th>
@@ -164,21 +164,23 @@ export default function StudentsPageContent({ role }) {
                                                 {student.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right flex justify-end gap-3">
-                                            <button
-                                                onClick={() => handleEdit(student)}
-                                                className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                            >
-                                                Edit
-                                            </button>
-                                            {role === "sudo" && (
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="inline-flex items-center justify-end gap-3">
                                                 <button
-                                                    onClick={() => handleDelete(student.$id)}
-                                                    className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                    onClick={() => handleEdit(student)}
+                                                    className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
                                                 >
-                                                    Delete
+                                                    Edit
                                                 </button>
-                                            )}
+                                                {role === "sudo" && (
+                                                    <button
+                                                        onClick={() => handleDelete(student.$id)}
+                                                        className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

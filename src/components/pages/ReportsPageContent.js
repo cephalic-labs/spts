@@ -19,8 +19,8 @@ export default function ReportsPageContent({ role }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {reports.map((report, idx) => (
-                    <div key={idx} className="bg-white rounded-2xl border border-gray-100 p-8 hover:shadow-lg transition-all group cursor-pointer">
-                        <div className="flex items-start justify-between">
+                    <div key={idx} className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-8 hover:shadow-lg transition-all group cursor-pointer">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div className={`p-4 rounded-2xl bg-gray-50 ${report.color} group-hover:scale-110 transition-transform`}>
                                 {report.icon}
                             </div>
@@ -37,7 +37,7 @@ export default function ReportsPageContent({ role }) {
             </div>
 
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-                <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+                <div className="p-5 sm:p-8 border-b border-gray-50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                     <h4 className="font-bold text-[#1E2761]">Recent Export History</h4>
                     <div className="text-xs text-gray-400">Showing last 5 exports</div>
                 </div>

@@ -230,10 +230,10 @@ export default function ImportPageContent({ role }) {
                 <p className="text-gray-500 text-sm mt-1">Bulk import students, faculty, or event data</p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
                 <div className="lg:col-span-2 space-y-6">
                     <div
-                        className={`bg-white border-2 border-dashed rounded-3xl p-12 text-center transition-all ${dragActive ? 'border-[#1E2761] bg-blue-50/30' : 'border-gray-200'}`}
+                        className={`bg-white border-2 border-dashed rounded-3xl p-6 sm:p-12 text-center transition-all ${dragActive ? 'border-[#1E2761] bg-blue-50/30' : 'border-gray-200'}`}
                         onDragEnter={handleDrag}
                         onDragLeave={handleDrag}
                         onDragOver={handleDrag}
@@ -266,7 +266,7 @@ export default function ImportPageContent({ role }) {
                     </div>
 
                     {results && (
-                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex items-center justify-between">
+                        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                             <div>
                                 <h4 className="text-emerald-800 font-bold">Import Complete</h4>
                                 <p className="text-emerald-600 text-sm">Processed {results.total} records</p>
@@ -284,7 +284,7 @@ export default function ImportPageContent({ role }) {
                         </div>
                     )}
 
-                    <div className="bg-white rounded-2xl border border-gray-100 p-8">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-8">
                         <h4 className="font-bold text-[#1E2761] mb-6 flex items-center gap-2">
                             <span className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center text-xs">1</span>
                             Select Target Collection
@@ -303,7 +303,7 @@ export default function ImportPageContent({ role }) {
                     </div>
 
                     {target === "Students" && (
-                        <div className="bg-white rounded-2xl border border-gray-100 p-8">
+                        <div className="bg-white rounded-2xl border border-gray-100 p-5 sm:p-8">
                             <h4 className="font-bold text-[#1E2761] mb-6 flex items-center gap-2">
                                 <span className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center text-xs">2</span>
                                 Select Advisor (Optional)
@@ -326,7 +326,7 @@ export default function ImportPageContent({ role }) {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-[#1E2761] rounded-2xl p-8 text-white">
+                    <div className="bg-[#1E2761] rounded-2xl p-5 sm:p-8 text-white">
                         <h4 className="font-bold mb-4 text-white">Requirements for {target}</h4>
                         <ul className="space-y-4 text-sm text-white/70 leading-relaxed">
                             {target === "Students" && (

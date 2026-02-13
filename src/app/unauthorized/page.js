@@ -17,10 +17,10 @@ export default function UnauthorizedPage() {
             <p className="text-[#555] mb-8 max-w-md">
                 You do not have permission to view the requested page. If you believe this is an error, please contact your administrator.
             </p>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                 <button
                     onClick={() => router.push("/dashboard")}
-                    className="px-6 py-2 border border-[#003366] text-[#003366] rounded hover:bg-[#F0F4F8] transition-colors"
+                    className="w-full sm:w-auto px-6 py-2 border border-[#003366] text-[#003366] rounded hover:bg-[#F0F4F8] transition-colors"
                 >
                     Go Back
                 </button>

@@ -11,8 +11,8 @@ export default function Navbar({ role, title, onMenuClick, isCollapsed }) {
     const displayTitle = title || getPortalTitle(role);
 
     return (
-        <header className="h-16 bg-[#252D63] text-white flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 shadow-lg">
-            <div className="flex items-center gap-4">
+        <header className="h-16 bg-[#252D63] text-white flex items-center justify-between px-3 sm:px-4 md:px-8 sticky top-0 z-10 shadow-lg">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                 {/* Mobile menu button */}
                 <button
                     onClick={onMenuClick}
@@ -22,7 +22,7 @@ export default function Navbar({ role, title, onMenuClick, isCollapsed }) {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-                <h1 className="text-lg md:text-xl font-semibold truncate">{displayTitle}</h1>
+                <h1 className="text-base sm:text-lg md:text-xl font-semibold truncate">{displayTitle}</h1>
             </div>
 
             <div className="flex items-center gap-3 md:gap-6">

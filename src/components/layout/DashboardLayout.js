@@ -29,7 +29,7 @@ export default function DashboardLayout({ children, role, allowedRoles, title })
 
     return (
         <RoleProtected allowedRoles={roles}>
-            <div className="min-h-screen bg-[#F8F9FA] flex">
+            <div className="min-h-screen bg-[#F8F9FA] flex overflow-x-hidden">
                 {/* Sidebar */}
                 <Sidebar
                     role={role}
@@ -50,7 +50,7 @@ export default function DashboardLayout({ children, role, allowedRoles, title })
                     />
 
                     {/* Page Content */}
-                    <main className="p-4 md:p-6 lg:p-10 max-w-7xl mx-auto w-full flex-1">
+                    <main className="p-3 sm:p-4 md:p-6 lg:p-10 max-w-7xl mx-auto w-full flex-1">
                         {children}
                     </main>
                 </div>

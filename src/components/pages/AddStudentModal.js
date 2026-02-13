@@ -72,10 +72,10 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div className="p-4 sm:p-8 border-b border-gray-100 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-black text-[#1E2761]">{isEdit ? "Edit Student" : "Add New Student"}</h2>
+                        <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">{isEdit ? "Edit Student" : "Add New Student"}</h2>
                         <p className="text-gray-400 text-sm font-medium">Capture student academic details</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -85,8 +85,8 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6">
-                    <div className="grid grid-cols-2 gap-6">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 max-h-[calc(90vh-110px)] overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Register No</label>
                             <input
@@ -107,7 +107,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                 onChange={(e) => setFormData({ ...formData, roll_no: e.target.value })}
                             />
                         </div>
-                        <div className="col-span-2">
+                        <div className="md:col-span-2">
                             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Full Name</label>
                             <input
                                 required
@@ -117,7 +117,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             />
                         </div>
-                        <div className="col-span-2">
+                        <div className="md:col-span-2">
                             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Email</label>
                             <input
                                 required
@@ -194,7 +194,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                         </div>
                     </div>
 
-                    <div className="pt-4 flex gap-3">
+                    <div className="pt-4 flex flex-col-reverse sm:flex-row gap-3">
                         <button
                             type="button"
                             onClick={onClose}
@@ -205,7 +205,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                         <button
                             type="submit"
                             disabled={loading}
-                            className="flex-[2] px-6 py-4 bg-[#1E2761] text-white font-bold rounded-2xl hover:bg-[#2d3a7d] transition-all shadow-lg shadow-[#1E2761]/20 active:scale-95 disabled:opacity-50"
+                            className="sm:flex-[2] px-6 py-4 bg-[#1E2761] text-white font-bold rounded-2xl hover:bg-[#2d3a7d] transition-all shadow-lg shadow-[#1E2761]/20 active:scale-95 disabled:opacity-50"
                         >
                             {loading ? "Saving..." : isEdit ? "Update Student" : "Register Student"}
                         </button>

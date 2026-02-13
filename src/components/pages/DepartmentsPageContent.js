@@ -47,7 +47,7 @@ export default function DepartmentsPageContent({ role }) {
 
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-[#1E2761]">Departments</h1>
                     <p className="text-gray-500 text-sm mt-1">Institution organizational structure</p>
@@ -55,7 +55,7 @@ export default function DepartmentsPageContent({ role }) {
                 {role === "sudo" && (
                     <button
                         onClick={handleAdd}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

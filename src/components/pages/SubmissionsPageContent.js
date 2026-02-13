@@ -132,6 +132,15 @@ export default function SubmissionsPageContent({ role }) {
 
     const canCreateSubmission = role === "student";
 
+    function getEventName(submission) {
+        return eventsMap[submission.event_id]?.event_name || `${submission.event_id?.slice(0, 12)}...`;
+    }
+
+    function formatShortDate(value) {
+        if (!value) return "N/A";
+        return new Date(value).toLocaleDateString();
+    }
+
     if (loading && submissions.length === 0) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -143,7 +152,7 @@ export default function SubmissionsPageContent({ role }) {
     return (
         <div>
             {/* Header */}
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
                 <div>
                     <h1 className="text-2xl font-bold text-[#1E2761]">Submissions</h1>
                     <p className="text-gray-500 text-sm mt-1">
@@ -153,7 +162,7 @@ export default function SubmissionsPageContent({ role }) {
                 {canCreateSubmission && (
                     <button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                     >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -201,62 +210,110 @@ export default function SubmissionsPageContent({ role }) {
                         </p>
                     </div>
                 ) : submissions.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-[#F8F9FA] border-b border-gray-100">
-                                <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Range</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Created</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50">
-                                {submissions.map((submission) => (
-                                    <tr key={submission.$id} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4 text-sm font-mono text-gray-400">
+                    <>
+                        <div className="md:hidden p-3 space-y-3">
+                            {submissions.map((submission) => (
+                                <div key={submission.$id} className="border border-gray-100 rounded-xl p-4 bg-white">
+                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                        <p className="text-xs font-mono text-gray-400">
                                             #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-800 font-medium">
-                                            {eventsMap[submission.event_id]?.event_name || submission.event_id?.slice(0, 12) + '...'}
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-600">
-                                            {new Date(submission.od_start_date).toLocaleDateString()} - {new Date(submission.od_end_date).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
-                                                {statusLabels[submission.current_status] || submission.current_status}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 text-sm text-gray-400">
-                                            {new Date(submission.$createdAt).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="flex items-center justify-end gap-3">
-                                                {role === "student" && submission.current_status?.startsWith("pending_") && (
-                                                    <button
-                                                        onClick={() => openCancelDialog(submission)}
-                                                        disabled={cancelLoadingId === submission.$id}
-                                                        className="text-red-600 hover:text-red-800 hover:underline text-xs font-black uppercase tracking-widest disabled:opacity-50"
-                                                    >
-                                                        {cancelLoadingId === submission.$id ? "Cancelling..." : "Cancel"}
-                                                    </button>
-                                                )}
-                                                <button
-                                                    onClick={() => openDetails(submission.$id)}
-                                                    className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                                >
-                                                    Details
-                                                </button>
-                                            </div>
-                                        </td>
+                                        </p>
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
+                                            {statusLabels[submission.current_status] || submission.current_status}
+                                        </span>
+                                    </div>
+
+                                    <p className="text-sm font-bold text-[#1E2761] mb-2 line-clamp-2">{getEventName(submission)}</p>
+
+                                    <div className="space-y-1.5 text-xs text-gray-500">
+                                        <p>
+                                            <span className="font-semibold text-gray-600">Date:</span>{" "}
+                                            {formatShortDate(submission.od_start_date)} - {formatShortDate(submission.od_end_date)}
+                                        </p>
+                                        <p>
+                                            <span className="font-semibold text-gray-600">Created:</span>{" "}
+                                            {formatShortDate(submission.$createdAt)}
+                                        </p>
+                                    </div>
+
+                                    <div className="mt-4 flex items-center justify-end gap-3">
+                                        {role === "student" && submission.current_status?.startsWith("pending_") && (
+                                            <button
+                                                onClick={() => openCancelDialog(submission)}
+                                                disabled={cancelLoadingId === submission.$id}
+                                                className="text-red-600 hover:text-red-800 hover:underline text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                                            >
+                                                {cancelLoadingId === submission.$id ? "Cancelling..." : "Cancel"}
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => openDetails(submission.$id)}
+                                            className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                        >
+                                            Details
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="hidden md:block overflow-x-auto">
+                            <table className="w-full min-w-[860px]">
+                                <thead className="bg-[#F8F9FA] border-b border-gray-100">
+                                    <tr>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Range</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Created</th>
+                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody className="divide-y divide-gray-50">
+                                    {submissions.map((submission) => (
+                                        <tr key={submission.$id} className="hover:bg-gray-50 transition-colors">
+                                            <td className="px-6 py-4 text-sm font-mono text-gray-400">
+                                                #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-800 font-medium">
+                                                {getEventName(submission)}
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-600">
+                                                {formatShortDate(submission.od_start_date)} - {formatShortDate(submission.od_end_date)}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
+                                                    {statusLabels[submission.current_status] || submission.current_status}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 text-sm text-gray-400">
+                                                {formatShortDate(submission.$createdAt)}
+                                            </td>
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex items-center justify-end gap-3">
+                                                    {role === "student" && submission.current_status?.startsWith("pending_") && (
+                                                        <button
+                                                            onClick={() => openCancelDialog(submission)}
+                                                            disabled={cancelLoadingId === submission.$id}
+                                                            className="text-red-600 hover:text-red-800 hover:underline text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                                                        >
+                                                            {cancelLoadingId === submission.$id ? "Cancelling..." : "Cancel"}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => openDetails(submission.$id)}
+                                                        className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                                    >
+                                                        Details
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </>
                 ) : null}
             </div>
 
@@ -267,7 +324,7 @@ export default function SubmissionsPageContent({ role }) {
                         <p className="text-sm text-gray-600 mb-6">
                             This action cannot be undone. The request will move to cancelled status.
                         </p>
-                        <div className="flex items-center justify-end gap-3">
+                        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
                             <button
                                 onClick={closeCancelDialog}
                                 disabled={Boolean(cancelLoadingId)}

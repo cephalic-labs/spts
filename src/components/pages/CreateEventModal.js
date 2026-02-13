@@ -91,9 +91,9 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-[#1E2761]">
-                    <h2 className="text-xl font-bold text-white">{isEdit ? "Edit Event" : "Create New Event"}</h2>
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 flex justify-between items-center bg-[#1E2761]">
+                    <h2 className="text-lg sm:text-xl font-bold text-white">{isEdit ? "Edit Event" : "Create New Event"}</h2>
                     <button onClick={onClose} className="text-white/80 hover:text-white">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -101,7 +101,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
                     </button>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto">
+                <form onSubmit={handleSubmit} className="p-4 sm:p-8 space-y-6 max-h-[calc(90vh-90px)] overflow-y-auto">
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-gray-700">Event Name</label>
                         <input
@@ -180,7 +180,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
                         />
                     </div>
 
-                    <div className="pt-4 flex gap-4">
+                    <div className="pt-4 flex flex-col-reverse sm:flex-row gap-4">
                         <button
                             type="button"
                             onClick={onClose}

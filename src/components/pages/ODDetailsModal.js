@@ -165,10 +165,10 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="p-8 border-b border-gray-100 flex justify-between items-center">
+            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div className="p-4 sm:p-8 border-b border-gray-100 flex justify-between items-center">
                     <div>
-                        <h2 className="text-2xl font-black text-[#1E2761]">OD Request Details</h2>
+                        <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">OD Request Details</h2>
                         <p className="text-gray-400 text-sm font-medium">#{odId?.slice(0, 8)}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -178,7 +178,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                     </button>
                 </div>
 
-                <div className="p-8 max-h-[70vh] overflow-y-auto">
+                <div className="p-4 sm:p-8 max-h-[calc(90vh-130px)] overflow-y-auto">
                     {loading ? (
                         <div className="flex justify-center py-12">
                             <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
@@ -223,7 +223,8 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                             {/* Approval Progress Tracker */}
                             <div>
                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Approval Progress</h4>
-                                <div className="relative">
+                                <div className="overflow-x-auto">
+                                    <div className="relative min-w-[520px]">
                                     {/* Progress line */}
                                     <div className="absolute top-5 left-5 right-5 h-[2px] bg-gray-200 z-0"></div>
                                     <div className="relative flex justify-between z-10">
@@ -296,6 +297,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                             </span>
                                         </div>
                                     )}
+                                    </div>
                                 </div>
                             </div>
 
@@ -335,7 +337,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                             </div>
 
                             {/* Info Grid */}
-                            <div className="grid grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                                 <div>
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Event</h4>
                                     <p className="font-bold text-[#1E2761]">{eventDetails?.event_name || odRequest.event_id || 'N/A'}</p>
@@ -398,7 +400,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                     )}
                 </div>
 
-                <div className="p-8 border-t border-gray-100 flex justify-end">
+                <div className="p-4 sm:p-8 border-t border-gray-100 flex justify-end">
                     <button
                         onClick={onClose}
                         className="px-6 py-3 bg-[#1E2761] text-white font-bold rounded-xl hover:bg-[#2d3a7d] transition-all active:scale-95"

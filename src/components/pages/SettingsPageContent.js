@@ -62,7 +62,7 @@ export default function SettingsPageContent({ role }) {
                             <span className="bg-[#1E2761] text-white text-[10px] font-bold px-2.5 py-1 rounded-[6px] w-fit uppercase tracking-wider shadow-sm shadow-[#1E2761]/20">
                                 {role} 
                             </span>
-                            <span className="text-gray-400 text-xs font-medium tracking-wide">{user?.email}</span>
+                            <span className="text-gray-400 text-xs font-medium tracking-wide break-all text-center">{user?.email}</span>
                         </div>
                     </div>
                 </div>
