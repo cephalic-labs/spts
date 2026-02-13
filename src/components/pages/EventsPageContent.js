@@ -263,10 +263,17 @@ export default function EventsPageContent({ role }) {
                             {/* Event Details */}
                             <div className="flex-grow min-w-0 text-center md:text-left">
                                 <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
-                                    <h3 className="font-bold text-[#1E2761] text-2xl">
-                                        {event.event_name}
-                                    </h3>
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 w-fit mx-auto md:mx-0">
+                                    <div className="flex flex-col">
+                                        <h3 className="font-bold text-[#1E2761] text-2xl">
+                                            {event.event_name}
+                                        </h3>
+                                        {event.event_host && (
+                                            <p className="text-sm font-semibold text-[#1E2761]/70">
+                                                Hosted by {event.event_host}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 w-fit mx-auto md:mx-0 h-fit self-center">
                                         {event.participation_count || 0} participants
                                     </span>
                                 </div>
@@ -325,40 +332,40 @@ export default function EventsPageContent({ role }) {
                                             const currentStatus = participationByEvent[event.$id]?.status;
                                             return (
                                                 <>
-                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                                                Your Status
-                                            </p>
-                                            <span
-                                                className={`max-w-full px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadgeClass(currentStatus)}`}
-                                            >
-                                                {getStatusLabel(currentStatus)}
-                                            </span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.PARTICIPATED)}
-                                                disabled={
-                                                    savingParticipationFor === event.$id ||
-                                                    currentStatus === PARTICIPATION_STATUS.PARTICIPATED
-                                                }
-                                                className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.PARTICIPATED)}`}
-                                            >
-                                                Participated
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.NOT_PARTICIPATED)}
-                                                disabled={
-                                                    savingParticipationFor === event.$id ||
-                                                    currentStatus === PARTICIPATION_STATUS.NOT_PARTICIPATED
-                                                }
-                                                className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.NOT_PARTICIPATED)}`}
-                                            >
-                                                Not Participated
-                                            </button>
-                                        </div>
+                                                    <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                                                        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                                            Your Status
+                                                        </p>
+                                                        <span
+                                                            className={`max-w-full px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadgeClass(currentStatus)}`}
+                                                        >
+                                                            {getStatusLabel(currentStatus)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.PARTICIPATED)}
+                                                            disabled={
+                                                                savingParticipationFor === event.$id ||
+                                                                currentStatus === PARTICIPATION_STATUS.PARTICIPATED
+                                                            }
+                                                            className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.PARTICIPATED)}`}
+                                                        >
+                                                            Participated
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.NOT_PARTICIPATED)}
+                                                            disabled={
+                                                                savingParticipationFor === event.$id ||
+                                                                currentStatus === PARTICIPATION_STATUS.NOT_PARTICIPATED
+                                                            }
+                                                            className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.NOT_PARTICIPATED)}`}
+                                                        >
+                                                            Not Participated
+                                                        </button>
+                                                    </div>
                                                 </>
                                             );
                                         })()}
