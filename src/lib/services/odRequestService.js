@@ -71,32 +71,70 @@ async function getEventParticipation(eventId, studentId) {
 }
 
 async function getDepartmentApprover(department, role) {
-    const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.FACULTIES,
-        [
-            Query.equal("department", department),
-            Query.equal("role", role),
-            Query.limit(1),
-        ]
-    );
+    if (!department || !role) return null;
 
-    return response.documents?.[0] || null;
+    // Try finding exact match first
+    try {
+        let response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.FACULTIES,
+            [
+                Query.equal("department", department.trim()),
+                Query.equal("role", role),
+                Query.limit(1),
+            ]
+        );
+        if (response.documents.length > 0) return response.documents[0];
+
+        // If 'hod', try 'HOD' uppercase fallback
+        if (role === "hod") {
+            response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.FACULTIES,
+                [
+                    Query.equal("department", department.trim()),
+                    Query.equal("role", "HOD"),
+                    Query.limit(1),
+                ]
+            );
+            if (response.documents.length > 0) return response.documents[0];
+        }
+
+        return null;
+    } catch (error) {
+        console.error(`Error getting department approver for ${department} ${role}:`, error);
+        return null;
+    }
 }
 
 async function getFacultyByFacultyId(facultyId) {
     if (!facultyId) return null;
 
-    const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.FACULTIES,
-        [
-            Query.equal("faculty_id", facultyId),
-            Query.limit(1),
-        ]
-    );
-
-    return response.documents?.[0] || null;
+    try {
+        // First try to get by Document ID (standard Appwrite relationship)
+        const faculty = await databases.getDocument(
+            DATABASE_ID,
+            COLLECTIONS.FACULTIES,
+            facultyId
+        );
+        return faculty;
+    } catch (error) {
+        // If not found by ID, try searching by faculty_id attribute (Employee ID)
+        try {
+            const response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.FACULTIES,
+                [
+                    Query.equal("faculty_id", facultyId),
+                    Query.limit(1),
+                ]
+            );
+            return response.documents?.[0] || null;
+        } catch (searchError) {
+            console.error("Error searching faculty:", searchError);
+            return null;
+        }
+    }
 }
 
 /**

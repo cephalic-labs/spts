@@ -6,6 +6,7 @@ import { getEvents } from "@/lib/services/eventService";
 import { getStudentEventParticipations, PARTICIPATION_STATUS } from "@/lib/services/eventParticipationService";
 import { createODRequest } from "@/lib/services/odRequestService";
 import { getStudentByAppwriteUserId, getStudentByEmail } from "@/lib/services/studentService";
+import { getFaculties } from "@/lib/services/facultyService";
 
 function normalizeDateOnly(value) {
     if (!value) return "";
@@ -34,6 +35,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     const [fetchingParticipation, setFetchingParticipation] = useState(false);
     const [studentData, setStudentData] = useState(null);
     const [participatedEventIds, setParticipatedEventIds] = useState(new Set());
+    const [mentors, setMentors] = useState([]);
+    const [fetchingMentors, setFetchingMentors] = useState(false);
     const [formError, setFormError] = useState("");
 
     const [formData, setFormData] = useState({
@@ -41,6 +44,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
         od_start_date: "",
         od_end_date: "",
         reason: "",
+        mentor_id: "",
     });
 
     useEffect(() => {
@@ -78,6 +82,41 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             }
 
             setStudentData(student);
+
+            if (student) {
+                // Pre-fill mentor if available in student profile
+                if (student.mentor_id) {
+                    setFormData(prev => ({ ...prev, mentor_id: student.mentor_id }));
+                }
+
+                // Fetch potential mentors AND advisors (faculty in same department)
+                setFetchingMentors(true);
+                try {
+                    const [mentorsResponse, advisorsResponse] = await Promise.all([
+                        getFaculties({ department: student.department, role: "mentor" }),
+                        getFaculties({ department: student.department, role: "advisor" })
+                    ]);
+
+                    // Combine lists, removing duplicates if any
+                    const combined = [...(mentorsResponse.documents || []), ...(advisorsResponse.documents || [])];
+
+                    // Filters duplicates based on $id
+                    const uniqueFaculty = Array.from(new Map(combined.map(item => [item.$id, item])).values());
+
+                    setMentors(uniqueFaculty);
+                } catch (err) {
+                    console.error("Failed to fetch faculty", err);
+                    try {
+                        // Fallback: fetch all mentors if filter fails
+                        const response = await getFaculties({ role: "mentor" });
+                        setMentors(response.documents || []);
+                    } catch (e) {
+                        setMentors([]);
+                    }
+                } finally {
+                    setFetchingMentors(false);
+                }
+            }
         } catch (error) {
             console.error("Error loading student info:", error);
         }
@@ -131,6 +170,10 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             setFormError("OD dates must be on or before the selected event date.");
             return;
         }
+        if (!formData.mentor_id) {
+            setFormError("Please select a mentor.");
+            return;
+        }
 
         try {
             setLoading(true);
@@ -149,6 +192,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 od_start_date: "",
                 od_end_date: "",
                 reason: "",
+                mentor_id: "",
             });
         } catch (error) {
             console.error("Error creating OD request:", error);
@@ -254,6 +298,24 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                             value={formData.reason}
                             onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                         />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Select Mentor / Class Advisor</label>
+                        <select
+                            required
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
+                            value={formData.mentor_id}
+                            onChange={(e) => setFormData({ ...formData, mentor_id: e.target.value })}
+                        >
+                            <option value="">Select your mentor or advisor...</option>
+                            {mentors.map(faculty => (
+                                <option key={faculty.$id} value={faculty.$id || faculty.faculty_id}>
+                                    {faculty.name} ({faculty.role} - {faculty.department})
+                                </option>
+                            ))}
+                        </select>
+                        <p className="text-xs text-gray-400 mt-1">This faculty member will be the first to approve your OD.</p>
                     </div>
 
                     {formError && (

@@ -1,10 +1,9 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icons } from "@/components/layout";
 import * as XLSX from "xlsx";
 import { createStudent } from "@/lib/services/studentService";
-import { createFaculty } from "@/lib/services/facultyService";
+import { createFaculty, getFaculties } from "@/lib/services/facultyService";
 import { createEvent } from "@/lib/services/eventService";
 
 export default function ImportPageContent({ role }) {
@@ -14,6 +13,21 @@ export default function ImportPageContent({ role }) {
     const [processing, setProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [results, setResults] = useState(null);
+    const [advisors, setAdvisors] = useState([]);
+    const [selectedAdvisorId, setSelectedAdvisorId] = useState("");
+
+    useEffect(() => {
+        const fetchAdvisors = async () => {
+            try {
+                // Fetch all faculty members who could be advisors/mentors
+                const response = await getFaculties({}, 100);
+                setAdvisors(response.documents || []);
+            } catch (error) {
+                console.error("Failed to fetch advisors:", error);
+            }
+        };
+        fetchAdvisors();
+    }, []);
 
     const handleDrag = (e) => {
         e.preventDefault();
@@ -140,6 +154,7 @@ export default function ImportPageContent({ role }) {
                                 section: item.Section || item.section || "A",
                                 phone: item.Phone || "",
                                 cgpa: item.CGPA !== undefined ? item.CGPA : null,
+                                advisor_id: selectedAdvisorId || null,
                                 status: "active"
                             });
                         } else if (target === "Faculty") {
@@ -286,6 +301,28 @@ export default function ImportPageContent({ role }) {
                             ))}
                         </div>
                     </div>
+
+                    {target === "Students" && (
+                        <div className="bg-white rounded-2xl border border-gray-100 p-8">
+                            <h4 className="font-bold text-[#1E2761] mb-6 flex items-center gap-2">
+                                <span className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center text-xs">2</span>
+                                Select Advisor (Optional)
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-4">You can assign a common advisor to all students in this import.</p>
+                            <select
+                                value={selectedAdvisorId}
+                                onChange={(e) => setSelectedAdvisorId(e.target.value)}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all text-sm"
+                            >
+                                <option value="">No Advisor (Default)</option>
+                                {advisors.map(advisor => (
+                                    <option key={advisor.$id} value={advisor.$id}>
+                                        {advisor.name} ({advisor.department})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                 </div>
 
                 <div className="space-y-6">
