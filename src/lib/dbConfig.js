@@ -18,24 +18,21 @@ export const DB_CONFIG = {
 
 // Approval workflow statuses
 export const OD_STATUS = {
-    // Legacy status kept for backward compatibility
     PENDING_MENTOR: "pending_mentor",
     PENDING_ADVISOR: "pending_advisor",
     PENDING_COORDINATOR: "pending_coordinator",
     PENDING_HOD: "pending_hod",
     GRANTED: "granted",
-    // Legacy final status kept for backward compatibility
     APPROVED: "approved",
     REJECTED: "rejected",
 };
 
 // Role hierarchy for approval workflow
-export const APPROVAL_ROLES = ["advisor", "coordinator", "hod"];
+export const APPROVAL_ROLES = ["mentor", "advisor", "coordinator", "hod"];
 
 // Get next status after approval
 export function getNextStatus(currentStatus) {
     const statusFlow = {
-        // Legacy requests can still move from mentor to advisor
         [OD_STATUS.PENDING_MENTOR]: OD_STATUS.PENDING_ADVISOR,
         [OD_STATUS.PENDING_ADVISOR]: OD_STATUS.PENDING_COORDINATOR,
         [OD_STATUS.PENDING_COORDINATOR]: OD_STATUS.PENDING_HOD,

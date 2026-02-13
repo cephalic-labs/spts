@@ -107,7 +107,20 @@ export async function getStudentByEmail(email) {
             COLLECTIONS.STUDENTS,
             [Query.equal("email", email), Query.limit(1)]
         );
-        return response.documents.length > 0 ? response.documents[0] : null;
+        if (response.documents.length > 0) return response.documents[0];
+
+        // Fallback: try lowercase email
+        const normalizedEmail = email.trim().toLowerCase();
+        if (normalizedEmail !== email) {
+            const response2 = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.STUDENTS,
+                [Query.equal("email", normalizedEmail), Query.limit(1)]
+            );
+            if (response2.documents.length > 0) return response2.documents[0];
+        }
+
+        return null;
     } catch (error) {
         console.error("Error getting student by email:", error);
         throw error;

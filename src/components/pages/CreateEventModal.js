@@ -30,6 +30,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
     const [dateError, setDateError] = useState("");
     const [formData, setFormData] = useState({
         event_name: "",
+        event_host: "",
         event_description: "",
         event_time: "",
         event_reg_deadline: "",
@@ -40,6 +41,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
         if (initialData) {
             setFormData({
                 event_name: initialData.event_name || "",
+                event_host: initialData.event_host || "",
                 event_description: initialData.event_description || "",
                 event_time: formatDateOnly(initialData.event_time),
                 event_reg_deadline: formatDateOnly(initialData.event_reg_deadline),
@@ -50,6 +52,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
 
         setFormData({
             event_name: "",
+            event_host: "",
             event_description: "",
             event_time: "",
             event_reg_deadline: "",
@@ -108,6 +111,19 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
                             placeholder="Enter event name"
                             value={formData.event_name}
                             onChange={(e) => setFormData({ ...formData, event_name: e.target.value })}
+                        />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-gray-700">Event Host / Organization</label>
+                        <input
+                            required
+                            type="text"
+                            maxLength={100}
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
+                            placeholder="Enter host name (e.g. Dept of CSE)"
+                            value={formData.event_host}
+                            onChange={(e) => setFormData({ ...formData, event_host: e.target.value })}
                         />
                     </div>
 

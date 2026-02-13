@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { validRoles } from "@/lib/sidebarConfig";
 
 export default function DashboardRouter() {
   const { user, loading } = useAuth();
@@ -16,35 +17,24 @@ export default function DashboardRouter() {
       return;
     }
 
-    const label = user.labels && user.labels.length > 0 ? user.labels[0] : null;
+    const labels = user.labels || [];
 
-    switch (label) {
-      case "admin":
-        router.push("/dashboard/admin");
+    // Find the first label that matches a valid role
+    // Also normalize: check lowercase versions
+    let matchedRole = null;
+
+    for (const label of labels) {
+      const normalizedLabel = label.toLowerCase().trim();
+      if (validRoles.includes(normalizedLabel)) {
+        matchedRole = normalizedLabel;
         break;
-      case "advisor":
-        router.push("/dashboard/advisor");
-        break;
-      case "coordinator":
-        router.push("/dashboard/coordinator");
-        break;
-      case "hod":
-        router.push("/dashboard/hod");
-        break;
-      case "mentor":
-        router.push("/dashboard/mentor");
-        break;
-      case "principal":
-        router.push("/dashboard/principal");
-        break;
-      case "student":
-        router.push("/dashboard/student");
-        break;
-      case "sudo":
-        router.push("/dashboard/sudo");
-        break;
-      default:
-        router.push("/dashboard/unassigned");
+      }
+    }
+
+    if (matchedRole) {
+      router.push(`/dashboard/${matchedRole}`);
+    } else {
+      router.push("/dashboard/unassigned");
     }
   }, [user, loading, router]);
 

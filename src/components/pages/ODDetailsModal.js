@@ -14,6 +14,50 @@ const statusColors = {
     [OD_STATUS.REJECTED]: "bg-red-100 text-red-700",
 };
 
+// The 4-step approval pipeline
+const APPROVAL_STEPS = [
+    { key: "mentor", label: "Mentor", statusField: "mentor_status", remarksField: "mentor_remarks", actionAtField: "mentor_action_at", pendingStatus: OD_STATUS.PENDING_MENTOR },
+    { key: "advisor", label: "Advisor", statusField: "advisor_status", remarksField: "advisor_remarks", actionAtField: "advisor_action_at", pendingStatus: OD_STATUS.PENDING_ADVISOR },
+    { key: "coordinator", label: "Coordinator", statusField: "coordinator_status", remarksField: "coordinator_remarks", actionAtField: "coordinator_action_at", pendingStatus: OD_STATUS.PENDING_COORDINATOR },
+    { key: "hod", label: "HOD", statusField: "hod_status", remarksField: "hod_remarks", actionAtField: "hod_action_at", pendingStatus: OD_STATUS.PENDING_HOD },
+];
+
+// Pipeline order definition
+const PIPELINE_ORDER = [
+    OD_STATUS.PENDING_MENTOR,
+    OD_STATUS.PENDING_ADVISOR,
+    OD_STATUS.PENDING_COORDINATOR,
+    OD_STATUS.PENDING_HOD,
+    OD_STATUS.GRANTED,
+    OD_STATUS.APPROVED
+];
+
+function getStepState(odRequest, step) {
+    if (!odRequest) return "waiting";
+
+    // 1. Check explicit status if available
+    const stepStatus = odRequest[step.statusField];
+    if (stepStatus === "approved") return "approved";
+    if (stepStatus === "rejected") return "rejected";
+
+    // 2. Check current status match
+    if (odRequest.current_status === step.pendingStatus) return "current";
+
+    // 3. Infer "approved" based on pipeline position
+    // If request status is later in the pipeline than this step's pending status, 
+    // we can assume this step was approved.
+    const currentIndex = PIPELINE_ORDER.indexOf(odRequest.current_status);
+    const stepIndex = PIPELINE_ORDER.indexOf(step.pendingStatus);
+
+    if (currentIndex > stepIndex) return "approved";
+
+    // 4. Handle Rejected case slightly differently?
+    // If rejected, we typically reset or just show the rejection banner.
+    // The individual step circles will stay "waiting" unless explicitly marked rejected.
+
+    return "waiting";
+}
+
 export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const [odRequest, setOdRequest] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -42,6 +86,9 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
 
     if (!isOpen) return null;
 
+    const isGranted = odRequest?.current_status === OD_STATUS.GRANTED || odRequest?.current_status === OD_STATUS.APPROVED;
+    const isRejected = odRequest?.current_status === OD_STATUS.REJECTED;
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -64,19 +111,106 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                         </div>
                     ) : odRequest ? (
                         <div className="space-y-8">
-                            {/* Status Header */}
-                            <div className="flex items-center justify-between bg-gray-50 p-6 rounded-2xl">
-                                <div>
-                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Current Status</div>
-                                    <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest ${statusColors[odRequest.current_status] || "bg-gray-100 text-gray-700"}`}>
-                                        {String(odRequest.current_status || "pending").replace(/_/g, " ")}
-                                    </span>
+                            {/* Final Status Banner */}
+                            {isGranted && (
+                                <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
+                                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-xl font-black text-green-700 mb-1">OD Granted! 🎉</h3>
+                                    <p className="text-green-600 text-sm">Your OD request has been approved by all approvers.</p>
                                 </div>
-                                <div className="text-right">
-                                    <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Final Decision</div>
-                                    <span className={`text-xs font-black uppercase ${(odRequest.final_decision === 'approved' || odRequest.final_decision === 'granted') ? 'text-green-600' : odRequest.final_decision === 'rejected' ? 'text-red-600' : 'text-gray-500'}`}>
-                                        {odRequest.final_decision || 'Pending'}
-                                    </span>
+                            )}
+                            {isRejected && (
+                                <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+                                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-xl font-black text-red-700 mb-1">OD Rejected</h3>
+                                    <p className="text-red-600 text-sm">Your OD request was rejected. See details below.</p>
+                                </div>
+                            )}
+
+                            {/* Approval Progress Tracker */}
+                            <div>
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Approval Progress</h4>
+                                <div className="relative">
+                                    {/* Progress line */}
+                                    <div className="absolute top-5 left-5 right-5 h-[2px] bg-gray-200 z-0"></div>
+                                    <div className="relative flex justify-between z-10">
+                                        {APPROVAL_STEPS.map((step, idx) => {
+                                            const state = getStepState(odRequest, step);
+                                            const actionAt = odRequest[step.actionAtField];
+                                            const remarks = odRequest[step.remarksField];
+
+                                            return (
+                                                <div key={step.key} className="flex flex-col items-center" style={{ width: '25%' }}>
+                                                    {/* Circle */}
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${state === "approved"
+                                                        ? "bg-green-500 border-green-500 text-white"
+                                                        : state === "rejected"
+                                                            ? "bg-red-500 border-red-500 text-white"
+                                                            : state === "current"
+                                                                ? "bg-white border-[#1E2761] text-[#1E2761] animate-pulse shadow-lg shadow-[#1E2761]/20"
+                                                                : "bg-gray-100 border-gray-200 text-gray-400"
+                                                        }`}>
+                                                        {state === "approved" ? (
+                                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                                            </svg>
+                                                        ) : state === "rejected" ? (
+                                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+                                                            </svg>
+                                                        ) : (
+                                                            <span className="text-xs font-black">{idx + 1}</span>
+                                                        )}
+                                                    </div>
+                                                    {/* Label */}
+                                                    <span className={`mt-2 text-xs font-bold text-center ${state === "approved" ? "text-green-600"
+                                                        : state === "rejected" ? "text-red-600"
+                                                            : state === "current" ? "text-[#1E2761]"
+                                                                : "text-gray-400"
+                                                        }`}>
+                                                        {step.label}
+                                                    </span>
+                                                    {/* Status text */}
+                                                    <span className={`text-[10px] mt-0.5 ${state === "approved" ? "text-green-500"
+                                                        : state === "rejected" ? "text-red-500"
+                                                            : state === "current" ? "text-yellow-600"
+                                                                : "text-gray-300"
+                                                        }`}>
+                                                        {state === "approved" ? "Approved"
+                                                            : state === "rejected" ? "Rejected"
+                                                                : state === "current" ? "Awaiting..."
+                                                                    : "Pending"}
+                                                    </span>
+                                                    {/* Timestamp */}
+                                                    {actionAt && (
+                                                        <span className="text-[9px] text-gray-400 mt-0.5">
+                                                            {new Date(actionAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Final granted step */}
+                                    {isGranted && (
+                                        <div className="mt-4 text-center">
+                                            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-black uppercase tracking-wider">
+                                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                                </svg>
+                                                OD Granted
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -98,12 +232,12 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                 </div>
                             </div>
 
-                            {/* Timeline */}
+                            {/* Approval Timeline */}
                             <div>
                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Approval Timeline</h4>
                                 <div className="space-y-6">
                                     {logs.length === 0 ? (
-                                        <p className="text-gray-400 italic text-sm">No activity recorded yet.</p>
+                                        <p className="text-gray-400 italic text-sm">No activity recorded yet. Waiting for mentor approval.</p>
                                     ) : (
                                         logs.map((log, idx) => (
                                             <div key={log.$id} className="relative flex gap-4">
