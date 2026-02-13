@@ -56,7 +56,7 @@ export default async function CatchAllPage({ params }) {
                 return <StudentsPageContent role={role} />;
             case "faculty":
             case "admins":
-                return <FacultyPageContent role={role} />;
+                return <FacultyPageContent role={role} filterRole="admin" />;
             case "settings":
                 return <SettingsPageContent role={role} />;
             case "departments":

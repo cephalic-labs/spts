@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createFaculty, updateFaculty } from "@/lib/services/facultyService";
 
-export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialData = null }) {
+export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialData = null, preselectedRole = null }) {
     const isEdit = !!initialData;
     const [loading, setLoading] = useState(false);
     const [formData, setFormData] = useState({
@@ -22,7 +22,7 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
                 email: initialData.email || "",
                 department: initialData.department || "",
                 designation: initialData.designation || "",
-                role: initialData.role || "mentor",
+                role: initialData.role || preselectedRole || "mentor",
                 assigned_sections: (initialData.assigned_sections || []).join(", "),
             });
         } else {
@@ -31,11 +31,11 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
                 email: "",
                 department: "",
                 designation: "",
-                role: "mentor",
+                role: preselectedRole || "mentor",
                 assigned_sections: "",
             });
         }
-    }, [initialData, isOpen]);
+    }, [initialData, isOpen, preselectedRole]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -140,6 +140,7 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
                                 <option value="advisor">Advisor</option>
                                 <option value="coordinator">Coordinator</option>
                                 <option value="hod">HOD</option>
+                                <option value="admin">Admin</option>
                             </select>
                         </div>
                         <div>

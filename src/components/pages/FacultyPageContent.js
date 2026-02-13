@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import { getFaculties, deleteFaculty } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
+import AssignAdminModal from "./AssignAdminModal";
 
-export default function FacultyPageContent({ role }) {
+export default function FacultyPageContent({ role, filterRole }) {
     const [faculty, setFaculty] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState({ department: "", role: "" });
+    const [filter, setFilter] = useState({ department: "", role: filterRole || "" });
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedFaculty, setSelectedFaculty] = useState(null);
 
     useEffect(() => {
@@ -66,10 +68,11 @@ export default function FacultyPageContent({ role }) {
         <div>
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-2xl font-bold text-[#1E2761]">Faculty</h1>
+                    <h1 className="text-2xl font-bold text-[#1E2761]">{filterRole === "admin" ? "Admins" : "Faculty"}</h1>
                     <p className="text-gray-500 text-sm mt-1">Manage and view faculty members</p>
                 </div>
                 {canManageFaculty && (
+                    <div className="flex gap-3">
                     <button
                         onClick={handleAdd}
                         className="flex items-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
@@ -77,16 +80,35 @@ export default function FacultyPageContent({ role }) {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        Add Faculty
+                        {filterRole === "admin" ? "Add New Admin" : "Add Faculty"}
                     </button>
-                )}
-            </div>
+                    {filterRole === "admin" && canManageFaculty && (
+                        <button
+                            onClick={() => setIsAssignModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#1E2761] text-[#1E2761] rounded-xl hover:bg-gray-50 transition-colors shadow-sm font-bold"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                            </svg>
+                            Assign Existing
+                        </button>
+                    )}
+                </div>
+            )}
+        </div>
 
             <AddFacultyModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSuccess={loadFaculty}
                 initialData={selectedFaculty}
+                preselectedRole={filterRole}
+            />
+
+            <AssignAdminModal
+                isOpen={isAssignModalOpen}
+                onClose={() => setIsAssignModalOpen(false)}
+                onSuccess={loadFaculty}
             />
 
             {/* Filters */}
@@ -104,17 +126,21 @@ export default function FacultyPageContent({ role }) {
                     <option value="IT">IT</option>
                     <option value="AIDS">AIDS</option>
                 </select>
-                <select
-                    className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
-                    value={filter.role}
-                    onChange={(e) => setFilter({ ...filter, role: e.target.value })}
-                >
-                    <option value="">All Roles</option>
-                    <option value="hod">HOD</option>
-                    <option value="coordinator">Coordinator</option>
-                    <option value="advisor">Advisor</option>
-                    <option value="mentor">Mentor</option>
-                </select>
+                {!filterRole && (
+                    <select
+                        className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.role}
+                        onChange={(e) => setFilter({ ...filter, role: e.target.value })}
+                    >
+                        <option value="">All Roles</option>
+                        <option value="hod">HOD</option>
+                        <option value="coordinator">Coordinator</option>
+                        <option value="advisor">Advisor</option>
+                        <option value="mentor">Mentor</option>
+                        <option value="part-time">Part-Time</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                )}
             </div>
 
             {/* Faculty Table */}
