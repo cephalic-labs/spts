@@ -21,6 +21,10 @@ function normalizeDateOnly(value) {
     return `${year}-${month}-${day}`;
 }
 
+function isPendingStatus(status) {
+    return typeof status === "string" && status.startsWith("pending_");
+}
+
 async function getStudentRecordForOD(studentAppwriteId, studentEmail) {
     if (!studentAppwriteId && !studentEmail) return null;
 
@@ -465,6 +469,53 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
 }
 
 /**
+ * Cancel OD request by student
+ */
+export async function cancelODRequest(odId, studentUserId, remarks = "Cancelled by student") {
+    try {
+        if (!odId || !studentUserId) {
+            throw new Error("OD request ID and student ID are required.");
+        }
+
+        const odRequest = await getODRequestById(odId);
+        const fromStatus = odRequest.current_status;
+
+        if (odRequest.student_id !== studentUserId) {
+            throw new Error("You can only cancel your own OD request.");
+        }
+
+        if (!isPendingStatus(fromStatus)) {
+            throw new Error("Only pending OD requests can be cancelled.");
+        }
+
+        const updatedOD = await databases.updateDocument(
+            DATABASE_ID,
+            COLLECTIONS.OD_REQUESTS,
+            odId,
+            {
+                current_status: OD_STATUS.CANCELLED,
+                final_decision: "cancelled",
+            }
+        );
+
+        await logApproval(
+            odId,
+            fromStatus,
+            OD_STATUS.CANCELLED,
+            "cancel",
+            studentUserId,
+            "student",
+            remarks
+        );
+
+        return updatedOD;
+    } catch (error) {
+        console.error("Error cancelling OD request:", error);
+        throw error;
+    }
+}
+
+/**
  * Log approval action
  */
 async function logApproval(odId, fromStatus, toStatus, action, userId, role, remarks) {
@@ -589,6 +640,7 @@ export default {
     getODRequestById,
     approveODRequest,
     rejectODRequest,
+    cancelODRequest,
     getAllODRequests,
     getApprovalLogsByODId,
     getRecentApprovalLogs,

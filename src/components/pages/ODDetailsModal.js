@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { getODRequestById, getApprovalLogsByODId } from "@/lib/services/odRequestService";
+import { getEventById } from "@/lib/services/eventService";
+import { getStudentByAppwriteUserId, getStudentByEmail } from "@/lib/services/studentService";
 import { OD_STATUS } from "@/lib/dbConfig";
 
 const statusColors = {
@@ -12,6 +14,7 @@ const statusColors = {
     [OD_STATUS.GRANTED]: "bg-green-100 text-green-700",
     [OD_STATUS.APPROVED]: "bg-green-100 text-green-700",
     [OD_STATUS.REJECTED]: "bg-red-100 text-red-700",
+    [OD_STATUS.CANCELLED]: "bg-gray-100 text-gray-700",
 };
 
 // The 4-step approval pipeline
@@ -58,9 +61,35 @@ function getStepState(odRequest, step) {
     return "waiting";
 }
 
+function getLogActionMeta(action) {
+    if (action === "approve") {
+        return {
+            label: "Approved",
+            iconClass: "bg-green-100 text-green-600",
+            badgeClass: "text-green-600",
+        };
+    }
+
+    if (action === "cancel") {
+        return {
+            label: "Cancelled",
+            iconClass: "bg-amber-100 text-amber-700",
+            badgeClass: "text-amber-700",
+        };
+    }
+
+    return {
+        label: "Rejected",
+        iconClass: "bg-red-100 text-red-600",
+        badgeClass: "text-red-600",
+    };
+}
+
 export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const [odRequest, setOdRequest] = useState(null);
     const [logs, setLogs] = useState([]);
+    const [eventDetails, setEventDetails] = useState(null);
+    const [studentDetails, setStudentDetails] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -75,8 +104,29 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
             const data = await getODRequestById(odId);
             setOdRequest(data);
 
-            const logsData = await getApprovalLogsByODId(odId);
+            // Fetch related details in parallel
+            // Determine how to fetch student:
+            // The student_id in OD Request is typically the Appwrite User ID.
+            // But the user requested to search by email if possible/relevant, or maybe student_id IS the email in some cases.
+            // We'll try to detect if it's an email, otherwise assume it's a User ID.
+
+            const fetchStudent = async (id) => {
+                if (!id) return null;
+                if (id.includes("@")) {
+                    return await getStudentByEmail(id).catch(() => null);
+                }
+                return await getStudentByAppwriteUserId(id).catch(() => null);
+            };
+
+            const [logsData, eventData, studentData] = await Promise.all([
+                getApprovalLogsByODId(odId),
+                data.event_id ? getEventById(data.event_id).catch(() => null) : Promise.resolve(null),
+                data.student_id ? fetchStudent(data.student_id) : Promise.resolve(null)
+            ]);
+
             setLogs(logsData.documents || []);
+            setEventDetails(eventData);
+            setStudentDetails(studentData);
         } catch (error) {
             console.error("Error loading OD details:", error);
         } finally {
@@ -88,6 +138,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
 
     const isGranted = odRequest?.current_status === OD_STATUS.GRANTED || odRequest?.current_status === OD_STATUS.APPROVED;
     const isRejected = odRequest?.current_status === OD_STATUS.REJECTED;
+    const isCancelled = odRequest?.current_status === OD_STATUS.CANCELLED;
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -132,6 +183,17 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                     </div>
                                     <h3 className="text-xl font-black text-red-700 mb-1">OD Rejected</h3>
                                     <p className="text-red-600 text-sm">Your OD request was rejected. See details below.</p>
+                                </div>
+                            )}
+                            {isCancelled && (
+                                <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center">
+                                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <svg className="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 6l12 12M18 6l-12 12" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-xl font-black text-gray-700 mb-1">OD Cancelled</h3>
+                                    <p className="text-gray-600 text-sm">This OD request was cancelled by the student.</p>
                                 </div>
                             )}
 
@@ -214,11 +276,38 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                 </div>
                             </div>
 
+                            {/* Student Details */}
+                            {studentDetails && (
+                                <div className="bg-blue-50/50 rounded-2xl p-6 border border-blue-100">
+                                    <h4 className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mb-4">Student Details</h4>
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-lg shrink-0">
+                                            {studentDetails.name?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-[#1E2761] text-lg leading-tight">{studentDetails.name}</h3>
+                                            <p className="text-sm text-blue-600 font-medium mt-0.5">{studentDetails.student_register_no}</p>
+                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                <span className="px-2 py-1 bg-white rounded-md text-[10px] font-bold text-gray-500 border border-gray-100 shadow-sm uppercase">
+                                                    {studentDetails.department}
+                                                </span>
+                                                <span className="px-2 py-1 bg-white rounded-md text-[10px] font-bold text-gray-500 border border-gray-100 shadow-sm uppercase">
+                                                    Year {studentDetails.year}
+                                                </span>
+                                                <span className="px-2 py-1 bg-white rounded-md text-[10px] font-bold text-gray-500 border border-gray-100 shadow-sm uppercase">
+                                                    Sec {studentDetails.section}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Info Grid */}
                             <div className="grid grid-cols-2 gap-8">
                                 <div>
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Event</h4>
-                                    <p className="font-bold text-[#1E2761]">{odRequest.event_id || 'N/A'}</p>
+                                    <p className="font-bold text-[#1E2761]">{eventDetails?.event_name || odRequest.event_id || 'N/A'}</p>
                                 </div>
                                 <div>
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Duration</h4>
@@ -244,9 +333,11 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                 {idx !== logs.length - 1 && (
                                                     <div className="absolute left-[11px] top-6 bottom-[-24px] w-[2px] bg-gray-100"></div>
                                                 )}
-                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 ${log.action === 'approve' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 ${getLogActionMeta(log.action).iconClass}`}>
                                                     {log.action === 'approve' ? (
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>
+                                                    ) : log.action === 'cancel' ? (
+                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" /></svg>
                                                     ) : (
                                                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" /></svg>
                                                     )}
@@ -254,8 +345,8 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <span className="font-bold text-sm text-[#1E2761] capitalize">{log.action_by_role}</span>
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${log.action === 'approve' ? 'text-green-600' : 'text-red-600'}`}>
-                                                            {log.action === 'approve' ? 'Approved' : 'Rejected'}
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${getLogActionMeta(log.action).badgeClass}`}>
+                                                            {getLogActionMeta(log.action).label}
                                                         </span>
                                                     </div>
                                                     <p className="text-xs text-gray-500 mb-1">{log.remarks || 'No remarks'}</p>

@@ -25,6 +25,7 @@ export const OD_STATUS = {
     GRANTED: "granted",
     APPROVED: "approved",
     REJECTED: "rejected",
+    CANCELLED: "cancelled",
 };
 
 // Role hierarchy for approval workflow

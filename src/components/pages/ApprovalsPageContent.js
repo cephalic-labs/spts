@@ -22,6 +22,27 @@ const roleSteps = {
     hod: "Stage 4/4",
 };
 
+function getLogActionMeta(action) {
+    if (action === "approve") {
+        return {
+            label: "APPROVED",
+            className: "bg-green-100 text-green-700",
+        };
+    }
+
+    if (action === "cancel") {
+        return {
+            label: "CANCELLED",
+            className: "bg-amber-100 text-amber-700",
+        };
+    }
+
+    return {
+        label: "REJECTED",
+        className: "bg-red-100 text-red-700",
+    };
+}
+
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
     const [pendingRequests, setPendingRequests] = useState([]);
@@ -336,11 +357,8 @@ export default function ApprovalsPageContent({ role }) {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${log.action === 'approve'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : 'bg-red-100 text-red-700'
-                                                    }`}>
-                                                    {log.action === 'approve' ? 'APPROVED' : 'REJECTED'}
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${getLogActionMeta(log.action).className}`}>
+                                                    {getLogActionMeta(log.action).label}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 text-gray-600 italic">

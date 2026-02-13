@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getStudentODRequests, getAllODRequests } from "@/lib/services/odRequestService";
+import { getStudentODRequests, getAllODRequests, cancelODRequest } from "@/lib/services/odRequestService";
+import { getEventsByIds } from "@/lib/services/eventService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
@@ -16,6 +17,7 @@ const statusColors = {
     [OD_STATUS.GRANTED]: "bg-green-100 text-green-700",
     [OD_STATUS.APPROVED]: "bg-green-100 text-green-700",
     [OD_STATUS.REJECTED]: "bg-red-100 text-red-700",
+    [OD_STATUS.CANCELLED]: "bg-gray-100 text-gray-700",
 };
 
 const statusLabels = {
@@ -26,16 +28,19 @@ const statusLabels = {
     [OD_STATUS.GRANTED]: "Granted",
     [OD_STATUS.APPROVED]: "Approved",
     [OD_STATUS.REJECTED]: "Rejected",
+    [OD_STATUS.CANCELLED]: "Cancelled",
 };
 
 export default function SubmissionsPageContent({ role }) {
     const { user } = useAuth();
     const [submissions, setSubmissions] = useState([]);
+    const [eventsMap, setEventsMap] = useState({});
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [selectedODId, setSelectedODId] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [cancelLoadingId, setCancelLoadingId] = useState(null);
 
     useEffect(() => {
         if (user || role !== 'student') {
@@ -62,7 +67,19 @@ export default function SubmissionsPageContent({ role }) {
                 response = await getAllODRequests(100);
             }
 
-            setSubmissions(response?.documents || []);
+            const docs = response?.documents || [];
+            setSubmissions(docs);
+
+            // Fetch event details
+            const eventIds = [...new Set(docs.map(s => s.event_id).filter(Boolean))];
+            if (eventIds.length > 0) {
+                const events = await getEventsByIds(eventIds);
+                const map = {};
+                events.forEach(e => {
+                    map[e.$id] = e;
+                });
+                setEventsMap(map);
+            }
         } catch (err) {
             setError("Failed to load submissions. Please try again.");
             console.error(err);
@@ -75,6 +92,32 @@ export default function SubmissionsPageContent({ role }) {
         setSelectedODId(id);
         setIsDetailsModalOpen(true);
     };
+
+    async function handleCancel(submission) {
+        const studentId = user?.$id || user?.dbId;
+        if (!studentId) {
+            setError("Unable to identify your account. Please sign in again.");
+            return;
+        }
+
+        const canCancel = submission.current_status?.startsWith("pending_");
+        if (!canCancel) return;
+
+        const confirmed = window.confirm("Cancel this OD request? This cannot be undone.");
+        if (!confirmed) return;
+
+        try {
+            setCancelLoadingId(submission.$id);
+            setError(null);
+            await cancelODRequest(submission.$id, studentId, "Cancelled by student");
+            await loadSubmissions();
+        } catch (err) {
+            console.error("Error cancelling OD request:", err);
+            setError(err?.message || "Failed to cancel request. Please try again.");
+        } finally {
+            setCancelLoadingId(null);
+        }
+    }
 
     const canCreateSubmission = role === "student";
 
@@ -152,7 +195,7 @@ export default function SubmissionsPageContent({ role }) {
                             <thead className="bg-[#F8F9FA] border-b border-gray-100">
                                 <tr>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event ID</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Range</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Created</th>
@@ -166,7 +209,7 @@ export default function SubmissionsPageContent({ role }) {
                                             #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-800 font-medium">
-                                            {submission.event_id?.slice(0, 12)}...
+                                            {eventsMap[submission.event_id]?.event_name || submission.event_id?.slice(0, 12) + '...'}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
                                             {new Date(submission.od_start_date).toLocaleDateString()} - {new Date(submission.od_end_date).toLocaleDateString()}
@@ -180,12 +223,23 @@ export default function SubmissionsPageContent({ role }) {
                                             {new Date(submission.$createdAt).toLocaleDateString()}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => openDetails(submission.$id)}
-                                                className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                            >
-                                                Details
-                                            </button>
+                                            <div className="flex items-center justify-end gap-3">
+                                                {role === "student" && submission.current_status?.startsWith("pending_") && (
+                                                    <button
+                                                        onClick={() => handleCancel(submission)}
+                                                        disabled={cancelLoadingId === submission.$id}
+                                                        className="text-red-600 hover:text-red-800 hover:underline text-xs font-black uppercase tracking-widest disabled:opacity-50"
+                                                    >
+                                                        {cancelLoadingId === submission.$id ? "Cancelling..." : "Cancel"}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => openDetails(submission.$id)}
+                                                    className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                                >
+                                                    Details
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

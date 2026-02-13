@@ -26,6 +26,46 @@ export async function getEvents(limit = 50, offset = 0) {
 }
 
 /**
+ * Get events by IDs
+ */
+export async function getEventsByIds(eventIds) {
+    if (!eventIds || eventIds.length === 0) return [];
+    
+    // Deduplicate IDs
+    const uniqueIds = [...new Set(eventIds)];
+    
+    try {
+        // Appwrite supports array for equal query for some attributes, but for $id it might be limited.
+        // However, standard practice for fetching multiple docs by ID often involves multiple requests if array query isn't supported for $id.
+        // Let's try Query.equal('$id', uniqueIds). If it fails, we fall back to Promise.all.
+        // Actually, Appwrite documentation says Query.equal('$id', [id1, id2]) works.
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.EVENTS,
+            [
+                Query.equal("$id", uniqueIds),
+                Query.limit(uniqueIds.length)
+            ]
+        );
+        return response.documents;
+    } catch (error) {
+        console.error("Error getting events by IDs:", error);
+        // Fallback: fetch individually
+        try {
+            const events = await Promise.all(
+                uniqueIds.map(id => 
+                    databases.getDocument(DATABASE_ID, COLLECTIONS.EVENTS, id).catch(() => null)
+                )
+            );
+            return events.filter(e => e !== null);
+        } catch (fallbackError) {
+             console.error("Fallback error getting events by IDs:", fallbackError);
+             return [];
+        }
+    }
+}
+
+/**
  * Get event by ID
  */
 export async function getEventById(eventId) {
@@ -175,6 +215,7 @@ export async function getEventStats() {
 
 export default {
     getEvents,
+    getEventsByIds,
     getEventById,
     createEvent,
     updateEvent,
