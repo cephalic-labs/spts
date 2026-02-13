@@ -30,7 +30,7 @@ export const OD_STATUS = {
 };
 
 // Role hierarchy for approval workflow
-export const APPROVAL_ROLES = ["advisor", "coordinator", "hod"];
+export const APPROVAL_ROLES = ["mentor", "advisor", "coordinator", "hod"];
 
 // Get next status after approval
 export function getNextStatus(currentStatus) {
