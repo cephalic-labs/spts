@@ -3,7 +3,7 @@
 import { Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { getRoleDisplayName } from "@/lib/sidebarConfig";
+import { getRoleDisplayName, validRoles } from "@/lib/sidebarConfig";
 
 export default function ProfileDialog({ isOpen, onClose, currentRole }) {
     const { user, logout } = useAuth();
@@ -11,14 +11,23 @@ export default function ProfileDialog({ isOpen, onClose, currentRole }) {
 
     if (!isOpen) return null;
 
-    // Ensure roles is an array
-    const availableRoles = Array.isArray(user?.role)
-        ? user.role
-        : (user?.role ? [user.role] : []);
+    // Use Appwrite labels as the source of truth for roles
+    // Filter to only include valid roles defined in the system
+    let availableRoles = (user?.labels || [])
+        .filter(label => validRoles.includes(label));
 
-    // Also include labels if for some reason DB role sync failed but labels exist
-    // (Optional resilience step, typically DB role is best)
-    // For now, relies on user.role from AuthContext which comes from DB
+    // Fallback to DB role if labels are empty but DB role exists
+    if (availableRoles.length === 0 && user?.role) {
+        const dbRoles = Array.isArray(user.role) ? user.role : [user.role];
+        dbRoles.forEach(r => {
+            if (validRoles.includes(r) && !availableRoles.includes(r)) {
+                availableRoles.push(r);
+            }
+        });
+    }
+
+    // Ensure uniqueness
+    availableRoles = [...new Set(availableRoles)];
 
     const handleSwitchRole = (role) => {
         router.push(`/dashboard/${role.toLowerCase()}`);
