@@ -126,7 +126,7 @@ export async function createFaculty(data) {
         email: String(data.email || "").substring(0, 100),
         department: String(data.department || "").substring(0, 4),
         designation: String(data.designation || "").substring(0, 50),
-        role: String(data.role || "mentor").substring(0, 30),
+        role: (Array.isArray(data.role) ? data.role : String(data.role || "mentor").split(',').map(r => r.trim()).filter(r => r)),
         assigned_sections: Array.isArray(data.assigned_sections) ? data.assigned_sections.map(s => String(s).substring(0, 10)) : [],
         assigned_years: Array.isArray(data.assigned_years) ? data.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y)) : [],
     };
@@ -150,6 +150,9 @@ export async function createFaculty(data) {
 export async function updateFaculty(facultyId, data) {
     try {
         const updateData = { ...data };
+        if (updateData.role) {
+            updateData.role = (Array.isArray(updateData.role) ? updateData.role : String(updateData.role).split(',').map(r => r.trim()).filter(r => r));
+        }
         if (updateData.assigned_years) {
             updateData.assigned_years = updateData.assigned_years.map(y => parseInt(y)).filter(y => !isNaN(y));
         }

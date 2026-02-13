@@ -15,6 +15,26 @@ export async function syncUserToDatabase(appwriteUser) {
 
         if (existingUser) {
             // User exists, return with merged data
+            if (appwriteUser.labels && appwriteUser.labels.length > 0) {
+                // Check if roles need sync
+                const dbRoles = Array.isArray(existingUser.role) ? existingUser.role : [existingUser.role];
+                const labelRoles = appwriteUser.labels;
+
+                // Compare arrays (ignoring order)
+                const sortedDb = [...dbRoles].sort().join(',');
+                const sortedLabels = [...labelRoles].sort().join(',');
+
+                if (sortedDb !== sortedLabels) {
+                    console.log("Syncing roles to DB:", labelRoles);
+                    try {
+                        const updated = await updateUserRole(existingUser.$id, labelRoles);
+                        return updated;
+                    } catch (e) {
+                        console.error("Failed to sync roles to DB:", e);
+                        return existingUser;
+                    }
+                }
+            }
             return existingUser;
         }
 

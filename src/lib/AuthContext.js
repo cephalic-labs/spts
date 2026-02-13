@@ -21,21 +21,25 @@ export function AuthProvider({ children }) {
       // Get Appwrite auth user
       let currentUser = await account.get();
 
-      // If user has no labels, try to assign them based on DB records
-      if (!currentUser.labels || currentUser.labels.length === 0) {
-        console.log("User has no labels, checking DB for role assignment...");
-        try {
-          const result = await assignUserRole(currentUser.$id, currentUser.email);
-          if (result.success) {
-            // Refresh user to get new labels
+      // Always verify roles against DB to ensure they are up to date
+      // This ensures that if a role is added in DB, it reflects in Appwrite labels immediately
+      try {
+        const result = await assignUserRole(currentUser.$id, currentUser.email);
+        if (result.success) {
+          // Check if labels actually changed to avoid unnecessary re-fetch
+          const currentLabels = currentUser.labels || [];
+          const newLabels = result.labels || [];
+
+          const sortedCurrent = [...currentLabels].sort().join(',');
+          const sortedNew = [...newLabels].sort().join(',');
+
+          if (sortedCurrent !== sortedNew) {
+            console.log("Roles updated, refreshing user...");
             currentUser = await account.get();
-          } else {
-            console.warn("Role assignment returned:", result.error);
           }
-        } catch (roleErr) {
-          console.error("Role assignment failed (non-fatal):", roleErr);
-          // Continue - user just won't have a role yet
         }
+      } catch (roleErr) {
+        console.error("Role assignment failed (non-fatal):", roleErr);
       }
 
       setUser(currentUser);
@@ -50,7 +54,8 @@ export function AuthProvider({ children }) {
           setUser((prev) => ({
             ...prev,
             profile_url: syncedUser.profile_url,
-            role: syncedUser.role,
+            role: Array.isArray(syncedUser.role) ? (syncedUser.role[0] || "student") : syncedUser.role,
+            roles: Array.isArray(syncedUser.role) ? syncedUser.role : [syncedUser.role],
             dbId: syncedUser.$id,
           }));
         }
@@ -83,7 +88,8 @@ export function AuthProvider({ children }) {
           ...prev,
           name: currentUser.name,
           profile_url: userData.profile_url,
-          role: userData.role,
+          role: Array.isArray(userData.role) ? (userData.role[0] || "student") : userData.role,
+          roles: Array.isArray(userData.role) ? userData.role : [userData.role],
           dbId: userData.$id,
         }));
       } else {
