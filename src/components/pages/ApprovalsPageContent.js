@@ -15,6 +15,13 @@ const roleToStatus = {
     hod: OD_STATUS.PENDING_HOD,
 };
 
+const roleSteps = {
+    mentor: "Stage 1/4",
+    advisor: "Stage 2/4",
+    coordinator: "Stage 3/4",
+    hod: "Stage 4/4",
+};
+
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
     const [pendingRequests, setPendingRequests] = useState([]);
@@ -35,7 +42,11 @@ export default function ApprovalsPageContent({ role }) {
             setLoading(true);
             setApproverError(null);
             const status = roleToStatus[role];
-            let facultyId = null;
+
+            if (role === 'student') return; // Students don't approve
+
+            let currentFacultyId = null;
+            let approverIds = [];
 
             if (status && user?.$id) {
                 // Try multiple methods to find the faculty record
@@ -62,8 +73,10 @@ export default function ApprovalsPageContent({ role }) {
                 }
 
                 if (faculty) {
-                    facultyId = faculty.faculty_id || faculty.$id || null;
-                    setApproverFacultyId(facultyId);
+                    // Use both faculty_id (preferred) and $id (legacy) to catch all requests
+                    approverIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
+                    setApproverFacultyId(approverIds);
+                    currentFacultyId = faculty.$id;
                 } else {
                     setApproverFacultyId(null);
                     setApproverError("Your faculty profile could not be found. Make sure your email matches a faculty record in the system.");
@@ -73,15 +86,14 @@ export default function ApprovalsPageContent({ role }) {
             }
 
             // Fetch pending requests
-            if (status && facultyId) {
+            if (status && approverIds.length > 0) {
                 const response = await getODRequestsByStatus(status, 50, {
                     approverRole: role,
-                    approverId: facultyId,
+                    approverIds: approverIds,
                 });
                 setPendingRequests(response?.documents || []);
-            } else if (status && !facultyId) {
-                // If we couldn't determine faculty ID, try fetching all pending for this status
-                // This ensures admins/sudo with this role can still see requests
+            } else if (status && !currentFacultyId) {
+                // If not found as faculty, but has role (e.g. admin/sudo viewing as mentor), show all
                 try {
                     const response = await getODRequestsByStatus(status, 50);
                     setPendingRequests(response?.documents || []);
@@ -143,6 +155,29 @@ export default function ApprovalsPageContent({ role }) {
         );
     }
 
+    if (role === 'student') {
+        return (
+            <div className="text-center py-20">
+                <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <Icons.Submissions className="w-10 h-10 text-[#1E2761]" />
+                </div>
+                <h2 className="text-2xl font-bold text-[#1E2761] mb-2">Track Your Approvals</h2>
+                <p className="text-gray-500 max-w-md mx-auto mb-8">
+                    You can track the status of your OD requests in the Submissions section.
+                </p>
+                <a
+                    href="/dashboard/student/submissions"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-[#1E2761] text-white font-bold rounded-xl hover:bg-[#2d3a7d] transition-colors"
+                >
+                    View My Submissions
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                </a>
+            </div>
+        );
+    }
+
     const canApprove = ["mentor", "advisor", "coordinator", "hod"].includes(role);
 
     return (
@@ -152,7 +187,7 @@ export default function ApprovalsPageContent({ role }) {
                 <h1 className="text-2xl font-bold text-[#1E2761]">Pending Approvals</h1>
                 <p className="text-gray-500 text-sm mt-1">
                     {canApprove
-                        ? `Review and approve OD requests requiring ${role} approval`
+                        ? `Review and approve requests (${roleSteps[role] || "Unknown Stage"})`
                         : "View approval status of all requests"}
                 </p>
             </div>

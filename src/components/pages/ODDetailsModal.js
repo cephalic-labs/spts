@@ -22,17 +22,39 @@ const APPROVAL_STEPS = [
     { key: "hod", label: "HOD", statusField: "hod_status", remarksField: "hod_remarks", actionAtField: "hod_action_at", pendingStatus: OD_STATUS.PENDING_HOD },
 ];
 
+// Pipeline order definition
+const PIPELINE_ORDER = [
+    OD_STATUS.PENDING_MENTOR,
+    OD_STATUS.PENDING_ADVISOR,
+    OD_STATUS.PENDING_COORDINATOR,
+    OD_STATUS.PENDING_HOD,
+    OD_STATUS.GRANTED,
+    OD_STATUS.APPROVED
+];
+
 function getStepState(odRequest, step) {
     if (!odRequest) return "waiting";
 
+    // 1. Check explicit status if available
     const stepStatus = odRequest[step.statusField];
     if (stepStatus === "approved") return "approved";
     if (stepStatus === "rejected") return "rejected";
+
+    // 2. Check current status match
     if (odRequest.current_status === step.pendingStatus) return "current";
-    if (odRequest.current_status === OD_STATUS.REJECTED) {
-        // If rejected but not by this step, it's waiting
-        return "waiting";
-    }
+
+    // 3. Infer "approved" based on pipeline position
+    // If request status is later in the pipeline than this step's pending status, 
+    // we can assume this step was approved.
+    const currentIndex = PIPELINE_ORDER.indexOf(odRequest.current_status);
+    const stepIndex = PIPELINE_ORDER.indexOf(step.pendingStatus);
+
+    if (currentIndex > stepIndex) return "approved";
+
+    // 4. Handle Rejected case slightly differently?
+    // If rejected, we typically reset or just show the rejection banner.
+    // The individual step circles will stay "waiting" unless explicitly marked rejected.
+
     return "waiting";
 }
 
@@ -129,12 +151,12 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                 <div key={step.key} className="flex flex-col items-center" style={{ width: '25%' }}>
                                                     {/* Circle */}
                                                     <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${state === "approved"
-                                                            ? "bg-green-500 border-green-500 text-white"
-                                                            : state === "rejected"
-                                                                ? "bg-red-500 border-red-500 text-white"
-                                                                : state === "current"
-                                                                    ? "bg-white border-[#1E2761] text-[#1E2761] animate-pulse shadow-lg shadow-[#1E2761]/20"
-                                                                    : "bg-gray-100 border-gray-200 text-gray-400"
+                                                        ? "bg-green-500 border-green-500 text-white"
+                                                        : state === "rejected"
+                                                            ? "bg-red-500 border-red-500 text-white"
+                                                            : state === "current"
+                                                                ? "bg-white border-[#1E2761] text-[#1E2761] animate-pulse shadow-lg shadow-[#1E2761]/20"
+                                                                : "bg-gray-100 border-gray-200 text-gray-400"
                                                         }`}>
                                                         {state === "approved" ? (
                                                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -150,17 +172,17 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                     </div>
                                                     {/* Label */}
                                                     <span className={`mt-2 text-xs font-bold text-center ${state === "approved" ? "text-green-600"
-                                                            : state === "rejected" ? "text-red-600"
-                                                                : state === "current" ? "text-[#1E2761]"
-                                                                    : "text-gray-400"
+                                                        : state === "rejected" ? "text-red-600"
+                                                            : state === "current" ? "text-[#1E2761]"
+                                                                : "text-gray-400"
                                                         }`}>
                                                         {step.label}
                                                     </span>
                                                     {/* Status text */}
                                                     <span className={`text-[10px] mt-0.5 ${state === "approved" ? "text-green-500"
-                                                            : state === "rejected" ? "text-red-500"
-                                                                : state === "current" ? "text-yellow-600"
-                                                                    : "text-gray-300"
+                                                        : state === "rejected" ? "text-red-500"
+                                                            : state === "current" ? "text-yellow-600"
+                                                                : "text-gray-300"
                                                         }`}>
                                                         {state === "approved" ? "Approved"
                                                             : state === "rejected" ? "Rejected"

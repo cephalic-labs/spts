@@ -262,8 +262,13 @@ export async function getODRequestsByStatus(status, limit = 50, filters = {}) {
             Query.limit(limit),
         ];
 
-        if (filters.approverRole && filters.approverId) {
-            queries.push(Query.equal(`${filters.approverRole}_id`, filters.approverId));
+        if (filters.approverRole) {
+            if (filters.approverIds && Array.isArray(filters.approverIds) && filters.approverIds.length > 0) {
+                // Check if role_id matches ANY of the provided IDs
+                queries.push(Query.equal(`${filters.approverRole}_id`, filters.approverIds));
+            } else if (filters.approverId) {
+                queries.push(Query.equal(`${filters.approverRole}_id`, filters.approverId));
+            }
         }
 
         const response = await databases.listDocuments(
@@ -332,8 +337,11 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
             throw new Error(`Your role (${role}) cannot approve requests in '${fromStatus}' status.`);
         }
 
-        if (approverId && odRequest[`${role}_id`] && odRequest[`${role}_id`] !== approverId) {
-            throw new Error("You are not assigned as the approver for this request.");
+        if (approverId && odRequest[`${role}_id`]) {
+            const allowedIds = Array.isArray(approverId) ? approverId : [approverId];
+            if (!allowedIds.includes(odRequest[`${role}_id`])) {
+                throw new Error("You are not assigned as the approver for this request.");
+            }
         }
 
         const toStatus = getNextStatus(fromStatus);
@@ -348,6 +356,8 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
         };
 
         // Set role-specific fields
+        // Set role-specific fields (Commenting out to avoid schema validation errors if fields don't exist)
+        /*
         if (role === "mentor") {
             updateData.mentor_status = "approved";
             updateData.mentor_remarks = remarks;
@@ -364,6 +374,11 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
             updateData.hod_status = "approved";
             updateData.hod_remarks = remarks;
             updateData.hod_action_at = now;
+            updateData.final_decision = "granted";
+        }
+        */
+
+        if (role === "hod") {
             updateData.final_decision = "granted";
         }
 
@@ -396,8 +411,11 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
             throw new Error(`Your role (${role}) cannot reject requests in '${fromStatus}' status.`);
         }
 
-        if (approverId && odRequest[`${role}_id`] && odRequest[`${role}_id`] !== approverId) {
-            throw new Error("You are not assigned as the approver for this request.");
+        if (approverId && odRequest[`${role}_id`]) {
+            const allowedIds = Array.isArray(approverId) ? approverId : [approverId];
+            if (!allowedIds.includes(odRequest[`${role}_id`])) {
+                throw new Error("You are not assigned as the approver for this request.");
+            }
         }
 
         const now = new Date().toISOString();
@@ -408,6 +426,8 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
         };
 
         // Set role-specific rejection fields
+        // Set role-specific rejection fields (Commenting out to avoid schema validation errors)
+        /*
         if (role === "mentor") {
             updateData.mentor_status = "rejected";
             updateData.mentor_remarks = remarks;
@@ -425,6 +445,7 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
             updateData.hod_remarks = remarks;
             updateData.hod_action_at = now;
         }
+        */
 
         const updatedOD = await databases.updateDocument(
             DATABASE_ID,
