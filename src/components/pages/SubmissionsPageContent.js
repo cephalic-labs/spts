@@ -41,6 +41,7 @@ export default function SubmissionsPageContent({ role }) {
     const [selectedODId, setSelectedODId] = useState(null);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [cancelLoadingId, setCancelLoadingId] = useState(null);
+    const [cancelDialogSubmission, setCancelDialogSubmission] = useState(null);
 
     useEffect(() => {
         if (user || role !== 'student') {
@@ -93,7 +94,19 @@ export default function SubmissionsPageContent({ role }) {
         setIsDetailsModalOpen(true);
     };
 
-    async function handleCancel(submission) {
+    function openCancelDialog(submission) {
+        setCancelDialogSubmission(submission);
+    }
+
+    function closeCancelDialog() {
+        if (cancelLoadingId) return;
+        setCancelDialogSubmission(null);
+    }
+
+    async function confirmCancel() {
+        const submission = cancelDialogSubmission;
+        if (!submission) return;
+
         const studentId = user?.$id || user?.dbId;
         if (!studentId) {
             setError("Unable to identify your account. Please sign in again.");
@@ -103,14 +116,12 @@ export default function SubmissionsPageContent({ role }) {
         const canCancel = submission.current_status?.startsWith("pending_");
         if (!canCancel) return;
 
-        const confirmed = window.confirm("Cancel this OD request? This cannot be undone.");
-        if (!confirmed) return;
-
         try {
             setCancelLoadingId(submission.$id);
             setError(null);
             await cancelODRequest(submission.$id, studentId, "Cancelled by student");
             await loadSubmissions();
+            setCancelDialogSubmission(null);
         } catch (err) {
             console.error("Error cancelling OD request:", err);
             setError(err?.message || "Failed to cancel request. Please try again.");
@@ -226,7 +237,7 @@ export default function SubmissionsPageContent({ role }) {
                                             <div className="flex items-center justify-end gap-3">
                                                 {role === "student" && submission.current_status?.startsWith("pending_") && (
                                                     <button
-                                                        onClick={() => handleCancel(submission)}
+                                                        onClick={() => openCancelDialog(submission)}
                                                         disabled={cancelLoadingId === submission.$id}
                                                         className="text-red-600 hover:text-red-800 hover:underline text-xs font-black uppercase tracking-widest disabled:opacity-50"
                                                     >
@@ -248,6 +259,33 @@ export default function SubmissionsPageContent({ role }) {
                     </div>
                 ) : null}
             </div>
+
+            {cancelDialogSubmission && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6 border border-gray-100 shadow-2xl">
+                        <h3 className="text-lg font-black text-[#1E2761] mb-2">Cancel OD Request?</h3>
+                        <p className="text-sm text-gray-600 mb-6">
+                            This action cannot be undone. The request will move to cancelled status.
+                        </p>
+                        <div className="flex items-center justify-end gap-3">
+                            <button
+                                onClick={closeCancelDialog}
+                                disabled={Boolean(cancelLoadingId)}
+                                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Keep Request
+                            </button>
+                            <button
+                                onClick={confirmCancel}
+                                disabled={Boolean(cancelLoadingId)}
+                                className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {cancelLoadingId ? "Cancelling..." : "Yes, Cancel"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

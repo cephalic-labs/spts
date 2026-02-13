@@ -51,6 +51,9 @@ export default function ApprovalsPageContent({ role }) {
     const [actionLoading, setActionLoading] = useState(null);
     const [approverFacultyId, setApproverFacultyId] = useState(null);
     const [approverError, setApproverError] = useState(null);
+    const [errorModalMessage, setErrorModalMessage] = useState("");
+    const [rejectDialog, setRejectDialog] = useState({ isOpen: false, odId: null, remarks: "" });
+    const [rejectFormError, setRejectFormError] = useState("");
 
     useEffect(() => {
         if (user) {
@@ -146,23 +149,37 @@ export default function ApprovalsPageContent({ role }) {
             await loadPendingRequests();
         } catch (err) {
             console.error("Error approving request:", err);
-            alert(err?.message || "Failed to approve request");
+            setErrorModalMessage(err?.message || "Failed to approve request");
         } finally {
             setActionLoading(null);
         }
     }
 
-    async function handleReject(odId) {
-        const remarks = prompt("Enter rejection reason:");
-        if (!remarks) return;
+    function openRejectDialog(odId) {
+        setRejectFormError("");
+        setRejectDialog({ isOpen: true, odId, remarks: "" });
+    }
+
+    function closeRejectDialog() {
+        setRejectDialog({ isOpen: false, odId: null, remarks: "" });
+        setRejectFormError("");
+    }
+
+    async function submitReject() {
+        const remarks = rejectDialog.remarks?.trim();
+        if (!remarks) {
+            setRejectFormError("Rejection reason is required.");
+            return;
+        }
 
         try {
-            setActionLoading(odId);
-            await rejectODRequest(odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
+            setActionLoading(rejectDialog.odId);
+            await rejectODRequest(rejectDialog.odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
             await loadPendingRequests();
+            closeRejectDialog();
         } catch (err) {
             console.error("Error rejecting request:", err);
-            alert(err?.message || "Failed to reject request");
+            setErrorModalMessage(err?.message || "Failed to reject request");
         } finally {
             setActionLoading(null);
         }
@@ -280,7 +297,7 @@ export default function ApprovalsPageContent({ role }) {
                                     {canApprove && (
                                         <div className="flex items-center gap-2">
                                             <button
-                                                onClick={() => handleReject(request.$id)}
+                                                onClick={() => openRejectDialog(request.$id)}
                                                 disabled={actionLoading === request.$id}
                                                 className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                                             >
@@ -372,6 +389,61 @@ export default function ApprovalsPageContent({ role }) {
                     )}
                 </div>
             </div>
+
+            {rejectDialog.isOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6 border border-gray-100 shadow-2xl">
+                        <h3 className="text-lg font-black text-[#1E2761] mb-2">Reject OD Request</h3>
+                        <p className="text-sm text-gray-600 mb-4">Provide a reason for rejection.</p>
+                        <textarea
+                            rows={4}
+                            value={rejectDialog.remarks}
+                            onChange={(e) => {
+                                setRejectFormError("");
+                                setRejectDialog((prev) => ({ ...prev, remarks: e.target.value }));
+                            }}
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                            placeholder="Enter rejection reason..."
+                        />
+                        {rejectFormError && (
+                            <p className="mt-2 text-xs text-red-600 font-semibold">{rejectFormError}</p>
+                        )}
+                        <div className="mt-6 flex items-center justify-end gap-3">
+                            <button
+                                onClick={closeRejectDialog}
+                                disabled={Boolean(actionLoading)}
+                                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 font-semibold hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={submitReject}
+                                disabled={Boolean(actionLoading)}
+                                className="px-4 py-2 rounded-lg bg-red-600 text-white font-semibold hover:bg-red-700 disabled:opacity-50"
+                            >
+                                {actionLoading ? "Rejecting..." : "Reject Request"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {errorModalMessage && (
+                <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-2xl">
+                        <h3 className="text-lg font-black text-[#1E2761] mb-2">Action Failed</h3>
+                        <p className="text-sm text-gray-600 mb-6">{errorModalMessage}</p>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setErrorModalMessage("")}
+                                className="px-4 py-2 rounded-lg bg-[#1E2761] text-white font-semibold hover:bg-[#2d3a7d]"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
