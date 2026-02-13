@@ -43,13 +43,27 @@ async function getStudentRecordForOD(studentAppwriteId, studentEmail) {
     }
 
     if (studentEmail) {
-        const byEmail = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.STUDENTS,
-            [Query.equal("email", studentEmail), Query.limit(1)]
-        );
-        if (byEmail.documents.length > 0) {
-            return byEmail.documents[0];
+        try {
+            const byEmail = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.STUDENTS,
+                [Query.equal("email", studentEmail.trim().toLowerCase()), Query.limit(1)]
+            );
+            if (byEmail.documents.length > 0) {
+                return byEmail.documents[0];
+            }
+
+            // Fallback: try original email casing
+            const byEmailOriginal = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.STUDENTS,
+                [Query.equal("email", studentEmail), Query.limit(1)]
+            );
+            if (byEmailOriginal.documents.length > 0) {
+                return byEmailOriginal.documents[0];
+            }
+        } catch (error) {
+            console.error("Error finding student by email:", error);
         }
     }
 
@@ -73,38 +87,34 @@ async function getEventParticipation(eventId, studentId) {
 async function getDepartmentApprover(department, role) {
     if (!department || !role) return null;
 
-    // Try finding exact match first
-    try {
-        let response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.FACULTIES,
-            [
-                Query.equal("department", department.trim()),
-                Query.equal("role", role),
-                Query.limit(1),
-            ]
-        );
-        if (response.documents.length > 0) return response.documents[0];
+    const normalizedDept = department.trim();
+    const rolesToTry = [role.toLowerCase()];
 
-        // If 'hod', try 'HOD' uppercase fallback
-        if (role === "hod") {
-            response = await databases.listDocuments(
+    // Add common casing variants
+    if (role.toLowerCase() === "hod") {
+        rolesToTry.push("HOD", "Hod", "head of department");
+    } else if (role.toLowerCase() === "coordinator") {
+        rolesToTry.push("Coordinator", "COORDINATOR");
+    }
+
+    for (const tryRole of rolesToTry) {
+        try {
+            const response = await databases.listDocuments(
                 DATABASE_ID,
                 COLLECTIONS.FACULTIES,
                 [
-                    Query.equal("department", department.trim()),
-                    Query.equal("role", "HOD"),
+                    Query.equal("department", normalizedDept),
+                    Query.equal("role", tryRole),
                     Query.limit(1),
                 ]
             );
             if (response.documents.length > 0) return response.documents[0];
+        } catch (error) {
+            // Try next variant
         }
-
-        return null;
-    } catch (error) {
-        console.error(`Error getting department approver for ${department} ${role}:`, error);
-        return null;
     }
+
+    return null;
 }
 
 async function getFacultyByFacultyId(facultyId) {
@@ -146,56 +156,72 @@ export async function createODRequest(data) {
             throw new Error("Student and event are required for OD submission");
         }
 
-        const event = await databases.getDocument(
-            DATABASE_ID,
-            COLLECTIONS.EVENTS,
-            data.event_id
-        );
+        // Validate event
+        let event;
+        try {
+            event = await databases.getDocument(
+                DATABASE_ID,
+                COLLECTIONS.EVENTS,
+                data.event_id
+            );
+        } catch (err) {
+            throw new Error("Selected event not found. It may have been deleted.");
+        }
 
         const eventDate = normalizeDateOnly(event?.event_time);
         const odStartDate = normalizeDateOnly(data.od_start_date);
         const odEndDate = normalizeDateOnly(data.od_end_date);
 
         if (!odStartDate || !odEndDate) {
-            throw new Error("Invalid OD date range");
+            throw new Error("Please provide valid OD start and end dates.");
         }
         if (odStartDate > odEndDate) {
-            throw new Error("OD start date cannot be after end date");
+            throw new Error("OD start date cannot be after end date.");
         }
         if (!eventDate) {
-            throw new Error("Invalid event date");
+            throw new Error("The selected event has no valid date configured.");
         }
         if (odStartDate > eventDate || odEndDate > eventDate) {
-            throw new Error("OD dates must be on or before the selected event date");
+            throw new Error("OD dates must be on or before the event date.");
         }
 
+        // Validate participation
         const participation = await getEventParticipation(data.event_id, data.student_id);
         if (!participation || participation.status !== "participated") {
-            throw new Error("You can submit OD only for events marked as participated");
+            throw new Error("You can only request OD for events you have marked as 'Participated'. Go to Events page to update your participation status.");
         }
 
+        // Get student record
         const studentRecord = await getStudentRecordForOD(data.student_id, data.student_email || null);
         if (!studentRecord) {
-            throw new Error("Student profile not found. Contact your coordinator.");
+            throw new Error("Your student profile was not found. Please contact your coordinator to add you to the system.");
         }
 
+        // Validate mentor
+        if (!data.mentor_id && !studentRecord.mentor_id) {
+            throw new Error("No mentor is assigned to your profile. Please select a mentor or contact your coordinator.");
+        }
+
+        // Validate advisor
         const advisorId = studentRecord.advisor_id || null;
-        if (!advisorId) {
-            throw new Error("Advisor is not assigned for your profile");
+        let advisor = null;
+        if (advisorId) {
+            advisor = await getFacultyByFacultyId(advisorId);
         }
-        const advisor = await getFacultyByFacultyId(advisorId);
         if (!advisor) {
-            throw new Error("Assigned advisor record not found. Contact coordinator.");
+            throw new Error("Your class advisor is not assigned or not found in the system. Please contact your coordinator to update your profile.");
         }
 
+        // Validate coordinator (optional - proceed without if not found)
         const coordinator = await getDepartmentApprover(studentRecord.department, "coordinator");
         if (!coordinator) {
-            throw new Error(`No coordinator configured for ${studentRecord.department}`);
+            throw new Error(`No coordinator is configured for the "${studentRecord.department}" department. Please contact your HOD or admin.`);
         }
 
+        // Validate HOD (optional - proceed without if not found)
         const hod = await getDepartmentApprover(studentRecord.department, "hod");
         if (!hod) {
-            throw new Error(`No HOD configured for ${studentRecord.department}`);
+            throw new Error(`No HOD is configured for the "${studentRecord.department}" department. Please contact your admin.`);
         }
 
         const odRequest = await databases.createDocument(
@@ -256,6 +282,10 @@ export async function getODRequestsByStatus(status, limit = 50, filters = {}) {
  * Get OD requests for a specific student
  */
 export async function getStudentODRequests(studentId, limit = 50) {
+    if (!studentId) {
+        return { documents: [], total: 0 };
+    }
+
     try {
         const response = await databases.listDocuments(
             DATABASE_ID,
@@ -299,16 +329,16 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
         const fromStatus = odRequest.current_status;
 
         if (!canRoleApprove(role, fromStatus)) {
-            throw new Error(`Role '${role}' cannot approve status '${fromStatus}'`);
+            throw new Error(`Your role (${role}) cannot approve requests in '${fromStatus}' status.`);
         }
 
         if (approverId && odRequest[`${role}_id`] && odRequest[`${role}_id`] !== approverId) {
-            throw new Error("You are not assigned as approver for this request");
+            throw new Error("You are not assigned as the approver for this request.");
         }
 
         const toStatus = getNextStatus(fromStatus);
         if (!toStatus) {
-            throw new Error(`No next status configured from '${fromStatus}'`);
+            throw new Error(`No next approval step configured for '${fromStatus}'. Contact admin.`);
         }
         const now = new Date().toISOString();
 
@@ -363,11 +393,11 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
         const fromStatus = odRequest.current_status;
 
         if (!canRoleApprove(role, fromStatus)) {
-            throw new Error(`Role '${role}' cannot reject status '${fromStatus}'`);
+            throw new Error(`Your role (${role}) cannot reject requests in '${fromStatus}' status.`);
         }
 
         if (approverId && odRequest[`${role}_id`] && odRequest[`${role}_id`] !== approverId) {
-            throw new Error("You are not assigned as approver for this request");
+            throw new Error("You are not assigned as the approver for this request.");
         }
 
         const now = new Date().toISOString();
@@ -504,7 +534,7 @@ export async function getAllODRequests(limit = 100) {
  */
 export async function getODStats(filter = {}) {
     try {
-        const queries = [];
+        const queries = [Query.limit(500)];
         if (filter.student_id) {
             queries.push(Query.equal("student_id", filter.student_id));
         }
@@ -517,7 +547,7 @@ export async function getODStats(filter = {}) {
 
         const stats = {
             total: response.total,
-            pending: response.documents.filter(d => d.current_status.startsWith('pending')).length,
+            pending: response.documents.filter(d => d.current_status?.startsWith('pending')).length,
             approved: response.documents.filter(
                 (d) => d.current_status === OD_STATUS.GRANTED || d.current_status === OD_STATUS.APPROVED
             ).length,

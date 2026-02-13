@@ -24,30 +24,42 @@ export function AuthProvider({ children }) {
       // If user has no labels, try to assign them based on DB records
       if (!currentUser.labels || currentUser.labels.length === 0) {
         console.log("User has no labels, checking DB for role assignment...");
-        const result = await assignUserRole(currentUser.$id, currentUser.email);
-        if (result.success) {
-          // Refresh user to get new labels
-          // Or just manually update local state to avoid extra API call if we trust the result
-          currentUser = await account.get();
+        try {
+          const result = await assignUserRole(currentUser.$id, currentUser.email);
+          if (result.success) {
+            // Refresh user to get new labels
+            currentUser = await account.get();
+          } else {
+            console.warn("Role assignment returned:", result.error);
+          }
+        } catch (roleErr) {
+          console.error("Role assignment failed (non-fatal):", roleErr);
+          // Continue - user just won't have a role yet
         }
       }
 
       setUser(currentUser);
 
       // Sync to database and get full user data
-      const syncedUser = await syncUserToDatabase(currentUser);
-      setDbUser(syncedUser);
+      try {
+        const syncedUser = await syncUserToDatabase(currentUser);
+        setDbUser(syncedUser);
 
-      // Merge database fields into user object for easy access
-      if (syncedUser) {
-        setUser((prev) => ({
-          ...prev,
-          profile_url: syncedUser.profile_url,
-          role: syncedUser.role,
-          dbId: syncedUser.$id,
-        }));
+        // Merge database fields into user object for easy access
+        if (syncedUser) {
+          setUser((prev) => ({
+            ...prev,
+            profile_url: syncedUser.profile_url,
+            role: syncedUser.role,
+            dbId: syncedUser.$id,
+          }));
+        }
+      } catch (syncErr) {
+        console.error("User sync failed (non-fatal):", syncErr);
+        // Continue without DB sync - basic auth still works
       }
     } catch (error) {
+      // Not logged in
       setUser(null);
       setDbUser(null);
     } finally {
@@ -58,7 +70,12 @@ export function AuthProvider({ children }) {
   async function refreshUser() {
     try {
       const currentUser = await account.get();
-      const userData = await getUserByAppwriteId(currentUser.$id);
+      let userData = null;
+      try {
+        userData = await getUserByAppwriteId(currentUser.$id);
+      } catch (e) {
+        console.error("Error fetching user data during refresh:", e);
+      }
 
       if (userData) {
         setDbUser(userData);
@@ -68,6 +85,12 @@ export function AuthProvider({ children }) {
           profile_url: userData.profile_url,
           role: userData.role,
           dbId: userData.$id,
+        }));
+      } else {
+        // Even without DB user, update from Appwrite
+        setUser((prev) => ({
+          ...prev,
+          name: currentUser.name,
         }));
       }
     } catch (error) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
-import { getFacultyByEmail } from "@/lib/services/facultyService";
+import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
@@ -22,6 +22,7 @@ export default function ApprovalsPageContent({ role }) {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
     const [approverFacultyId, setApproverFacultyId] = useState(null);
+    const [approverError, setApproverError] = useState(null);
 
     useEffect(() => {
         if (user) {
@@ -32,15 +33,41 @@ export default function ApprovalsPageContent({ role }) {
     async function loadPendingRequests() {
         try {
             setLoading(true);
+            setApproverError(null);
             const status = roleToStatus[role];
             let facultyId = null;
 
             if (status && user?.$id) {
-                const dbUser = await getUserByAppwriteId(user.$id);
-                const approverEmail = dbUser?.user_email || user?.email || null;
-                const faculty = approverEmail ? await getFacultyByEmail(approverEmail) : null;
-                facultyId = faculty?.faculty_id || null;
-                setApproverFacultyId(facultyId);
+                // Try multiple methods to find the faculty record
+                let faculty = null;
+
+                // Method 1: Try by appwrite_user_id
+                try {
+                    faculty = await getFacultyByAppwriteId(user.$id);
+                } catch (e) {
+                    console.warn("Could not find faculty by Appwrite ID:", e);
+                }
+
+                // Method 2: Try by email if method 1 failed
+                if (!faculty) {
+                    const dbUser = await getUserByAppwriteId(user.$id);
+                    const approverEmail = dbUser?.user_email || user?.email || null;
+                    if (approverEmail) {
+                        try {
+                            faculty = await getFacultyByEmail(approverEmail);
+                        } catch (e) {
+                            console.warn("Could not find faculty by email:", e);
+                        }
+                    }
+                }
+
+                if (faculty) {
+                    facultyId = faculty.faculty_id || faculty.$id || null;
+                    setApproverFacultyId(facultyId);
+                } else {
+                    setApproverFacultyId(null);
+                    setApproverError("Your faculty profile could not be found. Make sure your email matches a faculty record in the system.");
+                }
             } else {
                 setApproverFacultyId(null);
             }
@@ -52,13 +79,26 @@ export default function ApprovalsPageContent({ role }) {
                     approverId: facultyId,
                 });
                 setPendingRequests(response?.documents || []);
+            } else if (status && !facultyId) {
+                // If we couldn't determine faculty ID, try fetching all pending for this status
+                // This ensures admins/sudo with this role can still see requests
+                try {
+                    const response = await getODRequestsByStatus(status, 50);
+                    setPendingRequests(response?.documents || []);
+                } catch (e) {
+                    setPendingRequests([]);
+                }
             } else {
                 setPendingRequests([]);
             }
 
             // Fetch recent logs
-            const logsResponse = await getRecentApprovalLogs(10);
-            setRecentLogs(logsResponse?.documents || []);
+            try {
+                const logsResponse = await getRecentApprovalLogs(10);
+                setRecentLogs(logsResponse?.documents || []);
+            } catch (e) {
+                setRecentLogs([]);
+            }
         } catch (err) {
             console.error("Error loading pending requests:", err);
         } finally {
@@ -116,6 +156,14 @@ export default function ApprovalsPageContent({ role }) {
                         : "View approval status of all requests"}
                 </p>
             </div>
+
+            {/* Approver Error Banner */}
+            {approverError && (
+                <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-800 mb-1">⚠️ Faculty Profile Issue</p>
+                    <p className="text-xs text-amber-700">{approverError}</p>
+                </div>
+            )}
 
             {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

@@ -41,16 +41,22 @@ export default function SubmissionsPageContent({ role }) {
         if (user || role !== 'student') {
             loadSubmissions();
         }
-    }, [role, user]);
+    }, [role, user?.$id]);
 
     async function loadSubmissions() {
         try {
             setLoading(true);
+            setError(null);
             let response;
 
             if (role === "student") {
+                const studentId = user?.$id;
+                if (!studentId) {
+                    setSubmissions([]);
+                    return;
+                }
                 // Students see their own submissions
-                response = await getStudentODRequests(user?.$id || user?.dbId);
+                response = await getStudentODRequests(studentId);
             } else {
                 // Others see all submissions
                 response = await getAllODRequests(100);
@@ -58,7 +64,7 @@ export default function SubmissionsPageContent({ role }) {
 
             setSubmissions(response?.documents || []);
         } catch (err) {
-            setError("Failed to load submissions");
+            setError("Failed to load submissions. Please try again.");
             console.error(err);
         } finally {
             setLoading(false);
@@ -115,19 +121,32 @@ export default function SubmissionsPageContent({ role }) {
                 odId={selectedODId}
             />
 
+            {/* Error Banner */}
+            {error && (
+                <div className="mb-6 bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center justify-between">
+                    <p className="text-sm font-medium text-red-700">{error}</p>
+                    <button
+                        onClick={loadSubmissions}
+                        className="text-xs font-bold text-red-600 hover:text-red-800 underline"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+
             {/* Submissions Table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                {submissions.length === 0 ? (
+                {submissions.length === 0 && !error ? (
                     <div className="p-12 text-center">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Icons.Submissions />
                         </div>
                         <h3 className="text-lg font-bold text-gray-700 mb-2">No Submissions Found</h3>
                         <p className="text-gray-500">
-                            {role === "student" ? "Submit your first OD request." : "No submissions to display."}
+                            {role === "student" ? "Submit your first OD request using the 'New Request' button above." : "No submissions to display."}
                         </p>
                     </div>
-                ) : (
+                ) : submissions.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className="bg-[#F8F9FA] border-b border-gray-100">
@@ -173,7 +192,7 @@ export default function SubmissionsPageContent({ role }) {
                             </tbody>
                         </table>
                     </div>
-                )}
+                ) : null}
             </div>
         </div>
     );

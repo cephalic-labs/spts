@@ -19,20 +19,29 @@ export async function syncUserToDatabase(appwriteUser) {
         }
 
         // Create new user document
-        const newUser = await databases.createDocument(
-            DATABASE_ID,
-            COLLECTIONS.USERS,
-            ID.unique(),
-            {
-                user_id: appwriteUser.$id,
-                user_name: appwriteUser.name || "User",
-                user_email: appwriteUser.email,
-                profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
-                role: "unassigned",
+        try {
+            const newUser = await databases.createDocument(
+                DATABASE_ID,
+                COLLECTIONS.USERS,
+                ID.unique(),
+                {
+                    user_id: appwriteUser.$id,
+                    user_name: appwriteUser.name || "User",
+                    user_email: appwriteUser.email,
+                    profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
+                    role: "unassigned",
+                }
+            );
+            return newUser;
+        } catch (createError) {
+            // Handle race condition: if another request already created the user
+            if (String(createError?.message || "").includes("Document with the requested ID already exists") ||
+                String(createError?.code) === "409") {
+                const existingUser2 = await getUserByAppwriteId(appwriteUser.$id);
+                if (existingUser2) return existingUser2;
             }
-        );
-
-        return newUser;
+            throw createError;
+        }
     } catch (error) {
         console.error("Error syncing user to database:", error);
         throw error;
@@ -47,7 +56,7 @@ export async function getUserByAppwriteId(appwriteUserId) {
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.USERS,
-            [Query.equal("user_id", appwriteUserId)]
+            [Query.equal("user_id", appwriteUserId), Query.limit(1)]
         );
 
         return response.documents.length > 0 ? response.documents[0] : null;

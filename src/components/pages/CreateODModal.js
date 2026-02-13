@@ -34,6 +34,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     const [fetchingEvents, setFetchingEvents] = useState(false);
     const [fetchingParticipation, setFetchingParticipation] = useState(false);
     const [studentData, setStudentData] = useState(null);
+    const [studentDataLoading, setStudentDataLoading] = useState(false);
     const [participatedEventIds, setParticipatedEventIds] = useState(new Set());
     const [mentors, setMentors] = useState([]);
     const [fetchingMentors, setFetchingMentors] = useState(false);
@@ -72,13 +73,22 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
         try {
             if (!user) return;
 
+            setStudentDataLoading(true);
             let student = null;
 
             if (user.email) {
-                student = await getStudentByEmail(user.email);
+                try {
+                    student = await getStudentByEmail(user.email);
+                } catch (e) {
+                    console.warn("Could not fetch student by email:", e);
+                }
             }
             if (!student && user.$id) {
-                student = await getStudentByAppwriteUserId(user.$id);
+                try {
+                    student = await getStudentByAppwriteUserId(user.$id);
+                } catch (e) {
+                    console.warn("Could not fetch student by Appwrite ID:", e);
+                }
             }
 
             setStudentData(student);
@@ -92,33 +102,32 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 // Fetch potential mentors AND advisors (faculty in same department)
                 setFetchingMentors(true);
                 try {
-                    const [mentorsResponse, advisorsResponse] = await Promise.all([
+                    const results = await Promise.allSettled([
                         getFaculties({ department: student.department, role: "mentor" }),
                         getFaculties({ department: student.department, role: "advisor" })
                     ]);
 
-                    // Combine lists, removing duplicates if any
-                    const combined = [...(mentorsResponse.documents || []), ...(advisorsResponse.documents || [])];
+                    const combined = [];
+                    for (const result of results) {
+                        if (result.status === "fulfilled") {
+                            combined.push(...(result.value.documents || []));
+                        }
+                    }
 
                     // Filters duplicates based on $id
                     const uniqueFaculty = Array.from(new Map(combined.map(item => [item.$id, item])).values());
-
                     setMentors(uniqueFaculty);
                 } catch (err) {
-                    console.error("Failed to fetch faculty", err);
-                    try {
-                        // Fallback: fetch all mentors if filter fails
-                        const response = await getFaculties({ role: "mentor" });
-                        setMentors(response.documents || []);
-                    } catch (e) {
-                        setMentors([]);
-                    }
+                    console.error("Failed to fetch faculty:", err);
+                    setMentors([]);
                 } finally {
                     setFetchingMentors(false);
                 }
             }
         } catch (error) {
             console.error("Error loading student info:", error);
+        } finally {
+            setStudentDataLoading(false);
         }
     }
 
@@ -144,7 +153,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     const selectedEvent = events.find((event) => event.$id === formData.event_id) || null;
     const selectedEventDate = normalizeDateOnly(selectedEvent?.event_time);
     const participatedEvents = events.filter((event) => participatedEventIds.has(event.$id));
-    const canSubmit = Boolean(studentData) && participatedEvents.length > 0;
+    const isDataLoading = studentDataLoading || fetchingEvents || fetchingParticipation;
+    const canSubmit = Boolean(studentData) && participatedEvents.length > 0 && !isDataLoading;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -174,6 +184,10 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             setFormError("Please select a mentor.");
             return;
         }
+        if (!formData.reason || formData.reason.trim().length < 5) {
+            setFormError("Please provide a meaningful reason (at least 5 characters).");
+            return;
+        }
 
         try {
             setLoading(true);
@@ -196,7 +210,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             });
         } catch (error) {
             console.error("Error creating OD request:", error);
-            setFormError(error?.message || "Failed to submit OD request");
+            setFormError(error?.message || "Failed to submit OD request. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -220,6 +234,26 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-8 space-y-6">
+                    {/* Student profile warning */}
+                    {!studentDataLoading && !studentData && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                            <p className="text-sm font-semibold text-amber-800 mb-1">⚠️ Student Profile Not Found</p>
+                            <p className="text-xs text-amber-700">
+                                Your email ({user?.email}) was not found in the student database. Please contact your class advisor or coordinator to add your profile before submitting OD requests.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Missing advisor warning */}
+                    {studentData && !studentData.advisor_id && (
+                        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3">
+                            <p className="text-sm font-semibold text-orange-800 mb-1">⚠️ No Advisor Assigned</p>
+                            <p className="text-xs text-orange-700">
+                                Your profile doesn't have a class advisor assigned. OD submission will fail. Contact your coordinator.
+                            </p>
+                        </div>
+                    )}
+
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Select Event</label>
                         <select
@@ -229,8 +263,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                             onChange={(e) => setFormData({ ...formData, event_id: e.target.value, od_start_date: "", od_end_date: "" })}
                         >
                             <option value="">
-                                {fetchingParticipation
-                                    ? "Loading participation..."
+                                {fetchingParticipation || fetchingEvents
+                                    ? "Loading events..."
                                     : "Choose a participated event..."}
                             </option>
                             {fetchingEvents ? (
@@ -282,12 +316,6 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                         </p>
                     )}
 
-                    {!studentData && !fetchingParticipation && (
-                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                            Student profile not found. Please contact your advisor/coordinator before submitting OD.
-                        </p>
-                    )}
-
                     <div>
                         <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Reason</label>
                         <textarea
@@ -308,18 +336,29 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                             value={formData.mentor_id}
                             onChange={(e) => setFormData({ ...formData, mentor_id: e.target.value })}
                         >
-                            <option value="">Select your mentor or advisor...</option>
+                            <option value="">
+                                {fetchingMentors ? "Loading mentors..." : "Select your mentor or advisor..."}
+                            </option>
                             {mentors.map(faculty => (
-                                <option key={faculty.$id} value={faculty.$id || faculty.faculty_id}>
+                                <option key={faculty.$id} value={faculty.faculty_id || faculty.$id}>
                                     {faculty.name} ({faculty.role} - {faculty.department})
                                 </option>
                             ))}
                         </select>
-                        <p className="text-xs text-gray-400 mt-1">This faculty member will be the first to approve your OD.</p>
+                        {!fetchingMentors && mentors.length === 0 && studentData && (
+                            <p className="text-xs text-amber-600 mt-1">
+                                No mentors/advisors found for your department ({studentData.department}). Contact your coordinator.
+                            </p>
+                        )}
+                        {mentors.length > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">This faculty member will be the first to approve your OD.</p>
+                        )}
                     </div>
 
                     {formError && (
-                        <p className="text-sm font-medium text-red-600">{formError}</p>
+                        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                            <p className="text-sm font-medium text-red-700">{formError}</p>
+                        </div>
                     )}
 
                     <div className="pt-4 flex gap-3">

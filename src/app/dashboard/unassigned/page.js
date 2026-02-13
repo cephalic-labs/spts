@@ -1,36 +1,86 @@
 "use client";
 
 import { useAuth } from "@/lib/AuthContext";
-import LogoutButton from "@/components/LogoutButton";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useState } from "react";
 
-export default function UnassignedDashboard() {
-    const { user, loading } = useAuth();
+export default function UnassignedPage() {
+    const { user, logout, checkUser } = useAuth();
     const router = useRouter();
+    const [checking, setChecking] = useState(false);
 
-    useEffect(() => {
-        if (!loading && !user) {
-            router.push("/signin");
+    const handleRetryRoleCheck = async () => {
+        setChecking(true);
+        try {
+            await checkUser();
+            // After re-checking, redirect to dashboard which will route correctly
+            router.push("/dashboard");
+        } catch (err) {
+            console.error("Error retrying role check:", err);
+        } finally {
+            setChecking(false);
         }
-    }, [user, loading, router]);
+    };
 
-    if (loading) return null;
+    const handleLogout = async () => {
+        await logout();
+        router.push("/signin");
+    };
 
     return (
-        <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center p-6 text-center">
-            <div className="bg-white p-8 rounded-lg shadow-lg border border-[#E0E0E0] max-w-md w-full">
-                <div className="w-16 h-16 bg-[#F4C430] bg-opacity-20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <svg className="w-8 h-8 text-[#C5B358]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-[#E6E9EE] p-4">
+            <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
+                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="text-4xl">⏳</span>
                 </div>
-                <h1 className="text-2xl font-bold text-[#003366] mb-4">Well, we are sorry...</h1>
-                <p className="text-[#555] mb-8">
-                    It seems that you haven't been assigned any roles yet by the coordinator. Please contact your Advisor for more details.
+
+                <h1 className="text-2xl font-bold text-[#1E2761] mb-3">
+                    Account Not Yet Assigned
+                </h1>
+
+                <p className="text-gray-500 mb-2">
+                    Hello, <span className="font-semibold text-gray-700">{user?.name || "User"}</span>!
                 </p>
-                <div className="flex justify-center">
-                    <LogoutButton />
+
+                <p className="text-gray-500 text-sm mb-6">
+                    Your email (<span className="font-mono text-xs text-gray-600">{user?.email}</span>) hasn't been
+                    matched to a student or faculty record yet. This usually means:
+                </p>
+
+                <div className="text-left bg-gray-50 rounded-xl p-4 mb-6 space-y-2">
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                        <span className="text-amber-500 mt-0.5">•</span>
+                        <p>Your profile hasn't been added to the system by an admin</p>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                        <span className="text-amber-500 mt-0.5">•</span>
+                        <p>The email in your Google account doesn't match the one in your records</p>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm text-gray-600">
+                        <span className="text-amber-500 mt-0.5">•</span>
+                        <p>Your records are being processed and will be available soon</p>
+                    </div>
+                </div>
+
+                <p className="text-sm text-gray-500 mb-6">
+                    Contact your <span className="font-semibold">class advisor</span> or{" "}
+                    <span className="font-semibold">coordinator</span> to resolve this.
+                </p>
+
+                <div className="space-y-3">
+                    <button
+                        onClick={handleRetryRoleCheck}
+                        disabled={checking}
+                        className="w-full px-6 py-3 bg-[#1E2761] text-white font-bold rounded-xl hover:bg-[#2d3a7d] transition-all disabled:opacity-50"
+                    >
+                        {checking ? "Checking..." : "🔄 Check Again"}
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full px-6 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-all"
+                    >
+                        Sign Out
+                    </button>
                 </div>
             </div>
         </div>
