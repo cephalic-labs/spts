@@ -42,7 +42,7 @@ export default function Navbar({ role, title, onMenuClick, isCollapsed }) {
                     </button>
 
                     {/* User info (hidden on mobile) */}
-                    <div
+                    {/* <div
                         onClick={() => setIsProfileOpen(true)}
                         className="hidden md:flex items-center gap-3 cursor-pointer hover:bg-white/10 p-2 rounded-lg transition-all"
                     >
@@ -58,7 +58,7 @@ export default function Navbar({ role, title, onMenuClick, isCollapsed }) {
                                 {user?.name?.charAt(0) || "U"}
                             </div>
                         )}
-                    </div>
+                    </div> */}
                 </div>
             </header>
         </>
