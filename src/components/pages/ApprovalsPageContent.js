@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
-import { getEventById } from "@/lib/services/eventService";
+import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { getStudentByAppwriteUserId, getStudentById } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
@@ -68,6 +68,7 @@ export default function ApprovalsPageContent({ role }) {
     const [allLogsModalOpen, setAllLogsModalOpen] = useState(false);
     const [allLogs, setAllLogs] = useState([]);
     const [fetchingAllLogs, setFetchingAllLogs] = useState(false);
+    const [eventsMap, setEventsMap] = useState({});
 
     useEffect(() => {
         if (user) {
@@ -259,12 +260,37 @@ export default function ApprovalsPageContent({ role }) {
 
             setPendingRequests(enhancedRequests);
 
+            // Fetch event details for pending requests
+            const eventIds = [...new Set(enhancedRequests.map(r => r.event_id).filter(Boolean))];
+
             // Fetch recent logs
+            let logs = [];
             try {
                 const logsResponse = await getRecentApprovalLogs(10);
-                setRecentLogs(logsResponse?.documents || []);
+                logs = logsResponse?.documents || [];
+                setRecentLogs(logs);
+
+                // Add event IDs from logs to fetch list
+                logs.forEach(log => {
+                    if (log.event_id) eventIds.push(log.event_id);
+                });
             } catch (e) {
                 setRecentLogs([]);
+            }
+
+            // Bulk fetch and map all events
+            const uniqueEventIds = [...new Set(eventIds)];
+            if (uniqueEventIds.length > 0) {
+                try {
+                    const eventDocs = await getEventsByIds(uniqueEventIds);
+                    const newEventsMap = { ...eventsMap };
+                    eventDocs.forEach(ev => {
+                        newEventsMap[ev.$id] = ev;
+                    });
+                    setEventsMap(newEventsMap);
+                } catch (e) {
+                    console.error("Error fetching events for map:", e);
+                }
             }
         } catch (err) {
             console.error("Error loading pending requests:", err);
@@ -436,7 +462,9 @@ export default function ApprovalsPageContent({ role }) {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
-                                                <span className="font-semibold text-gray-700 text-sm">Event ID: {req.event_id?.slice(0, 8)}...</span>
+                                                <span className="font-semibold text-gray-700 text-sm">
+                                                    {eventsMap[req.event_id]?.event_name || `Event: ${req.event_id?.slice(0, 8)}...`}
+                                                </span>
                                                 <span className="text-xs text-gray-400">
                                                     {new Date(req.od_start_date).toLocaleDateString()} - {new Date(req.od_end_date).toLocaleDateString()}
                                                 </span>
@@ -544,9 +572,11 @@ export default function ApprovalsPageContent({ role }) {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="font-mono text-xs text-blue-600">
-                                                    #{log.od_id?.slice(0, 8)}
-                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-blue-600 text-xs">
+                                                        {eventsMap[log.event_id]?.event_name || `#${log.event_id?.slice(0, 8)}`}
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">

@@ -86,7 +86,7 @@ export default function StudentsPageContent({ role }) {
         }
     };
 
-    const canManageStudents = ["sudo", "admin"].includes(role);
+    const canManageStudents = ["sudo", "admin", "advisor"].includes(role);
 
     if (loading && students.length === 0) {
         return (
@@ -203,6 +203,9 @@ export default function StudentsPageContent({ role }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CGPA</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                    {canManageStudents && (
+                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -227,6 +230,26 @@ export default function StudentsPageContent({ role }) {
                                                 {student.status}
                                             </span>
                                         </td>
+                                        {canManageStudents && (
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="inline-flex items-center justify-end gap-3">
+                                                    <button
+                                                        onClick={() => handleEdit(student)}
+                                                        className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                    {["sudo", "admin", "hod", "advisor"].includes(role) && (
+                                                        <button
+                                                            onClick={() => handleDelete(student.$id)}
+                                                            className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

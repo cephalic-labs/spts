@@ -35,11 +35,7 @@ export default function Navbar({ role, title, onMenuClick, isCollapsed }) {
                 </div>
 
                 <div className="flex items-center gap-3 md:gap-6">
-                    {/* Notification Bell */}
-                    <button className="hover:bg-white/10 p-2 rounded-lg transition-colors relative">
-                        <Icons.Notifications />
-                        <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-[#252D63]"></span>
-                    </button>
+
 
                     {/* User info (hidden on mobile) */}
                     {/* <div

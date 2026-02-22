@@ -9,7 +9,7 @@ import { createEvent } from "@/lib/services/eventService";
 export default function ImportPageContent({ role }) {
     const [dragActive, setDragActive] = useState(false);
     const [file, setFile] = useState(null);
-    const [target, setTarget] = useState("Students");
+    const [target, setTarget] = useState(role === "coordinator" ? "Events" : "Students");
     const [processing, setProcessing] = useState(false);
     const [progress, setProgress] = useState(0);
     const [results, setResults] = useState(null);
@@ -290,17 +290,19 @@ export default function ImportPageContent({ role }) {
                             <span className="w-8 h-8 bg-blue-50 text-blue-600 rounded flex items-center justify-center text-xs">1</span>
                             Select Target Collection
                         </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            {['Students', 'Faculty', 'Events'].map(type => (
-                                <button
-                                    key={type}
-                                    onClick={() => setTarget(type)}
-                                    className={`p-4 border rounded-xl text-center transition-all group ${target === type ? 'border-[#1E2761] bg-blue-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
-                                >
-                                    <div className={`text-sm font-bold ${target === type ? 'text-[#1E2761]' : 'text-gray-600'}`}>{type}</div>
-                                </button>
-                            ))}
-                        </div>
+                        {!['advisor', 'coordinator'].includes(role) && (
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {['Students', 'Faculty', 'Events'].map(type => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setTarget(type)}
+                                        className={`p-4 border rounded-xl text-center transition-all group ${target === type ? 'border-[#1E2761] bg-blue-50 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                                    >
+                                        <div className={`text-sm font-bold ${target === type ? 'text-[#1E2761]' : 'text-gray-600'}`}>{type}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {target === "Students" && (
@@ -330,19 +332,19 @@ export default function ImportPageContent({ role }) {
                     <div className="bg-[#1E2761] rounded-2xl p-5 sm:p-8 text-white">
                         <h4 className="font-bold mb-4 text-white">Requirements for {target}</h4>
                         <ul className="space-y-4 text-sm text-white/70 leading-relaxed">
-                            {target === "Students" && (
+                            {target === "Students" && (role === "sudo" || role === "admin" || role === "hod" || role === "advisor") && (
                                 <>
                                     <li className="flex gap-3">Roll Number, First Name, Last Name, Email</li>
                                     <li className="flex gap-3">Phone, Department Code, Year, Section, CGPA</li>
                                 </>
                             )}
-                            {target === "Faculty" && (
+                            {target === "Faculty" && (role === "sudo" || role === "admin" || role === "hod") && (
                                 <>
                                     <li className="flex gap-3">Employee ID, First Name, Last Name, Email</li>
                                     <li className="flex gap-3">Dept Code, Designation, Phone, Class Advisor, etc.</li>
                                 </>
                             )}
-                            {target === "Events" && (
+                            {target === "Events" && (role === "sudo" || role === "admin" || role === "hod" || role === "coordinator") && (
                                 <>
                                     <li className="flex gap-3">EventName, Type, Date, Venue</li>
                                     <li className="flex gap-3">Description, URL</li>

@@ -25,6 +25,7 @@ export const pageConfig = {
     "advisor/submissions": { title: "Submissions", description: "Review student submissions.", icon: "Submissions" },
     "advisor/approvals": { title: "Approvals", description: "Approve submissions.", icon: "Approvals" },
     "advisor/students": { title: "Students", description: "View your students.", icon: "Students" },
+    "advisor/import": { title: "Excel Import", description: "Bulk import students from Excel.", icon: "Import" },
     "advisor/settings": { title: "Settings", description: "Advisor settings.", icon: "Settings" },
 
     // Coordinator pages
@@ -33,6 +34,7 @@ export const pageConfig = {
     "coordinator/approvals": { title: "Approvals", description: "Final approvals.", icon: "Approvals" },
     "coordinator/students": { title: "Students", description: "View students.", icon: "Students" },
     "coordinator/faculty": { title: "Faculty", description: "Manage faculty.", icon: "Faculty" },
+    "coordinator/import": { title: "Excel Import", description: "Bulk import events from Excel.", icon: "Import" },
     "coordinator/settings": { title: "Settings", description: "Coordinator settings.", icon: "Settings" },
 
     // HOD pages
@@ -40,6 +42,7 @@ export const pageConfig = {
     "hod/submissions": { title: "Submissions", description: "View submissions.", icon: "Submissions" },
     "hod/approvals": { title: "Approvals", description: "Department approvals.", icon: "Approvals" },
     "hod/students": { title: "Students", description: "Department students.", icon: "Students" },
+    "hod/import": { title: "Excel Import", description: "Bulk import data from Excel.", icon: "Import" },
     "hod/settings": { title: "Settings", description: "HOD settings.", icon: "Settings" },
     "hod/faculty": { title: "Faculty", description: "Department faculty.", icon: "Faculty" },
 
@@ -61,7 +64,6 @@ export const pageConfig = {
     // Student pages
     "student/events": { title: "Events", description: "Browse events.", icon: "Events" },
     "student/submissions": { title: "Submissions", description: "Your submissions.", icon: "Submissions" },
-    "student/approvals": { title: "Approvals", description: "Approval status.", icon: "Approvals" },
     "student/settings": { title: "Settings", description: "Your settings.", icon: "Settings" },
 };
 

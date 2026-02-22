@@ -28,6 +28,7 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/advisor/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/advisor/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/advisor/students", icon: "Students" },
+        { name: "Excel Import", path: "/dashboard/advisor/import", icon: "Import" },
         { name: "Settings", path: "/dashboard/advisor/settings", icon: "Settings" },
     ],
     coordinator: [
@@ -37,6 +38,7 @@ export const sidebarConfig = {
         { name: "Approvals", path: "/dashboard/coordinator/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/coordinator/students", icon: "Students" },
         { name: "Faculty", path: "/dashboard/coordinator/faculty", icon: "Faculty" },
+        { name: "Excel Import", path: "/dashboard/coordinator/import", icon: "Import" },
         { name: "Settings", path: "/dashboard/coordinator/settings", icon: "Settings" },
     ],
     hod: [
@@ -45,6 +47,7 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/hod/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/hod/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/hod/students", icon: "Students" },
+        { name: "Excel Import", path: "/dashboard/hod/import", icon: "Import" },
         { name: "Settings", path: "/dashboard/hod/settings", icon: "Settings" },
         { name: "Faculty", path: "/dashboard/hod/faculty", icon: "Faculty" },
     ],
@@ -69,7 +72,6 @@ export const sidebarConfig = {
         { name: "Dashboard", path: "/dashboard/student", icon: "Dashboard" },
         { name: "Events", path: "/dashboard/student/events", icon: "Events" },
         { name: "Submissions", path: "/dashboard/student/submissions", icon: "Submissions" },
-        { name: "Approvals", path: "/dashboard/student/approvals", icon: "Approvals" },
         { name: "Settings", path: "/dashboard/student/settings", icon: "Settings" },
     ],
 };
