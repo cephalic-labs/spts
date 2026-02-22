@@ -16,6 +16,8 @@ export const DB_CONFIG = {
     },
 };
 
+export const DEPARTMENTS_LIST = ["CSE", "AIDS", "AIML", "EEE", "MECH", "CSBS", "CCE", "ECE", "IT", "CYS"];
+
 // Approval workflow statuses
 export const OD_STATUS = {
     PENDING_MENTOR: "pending_mentor",

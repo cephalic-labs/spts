@@ -8,7 +8,7 @@ import { getEventById } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { getStudentByAppwriteUserId, getStudentById } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
-import { OD_STATUS } from "@/lib/dbConfig";
+import { OD_STATUS, DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 const roleToStatus = {
     mentor: OD_STATUS.PENDING_MENTOR,
@@ -56,6 +56,7 @@ export default function ApprovalsPageContent({ role }) {
     const [errorModalMessage, setErrorModalMessage] = useState("");
     const [rejectDialog, setRejectDialog] = useState({ isOpen: false, odId: null, remarks: "" });
     const [rejectFormError, setRejectFormError] = useState("");
+    const [filterDept, setFilterDept] = useState("");
 
     // New State for View Request Modal
     const [viewRequest, setViewRequest] = useState(null);
@@ -342,6 +343,11 @@ export default function ApprovalsPageContent({ role }) {
         }
     }
 
+    const filteredRequests = pendingRequests.filter(req => {
+        if (!filterDept) return true;
+        return req.student?.department === filterDept;
+    });
+
     function calculateDays(start, end) {
         const startDate = new Date(start);
         const endDate = new Date(end);
@@ -403,104 +409,117 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                    <div className="text-3xl font-bold text-[#1E2761]">{pendingRequests.length}</div>
-                    <div className="text-sm text-gray-500">Pending Your Review</div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                    <div className="text-3xl font-bold text-green-600">0</div>
-                    <div className="text-sm text-gray-500">Approved Today</div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                    <div className="text-3xl font-bold text-red-600">0</div>
-                    <div className="text-sm text-gray-500">Rejected Today</div>
-                </div>
-            </div>
-
-            {/* Pending Requests */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                {pendingRequests.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            {/* Filters (Only for non-students) */}
+            {role !== "student" && (
+                <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full sm:w-64">
+                        <select
+                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
+                            value={filterDept}
+                            onChange={(e) => setFilterDept(e.target.value)}
+                        >
+                            <option value="">All Departments</option>
+                            {DEPARTMENTS_LIST.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                             </svg>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-700 mb-2">All Caught Up!</h3>
-                        <p className="text-gray-500">No pending requests requiring your approval.</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Pending Requests Table */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-12">
+                {filteredRequests.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500">
+                        {filterDept
+                            ? `No pending requests for ${filterDept} department.`
+                            : "No pending requests to show."}
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-50">
-                        {pendingRequests.map((request) => (
-                            <div key={request.$id} className="p-6 hover:bg-gray-50 transition-colors">
-                                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className="font-mono text-sm text-gray-400">
-                                                #{request.od_id?.slice(0, 8) || request.$id.slice(0, 8)}
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[800px] text-left">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Event & Dates</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Duration</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {filteredRequests.map((req) => (
+                                    <tr key={req.$id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-[#1E2761] text-sm">{req.student?.name || "Unknown"}</span>
+                                                <span className="text-xs text-gray-400 font-medium">{req.student?.department} • {req.student?.year} Year</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-gray-700 text-sm">Event ID: {req.event_id?.slice(0, 8)}...</span>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(req.od_start_date).toLocaleDateString()} - {new Date(req.od_end_date).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                                {calculateDays(req.od_start_date, req.od_end_date)} Days
                                             </span>
-                                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">
-                                                Pending
-                                            </span>
-                                        </div>
-                                        <h4 className="font-bold text-gray-800 mb-1">
-                                            {request.student?.name || "Unknown Student"}
-                                            <span className="text-sm font-normal text-gray-500 ml-2">
-                                                ({request.student?.student_register_no || request.student_id?.slice(0, 8)})
-                                            </span>
-                                        </h4>
-                                        <p className="text-xs text-gray-500 mb-2">
-                                            {request.student?.department} • {request.student?.year} Year
-                                        </p>
-                                        <p className="text-sm text-gray-600 mb-2 bg-gray-50 p-2 rounded border border-gray-100 italic">
-                                            "{request.reason}"
-                                        </p>
-                                        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
-                                            <span>
-                                                📅 {new Date(request.od_start_date).toLocaleDateString()} - {new Date(request.od_end_date).toLocaleDateString()}
-                                            </span>
-                                            <span>
-                                                🕐 Requested {new Date(request.$createdAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {canApprove && (
-                                        <div className="flex items-center gap-2 self-end lg:self-auto">
-                                            <button
-                                                onClick={() => openRejectDialog(request.$id)}
-                                                disabled={actionLoading === request.$id}
-                                                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                                            >
-                                                Reject
-                                            </button>
-                                            <button
-                                                onClick={() => handleApprove(request.$id)}
-                                                disabled={actionLoading === request.$id}
-                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                                            >
-                                                {actionLoading === request.$id ? "..." : "Approve"}
-                                            </button>
-
-                                            <button
-                                                onClick={() => setViewRequest(request)}
-                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-                                            >
-                                                Details
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => setViewRequest(req)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="View Details"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => openRejectDialog(req.$id)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Reject"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApprove(req.$id)}
+                                                    disabled={actionLoading === req.$id}
+                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Approve"
+                                                >
+                                                    {actionLoading === req.$id ? (
+                                                        <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
 
             {/* Recent Activity Section */}
-            <div className="mt-12">
+            <div>
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="text-xl font-bold text-[#1E2761]">Recent Approval Activity</h2>
@@ -749,6 +768,7 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
+            {/* Reject Dialog */}
             {rejectDialog.isOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 border border-gray-100 shadow-2xl">
@@ -787,6 +807,7 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
+            {/* Error Message Modal */}
             {errorModalMessage && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-2xl">

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getStudents, deleteStudent } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function StudentsPageContent({ role }) {
     const [students, setStudents] = useState([]);
@@ -97,13 +98,9 @@ export default function StudentsPageContent({ role }) {
                     onChange={(e) => setFilter({ ...filter, department: e.target.value })}
                 >
                     <option value="">All Departments</option>
-                    <option value="CSE">CSE</option>
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="CIVIL">CIVIL</option>
-                    <option value="IT">IT</option>
-                    <option value="AIDS">AIDS</option>
+                    {DEPARTMENTS_LIST.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                    ))}
                 </select>
                 <select
                     className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"

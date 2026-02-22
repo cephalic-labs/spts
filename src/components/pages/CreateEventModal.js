@@ -121,7 +121,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
                             type="text"
                             maxLength={100}
                             className="w-full px-4 py-2.5 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#1E2761] focus:border-transparent outline-none transition-all"
-                            placeholder="Enter host name (e.g. Dept of CSE)"
+                            placeholder="Enter host name (e.g. Department of CSE)"
                             value={formData.event_host}
                             onChange={(e) => setFormData({ ...formData, event_host: e.target.value })}
                         />

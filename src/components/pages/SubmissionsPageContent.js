@@ -8,6 +8,8 @@ import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
+import { getStudents, getStudentsByAppwriteUserIds } from "@/lib/services/studentService";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 const statusColors = {
     [OD_STATUS.PENDING_MENTOR]: "bg-yellow-100 text-yellow-700",
@@ -42,18 +44,21 @@ export default function SubmissionsPageContent({ role }) {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [cancelLoadingId, setCancelLoadingId] = useState(null);
     const [cancelDialogSubmission, setCancelDialogSubmission] = useState(null);
+    const [filterDept, setFilterDept] = useState("");
+    const [studentMap, setStudentMap] = useState({});
 
     useEffect(() => {
         if (user || role !== 'student') {
             loadSubmissions();
         }
-    }, [role, user?.$id]);
+    }, [role, user?.$id, filterDept]);
 
     async function loadSubmissions() {
         try {
             setLoading(true);
             setError(null);
             let response;
+            let currentStudentMap = { ...studentMap };
 
             if (role === "student") {
                 const studentId = user?.$id;
@@ -61,15 +66,77 @@ export default function SubmissionsPageContent({ role }) {
                     setSubmissions([]);
                     return;
                 }
-                // Students see their own submissions
                 response = await getStudentODRequests(studentId);
             } else {
-                // Others see all submissions
-                response = await getAllODRequests(100);
+                // For admins/sudo
+                if (filterDept) {
+                    // 1. Fetch students of that department first
+                    // We fetch up to 100 for now to avoid query complexity limits
+                    const deptStudents = await getStudents({ department: filterDept }, 100);
+                    const sIds = deptStudents.documents.map(s => s.$id);
+
+                    if (sIds.length === 0) {
+                        setSubmissions([]);
+                        setLoading(false);
+                        return;
+                    }
+
+                    // Update map with these students - index by both for safety
+                    deptStudents.documents.forEach(s => {
+                        if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
+                        currentStudentMap[s.$id] = s;
+                    });
+
+                    // 2. Fetch OD requests for these specific students
+                    // Important: use appwrite_user_id if available as that's what's typically stored in student_id
+                    const filterIds = deptStudents.documents.map(s => s.appwrite_user_id || s.$id);
+                    response = await getAllODRequests(100, filterIds);
+                } else {
+                    // No filter, fetch all
+                    response = await getAllODRequests(100);
+                }
             }
 
             const docs = response?.documents || [];
             setSubmissions(docs);
+
+            // Fetch missing student details if others
+            if (role !== "student") {
+                // Populate map with students we already have
+                docs.forEach(submission => {
+                    const sId = submission.student_id;
+                    if (sId && !currentStudentMap[sId]) {
+                        // We'll fetch these below
+                    }
+                });
+
+                const missingIds = [...new Set(docs.map(s => s.student_id).filter(id => id && !currentStudentMap[id]))];
+
+                if (missingIds.length > 0) {
+                    try {
+                        // Fetch specifically the students we need by their Appwrite User IDs
+                        const studentsRes = await getStudentsByAppwriteUserIds(missingIds, 100);
+                        studentsRes.forEach(s => {
+                            if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
+                            currentStudentMap[s.$id] = s;
+                        });
+
+                        // If some are still missing, they might be indexed by $id directly
+                        const stillMissing = missingIds.filter(id => !currentStudentMap[id]);
+                        if (stillMissing.length > 0) {
+                            // This is a fall back for legacy data or different indexing
+                            const allStudents = await getStudents({}, 100);
+                            allStudents.documents.forEach(s => {
+                                if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
+                                currentStudentMap[s.$id] = s;
+                            });
+                        }
+                    } catch (err) {
+                        console.error("Error fetching students for mapping:", err);
+                    }
+                }
+                setStudentMap(currentStudentMap);
+            }
 
             // Fetch event details
             const eventIds = [...new Set(docs.map(s => s.event_id).filter(Boolean))];
@@ -141,6 +208,8 @@ export default function SubmissionsPageContent({ role }) {
         return new Date(value).toLocaleDateString();
     }
 
+    const filteredSubmissions = submissions;
+
     if (loading && submissions.length === 0) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -172,6 +241,37 @@ export default function SubmissionsPageContent({ role }) {
                 )}
             </div>
 
+            {/* Filter Section (Only for non-students) */}
+            {role !== "student" && (
+                <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full sm:w-64">
+                        <select
+                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
+                            value={filterDept}
+                            onChange={(e) => setFilterDept(e.target.value)}
+                        >
+                            <option value="">All Departments</option>
+                            {DEPARTMENTS_LIST.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </div>
+                    </div>
+                    {filterDept && (
+                        <button
+                            onClick={() => setFilterDept("")}
+                            className="text-xs font-bold text-[#1E2761] hover:underline"
+                        >
+                            Clear Filter
+                        </button>
+                    )}
+                </div>
+            )}
+
             <CreateODModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
@@ -199,25 +299,32 @@ export default function SubmissionsPageContent({ role }) {
 
             {/* Submissions Table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                {submissions.length === 0 && !error ? (
+                {filteredSubmissions.length === 0 && !error ? (
                     <div className="p-12 text-center">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Icons.Submissions />
                         </div>
                         <h3 className="text-lg font-bold text-gray-700 mb-2">No Submissions Found</h3>
                         <p className="text-gray-500">
-                            {role === "student" ? "Submit your first OD request using the 'New Request' button above." : "No submissions to display."}
+                            {role === "student" ? "Submit your first OD request using the 'New Request' button above." : (filterDept ? `No submissions found for ${filterDept} department.` : "No submissions to display.")}
                         </p>
                     </div>
-                ) : submissions.length > 0 ? (
+                ) : filteredSubmissions.length > 0 ? (
                     <>
                         <div className="md:hidden p-3 space-y-3">
-                            {submissions.map((submission) => (
+                            {filteredSubmissions.map((submission) => (
                                 <div key={submission.$id} className="border border-gray-100 rounded-xl p-4 bg-white">
                                     <div className="flex items-start justify-between gap-2 mb-3">
-                                        <p className="text-xs font-mono text-gray-400">
-                                            #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
-                                        </p>
+                                        <div>
+                                            <p className="text-xs font-mono text-gray-400">
+                                                #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
+                                            </p>
+                                            {role !== 'student' && studentMap[submission.student_id] && (
+                                                <p className="text-[10px] font-bold text-gray-500 uppercase mt-0.5">
+                                                    {studentMap[submission.student_id].name} ({studentMap[submission.student_id].department})
+                                                </p>
+                                            )}
+                                        </div>
                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
                                             {statusLabels[submission.current_status] || submission.current_status}
                                         </span>
@@ -262,6 +369,7 @@ export default function SubmissionsPageContent({ role }) {
                                 <thead className="bg-[#F8F9FA] border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                                        {role !== "student" && <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Student</th>}
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Range</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -270,11 +378,17 @@ export default function SubmissionsPageContent({ role }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {submissions.map((submission) => (
+                                    {filteredSubmissions.map((submission) => (
                                         <tr key={submission.$id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4 text-sm font-mono text-gray-400">
                                                 #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
                                             </td>
+                                            {role !== "student" && (
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-bold text-gray-800">{studentMap[submission.student_id]?.name || "N/A"}</div>
+                                                    <div className="text-[10px] text-gray-400 uppercase font-black">{studentMap[submission.student_id]?.department || "N/A"}</div>
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 text-sm text-gray-800 font-medium">
                                                 {getEventName(submission)}
                                             </td>

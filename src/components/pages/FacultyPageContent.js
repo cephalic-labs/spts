@@ -6,6 +6,7 @@ import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
 import { getAdminFacultyFromLabels } from "@/actions/auth";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function FacultyPageContent({ role, filterRole }) {
     const [faculty, setFaculty] = useState([]);
@@ -125,12 +126,9 @@ export default function FacultyPageContent({ role, filterRole }) {
                     onChange={(e) => setFilter({ ...filter, department: e.target.value })}
                 >
                     <option value="">All Departments</option>
-                    <option value="CSE">CSE</option>
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="IT">IT</option>
-                    <option value="AIDS">AIDS</option>
+                    {DEPARTMENTS_LIST.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                    ))}
                 </select>
                 {!filterRole && (
                     <select

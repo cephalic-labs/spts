@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createFaculty, updateFaculty } from "@/lib/services/facultyService";
 import { syncUserLabels } from "@/actions/auth";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialData = null, preselectedRole = null }) {
     const isEdit = !!initialData;
@@ -126,12 +127,9 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
                                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                             >
                                 <option value="">Select Dept</option>
-                                <option value="CSE">CSE</option>
-                                <option value="ECE">ECE</option>
-                                <option value="EEE">EEE</option>
-                                <option value="MECH">MECH</option>
-                                <option value="IT">IT</option>
-                                <option value="AIDS">AIDS</option>
+                                {DEPARTMENTS_LIST.map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
                             </select>
                         </div>
                         <div>

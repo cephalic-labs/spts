@@ -583,15 +583,21 @@ export async function getRecentApprovalLogs(limit = 20) {
 /**
  * Get all OD requests (for admin/sudo)
  */
-export async function getAllODRequests(limit = 100) {
+export async function getAllODRequests(limit = 100, studentIds = []) {
     try {
+        const queries = [
+            Query.orderDesc("$createdAt"),
+            Query.limit(limit),
+        ];
+
+        if (studentIds && Array.isArray(studentIds) && studentIds.length > 0) {
+            queries.push(Query.equal("student_id", studentIds));
+        }
+
         const response = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.OD_REQUESTS,
-            [
-                Query.orderDesc("$createdAt"),
-                Query.limit(limit),
-            ]
+            queries
         );
         return response;
     } catch (error) {
