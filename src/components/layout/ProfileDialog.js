@@ -104,8 +104,14 @@ export default function ProfileDialog({ isOpen, onClose, currentRole }) {
                                                 </div>
                                             </div>
                                             {isActive && (
-                                                <div className="px-2 py-1 bg-[#1E2761] text-white text-[10px] font-bold uppercase rounded tracking-wider">
-                                                    Current
+                                                <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-green-50 text-green-600 border border-green-100 shadow-sm">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500 border-2 border-white"></span>
+                                                    </span>
                                                 </div>
                                             )}
                                         </button>
