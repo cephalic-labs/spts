@@ -326,7 +326,7 @@ export default function SudoDashboardContent() {
                 <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">
-                            System Dashboard {config.emoji}
+                            System Dashboard
                         </h1>
                         <p className="text-white/80 font-medium">
                             {config.greeting}, {user?.name?.split(" ")[0]}
@@ -349,19 +349,13 @@ export default function SudoDashboardContent() {
                             <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Sudo</div>
                             <div className="text-xl sm:text-2xl font-black">{statsData.totalSudo}</div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
-                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Submissions</div>
-                            <div className="text-xl sm:text-2xl font-black">{statsData.totalSubmissions}</div>
-                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard title="Events" value={loading ? "..." : statsData.totalEvents} icon={<Icons.Events />} colorClass="text-blue-600" delay="0" />
-                <StatCard title="Active" value={loading ? "..." : statsData.activeEvents} icon={<Icons.Events />} colorClass="text-emerald-500" delay="50" />
-                <StatCard title="Students" value={loading ? "..." : statsData.totalStudents} icon={<Icons.Students />} colorClass="text-purple-500" delay="100" />
                 <StatCard title="Submissions" value={loading ? "..." : statsData.totalSubmissions} icon={<Icons.Submissions />} colorClass="text-indigo-500" delay="150" />
                 <StatCard title="Pending" value={loading ? "..." : statsData.pendingApprovals} icon={<Icons.Approvals />} colorClass="text-amber-500" delay="200" alert={statsData.pendingApprovals > 0} />
                 <StatCard title="Approved" value={loading ? "..." : statsData.approvedTotal} icon={<Icons.Certificate />} colorClass="text-emerald-500" delay="250" />
@@ -376,7 +370,7 @@ export default function SudoDashboardContent() {
                         <p className="text-sm text-slate-500 font-medium mt-1">Application trend over the current month</p>
                     </div>
                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-100 shadow-sm">
-                        <span>📈</span> Live Feed
+                         Live Feed
                     </div>
                 </div>
                 <div className="h-[280px] w-full">
@@ -396,7 +390,7 @@ export default function SudoDashboardContent() {
                             <p className="text-sm text-slate-500 font-medium mt-1">Highest to lowest demand</p>
                         </div>
                         <div className="bg-orange-50 text-orange-600 px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 border border-orange-100 shadow-sm">
-                            🔥 Most Popular
+                             Most Popular
                         </div>
                     </div>
 

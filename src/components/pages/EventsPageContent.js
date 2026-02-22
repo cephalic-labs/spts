@@ -80,6 +80,8 @@ export default function EventsPageContent({ role }) {
     const [savingParticipationFor, setSavingParticipationFor] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState("date_desc");
+    const [viewEventModalOpen, setViewEventModalOpen] = useState(false);
+    const [viewingEvent, setViewingEvent] = useState(null);
 
     useEffect(() => {
         loadEvents();
@@ -141,18 +143,22 @@ export default function EventsPageContent({ role }) {
         }
     };
 
-    const handleOpenEvent = async (eventId) => {
-        try {
-            await incrementViewCount(eventId);
-            setEvents((prev) =>
-                prev.map((event) =>
-                    event.$id === eventId
-                        ? { ...event, view_count: (event.view_count || 0) + 1 }
-                        : event
-                )
-            );
-        } catch (err) {
-            console.error("Failed to increment view count:", err);
+    const handleOpenEvent = async (event) => {
+        setViewingEvent(event);
+        setViewEventModalOpen(true);
+        if (event.event_url) {
+            try {
+                await incrementViewCount(event.$id);
+                setEvents((prev) =>
+                    prev.map((e) =>
+                        e.$id === event.$id
+                            ? { ...e, view_count: (e.view_count || 0) + 1 }
+                            : e
+                    )
+                );
+            } catch (err) {
+                console.error("Failed to increment view count:", err);
+            }
         }
     };
 
@@ -364,68 +370,23 @@ export default function EventsPageContent({ role }) {
                                 {/* Action Button */}
                                 <div className="w-full md:w-[300px] lg:w-[320px] md:flex-none flex flex-col gap-3">
                                     {event.event_url ? (
-                                        <Link
-                                            href={event.event_url}
-                                            target="_blank"
-                                            onClick={() => handleOpenEvent(event.$id)}
+                                        <button
+                                            onClick={() => handleOpenEvent(event)}
                                             className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-3 sm:py-4 bg-[#1E2761] text-white rounded-2xl font-bold text-sm sm:text-base transition-all hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 w-full"
                                         >
-                                            Open Event
+                                            View Details
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                        </Link>
+                                        </button>
                                     ) : (
                                         <button className="px-6 sm:px-8 py-3 sm:py-4 bg-gray-100 text-gray-400 rounded-2xl font-bold text-sm sm:text-base cursor-not-allowed w-full">
                                             No Link Available
                                         </button>
                                     )}
 
-                                    {canSelfReportParticipation && (
-                                        <div className="w-full rounded-xl border border-gray-100 bg-gray-50 p-3">
-                                            {(() => {
-                                                const currentStatus = participationByEvent[event.$id]?.status;
-                                                return (
-                                                    <>
-                                                        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                                                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                                                                Your Status
-                                                            </p>
-                                                            <span
-                                                                className={`max-w-full px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusBadgeClass(currentStatus)}`}
-                                                            >
-                                                                {getStatusLabel(currentStatus)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.PARTICIPATED)}
-                                                                disabled={
-                                                                    savingParticipationFor === event.$id ||
-                                                                    currentStatus === PARTICIPATION_STATUS.PARTICIPATED
-                                                                }
-                                                                className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.PARTICIPATED)}`}
-                                                            >
-                                                                Participated
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleParticipationChange(event.$id, PARTICIPATION_STATUS.NOT_PARTICIPATED)}
-                                                                disabled={
-                                                                    savingParticipationFor === event.$id ||
-                                                                    currentStatus === PARTICIPATION_STATUS.NOT_PARTICIPATED
-                                                                }
-                                                                className={`min-w-0 px-3 py-2 rounded-lg text-[11px] font-black uppercase tracking-wider leading-tight whitespace-normal break-words disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.NOT_PARTICIPATED)}`}
-                                                            >
-                                                                Not Participated
-                                                            </button>
-                                                        </div>
-                                                    </>
-                                                );
-                                            })()}
-                                        </div>
-                                    )}
+
 
                                     {canManageEvents && (
                                         <div className="flex items-center gap-3 w-full">
@@ -449,6 +410,162 @@ export default function EventsPageContent({ role }) {
                     </div>
                 );
             })()}
+
+            {/* View Event Modal */}
+            {viewEventModalOpen && viewingEvent && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                        {/* Modal Header */}
+                        <div className="bg-[#1E2761] p-6 sm:p-8 relative shrink-0">
+                            <button
+                                onClick={() => setViewEventModalOpen(false)}
+                                className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                                    <Icons.Events />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                                        {viewingEvent.event_name}
+                                    </h2>
+                                    {viewingEvent.event_host && (
+                                        <p className="text-blue-200 font-medium">
+                                            Hosted by {viewingEvent.event_host}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-gray-50/50">
+                            <div className="space-y-6">
+                                {/* Description */}
+                                {viewingEvent.event_description && (
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+                                        <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                                            About Event
+                                        </h3>
+                                        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                            {viewingEvent.event_description}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Details Grid */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4">
+                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                                                Event Date
+                                            </h3>
+                                            <p className="font-bold text-gray-900">
+                                                {formatEventDate(viewingEvent.event_time)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-start gap-4">
+                                        <div className="p-3 bg-red-50 text-red-600 rounded-xl">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                                                Registration Deadline
+                                            </h3>
+                                            <p className="font-bold text-gray-900">
+                                                {formatEventDate(viewingEvent.event_reg_deadline)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Self Report Participation */}
+                                {canSelfReportParticipation && (
+                                    <div className="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm bg-emerald-50/10">
+                                        <h3 className="text-[11px] font-black text-emerald-600 uppercase tracking-widest mb-4">
+                                            Update Participation Status
+                                        </h3>
+                                        {(() => {
+                                            const currentStatus = participationByEvent[viewingEvent.$id]?.status;
+                                            return (
+                                                <>
+                                                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                                                        <p className="text-sm font-bold text-gray-600">
+                                                            Your Current Status:
+                                                        </p>
+                                                        <span
+                                                            className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${getStatusBadgeClass(currentStatus)}`}
+                                                        >
+                                                            {getStatusLabel(currentStatus)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleParticipationChange(viewingEvent.$id, PARTICIPATION_STATUS.PARTICIPATED)}
+                                                            disabled={
+                                                                savingParticipationFor === viewingEvent.$id ||
+                                                                currentStatus === PARTICIPATION_STATUS.PARTICIPATED
+                                                            }
+                                                            className={`px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.PARTICIPATED)} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                        >
+                                                            Mark Participated
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleParticipationChange(viewingEvent.$id, PARTICIPATION_STATUS.NOT_PARTICIPATED)}
+                                                            disabled={
+                                                                savingParticipationFor === viewingEvent.$id ||
+                                                                currentStatus === PARTICIPATION_STATUS.NOT_PARTICIPATED
+                                                            }
+                                                            className={`px-4 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${getParticipationButtonClass(currentStatus, PARTICIPATION_STATUS.NOT_PARTICIPATED)} disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                        >
+                                                            Mark Not Participated
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            );
+                                        })()}
+                                    </div>
+                                )}
+
+                                {/* Link Section */}
+                                {viewingEvent.event_url && (
+                                    <div className="bg-white p-6 rounded-2xl border border-blue-100 shadow-sm bg-blue-50/30">
+                                        <h3 className="text-[11px] font-black text-blue-400 uppercase tracking-widest mb-4 text-center">
+                                            Ready to participate?
+                                        </h3>
+                                        <Link
+                                            href={viewingEvent.event_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={() => setViewEventModalOpen(false)}
+                                            className="flex items-center justify-center gap-3 px-8 py-4 bg-[#1E2761] text-white rounded-xl font-bold text-lg hover:bg-[#2d3a7d] hover:shadow-lg transition-all active:scale-95 w-full"
+                                        >
+                                            Visit Event Destination
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                            </svg>
+                                        </Link>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
