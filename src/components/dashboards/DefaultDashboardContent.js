@@ -48,10 +48,11 @@ export default function DefaultDashboardContent({ role }) {
         approved: 0,
         rejected: 0
     });
+    const [loading, setLoading] = useState(true);
     const [chartData, setChartData] = useState({
         lineChart: { current: [], previous: [], labels: [] },
         demand: { labels: [], data: [] },
-        stacked: { labels: [], accepted: [], rejected: [] }
+        stacked: { labels: [], accepted: [], rejected: [], pending: [] }
     });
 
     useEffect(() => {
@@ -76,6 +77,7 @@ export default function DefaultDashboardContent({ role }) {
                 let demandDataArr = [];
                 let stackedAcc = [];
                 let stackedRej = [];
+                let stackedPen = [];
 
                 try {
                     // Fetch real events
@@ -110,7 +112,7 @@ export default function DefaultDashboardContent({ role }) {
                     // Calculate Event Performance
                     const eventStatsMap = {};
                     topEvents.forEach(e => {
-                        eventStatsMap[e.$id] = { accepted: 0, rejected: 0 };
+                        eventStatsMap[e.$id] = { accepted: 0, rejected: 0, pending: 0 };
                     });
 
                     ods.forEach(od => {
@@ -119,12 +121,15 @@ export default function DefaultDashboardContent({ role }) {
                                 eventStatsMap[od.event_id].accepted++;
                             } else if (od.current_status === 'rejected') {
                                 eventStatsMap[od.event_id].rejected++;
+                            } else {
+                                eventStatsMap[od.event_id].pending++;
                             }
                         }
                     });
 
                     stackedAcc = topEvents.map(e => eventStatsMap[e.$id].accepted);
                     stackedRej = topEvents.map(e => eventStatsMap[e.$id].rejected);
+                    stackedPen = topEvents.map(e => eventStatsMap[e.$id].pending);
                 } catch (err) {
                     console.error("Failed fetching chart data", err);
                 }
@@ -140,7 +145,7 @@ export default function DefaultDashboardContent({ role }) {
                 setChartData({
                     lineChart: { current: lineCurrent, previous: linePrev, labels: lineLabels },
                     demand: { labels: demandLabels, data: demandDataArr },
-                    stacked: { labels: demandLabels, accepted: stackedAcc, rejected: stackedRej }
+                    stacked: { labels: demandLabels, accepted: stackedAcc, rejected: stackedRej, pending: stackedPen }
                 });
             } catch (error) {
                 console.error("Error fetching dashboard stats:", error);
@@ -264,17 +269,18 @@ export default function DefaultDashboardContent({ role }) {
         }
     };
 
-    // 3. Donut Chart: Accepted vs Rejected
+    // 3. Donut Chart: Accepted vs Rejected vs Pending
     const acceptedTotal = stats.approved;
     const rejectedTotal = stats.rejected;
-    const totalDonut = acceptedTotal + rejectedTotal;
+    const pendingTotal = stats.pending;
+    const totalDonut = acceptedTotal + rejectedTotal + pendingTotal;
     const acceptPercent = totalDonut > 0 ? Math.round((acceptedTotal / totalDonut) * 100) : 0;
 
     const donutData = {
-        labels: ['Accepted', 'Rejected'],
+        labels: ['Accepted', 'Rejected', 'Pending'],
         datasets: [{
-            data: [acceptedTotal, rejectedTotal],
-            backgroundColor: ['#10B981', '#EF4444'], // Green for accepted, Red for rejected
+            data: [acceptedTotal, rejectedTotal, pendingTotal],
+            backgroundColor: ['#10B981', '#EF4444', '#F59E0B'], // Green, Red, Amber
             borderWidth: 0,
             hoverOffset: 4
         }]
@@ -307,6 +313,12 @@ export default function DefaultDashboardContent({ role }) {
                 label: 'Rejected',
                 data: chartData.stacked.rejected,
                 backgroundColor: '#EF4444', // Red
+                borderRadius: 4,
+            },
+            {
+                label: 'Pending',
+                data: chartData.stacked.pending,
+                backgroundColor: '#F59E0B', // Amber
                 borderRadius: 4,
             }
         ]
@@ -408,7 +420,7 @@ export default function DefaultDashboardContent({ role }) {
 
                     <div className="text-center mt-4 border-t border-slate-100 pt-4">
                         <p className="text-[13px] text-slate-500 font-medium tracking-wide">
-                            <span className="text-emerald-500 font-bold">{acceptedTotal}</span> Accepted <span className="mx-2 opacity-30">|</span> <span className="text-red-500 font-bold">{rejectedTotal}</span> Rejected
+                            <span className="text-emerald-500 font-bold">{acceptedTotal}</span> Accepted <span className="mx-2 opacity-30">|</span> <span className="text-red-500 font-bold">{rejectedTotal}</span> Rejected <span className="mx-2 opacity-30">|</span> <span className="text-amber-500 font-bold">{pendingTotal}</span> Pending
                         </p>
                     </div>
                 </div>
