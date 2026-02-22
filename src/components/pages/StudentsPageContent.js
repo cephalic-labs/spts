@@ -1,21 +1,55 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { getStudents, deleteStudent } from "@/lib/services/studentService";
+import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function StudentsPageContent({ role }) {
+    const { user } = useAuth();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState({ department: "", year: "" });
+    const [filter, setFilter] = useState({ department: "", year: "", section: "", search: "" });
+    const [userDepartment, setUserDepartment] = useState(null);
+    const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
+    const needsDeptLock = !["sudo", "admin", "student"].includes(role);
+
+    // Resolve department for faculty roles
     useEffect(() => {
+        if (!needsDeptLock || !user?.$id) return;
+
+        async function resolveDepartment() {
+            try {
+                let faculty = await getFacultyByAppwriteId(user.$id);
+                if (!faculty && user.email) {
+                    faculty = await getFacultyByEmail(user.email);
+                }
+
+                if (faculty?.department) {
+                    setUserDepartment(faculty.department);
+                    setFilter(prev => ({ ...prev, department: faculty.department }));
+                }
+            } catch (err) {
+                console.error("[Dept Resolution] Error:", err);
+            } finally {
+                setDeptResolved(true);
+            }
+        }
+
+        resolveDepartment();
+    }, [role, user?.$id, user?.email]);
+
+    useEffect(() => {
+        if (!deptResolved) return;
         loadStudents();
-    }, [filter]);
+    }, [filter, deptResolved]);
 
     async function loadStudents() {
         try {
@@ -52,7 +86,7 @@ export default function StudentsPageContent({ role }) {
         }
     };
 
-    const canManageStudents = ["sudo", "admin", "hod", "coordinator"].includes(role);
+    const canManageStudents = ["sudo", "admin", "advisor"].includes(role);
 
     if (loading && students.length === 0) {
         return (
@@ -90,21 +124,40 @@ export default function StudentsPageContent({ role }) {
             />
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <select
-                    className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
-                    value={filter.department}
-                    onChange={(e) => setFilter({ ...filter, department: e.target.value })}
-                >
-                    <option value="">All Departments</option>
-                    <option value="CSE">CSE</option>
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="CIVIL">CIVIL</option>
-                    <option value="IT">IT</option>
-                    <option value="AIDS">AIDS</option>
-                </select>
+            <div className="flex flex-wrap items-center gap-4 mb-6">
+                <div className="relative w-full sm:w-64">
+                    <input
+                        type="text"
+                        placeholder="Search by name..."
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.search}
+                        onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+                {!needsDeptLock ? (
+                    <select
+                        className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.department}
+                        onChange={(e) => setFilter({ ...filter, department: e.target.value })}
+                    >
+                        <option value="">All Departments</option>
+                        {DEPARTMENTS_LIST.map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                    </select>
+                ) : userDepartment && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-lg text-sm font-bold">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        {userDepartment}
+                    </div>
+                )}
                 <select
                     className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                     value={filter.year}
@@ -115,6 +168,17 @@ export default function StudentsPageContent({ role }) {
                     <option value="2">2nd Year</option>
                     <option value="3">3rd Year</option>
                     <option value="4">4th Year</option>
+                </select>
+                <select
+                    className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                    value={filter.section}
+                    onChange={(e) => setFilter({ ...filter, section: e.target.value })}
+                >
+                    <option value="">All Sections</option>
+                    <option value="A">Section A</option>
+                    <option value="B">Section B</option>
+                    <option value="C">Section C</option>
+                    <option value="D">Section D</option>
                 </select>
             </div>
 
@@ -139,7 +203,9 @@ export default function StudentsPageContent({ role }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CGPA</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contact</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                    {canManageStudents && (
+                                        <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                                    )}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -151,7 +217,7 @@ export default function StudentsPageContent({ role }) {
                                             <div className="text-xs text-gray-400">{student.email}</div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-600">
-                                            {student.department} / {student.year} Year
+                                            {student.department} / {student.year} Year {student.section ? `- ${student.section}` : ""}
                                         </td>
                                         <td className="px-6 py-4 text-sm font-bold text-[#1E2761]">
                                             {student.cgpa || "--"}
@@ -164,24 +230,26 @@ export default function StudentsPageContent({ role }) {
                                                 {student.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="inline-flex items-center justify-end gap-3">
-                                                <button
-                                                    onClick={() => handleEdit(student)}
-                                                    className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                                >
-                                                    Edit
-                                                </button>
-                                                {role === "sudo" && (
+                                        {canManageStudents && (
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="inline-flex items-center justify-end gap-3">
                                                     <button
-                                                        onClick={() => handleDelete(student.$id)}
-                                                        className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                        onClick={() => handleEdit(student)}
+                                                        className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
                                                     >
-                                                        Delete
+                                                        Edit
                                                     </button>
-                                                )}
-                                            </div>
-                                        </td>
+                                                    {["sudo", "admin", "hod", "advisor"].includes(role) && (
+                                                        <button
+                                                            onClick={() => handleDelete(student.$id)}
+                                                            className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>

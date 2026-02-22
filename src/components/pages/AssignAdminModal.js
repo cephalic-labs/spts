@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getFaculties, updateFaculty } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
+import { syncUserLabels } from "@/actions/auth";
 
 export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
     const [faculty, setFaculty] = useState([]);
@@ -43,7 +44,13 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
             setAssigningId(member.$id);
             const currentRoles = Array.isArray(member.role) ? member.role : [member.role];
             const newRoles = [...new Set([...currentRoles, "admin"])];
+
+            // 1. Update Database Record
             await updateFaculty(member.$id, { role: newRoles });
+
+            // 2. Sync Labels directly into Appwrite Auth
+            await syncUserLabels(member.email, newRoles);
+
             onSuccess();
             onClose();
         } catch (error) {

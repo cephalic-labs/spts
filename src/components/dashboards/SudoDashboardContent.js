@@ -3,10 +3,43 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { Icons } from "@/components/layout";
-import StatCard from "@/components/ui/StatCard";
-import { getEventStats } from "@/lib/services/eventService";
-import { getODStats } from "@/lib/services/odRequestService";
+import { getEventStats, getEvents } from "@/lib/services/eventService";
+import { getODStats, getAllODRequests } from "@/lib/services/odRequestService";
 import { getStudentStats } from "@/lib/services/studentService";
+import { format, subDays, parseISO, startOfDay } from "date-fns";
+import { databases } from "@/lib/appwrite";
+import { DB_CONFIG } from "@/lib/dbConfig";
+import { Query } from "appwrite";
+import { getAdminSudoCounts } from "@/actions/auth";
+
+// Chart.js imports
+import {
+    Chart as ChartJS,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip,
+    Legend,
+    ArcElement,
+    PointElement,
+    LineElement,
+    Filler
+} from 'chart.js';
+import { Bar, Doughnut, Line } from 'react-chartjs-2';
+
+ChartJS.register(
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    PointElement,
+    LineElement,
+    Title,
+    Tooltip,
+    Legend,
+    ArcElement,
+    Filler
+);
 
 export default function SudoDashboardContent() {
     const { user } = useAuth();
@@ -16,28 +49,113 @@ export default function SudoDashboardContent() {
         totalSubmissions: 0,
         pendingApprovals: 0,
         approvedTotal: 0,
-        totalStudents: 0
+        rejectedTotal: 0,
+        totalStudents: 0,
+        totalFaculty: 0,
+        totalAdmins: 0,
+        totalSudo: 0
     });
     const [loading, setLoading] = useState(true);
+
+    const [chartData, setChartData] = useState({
+        lineChart: { current: [], previous: [], labels: [] },
+        demand: { labels: [], data: [] },
+        stacked: { labels: [], accepted: [], rejected: [], pending: [] }
+    });
 
     useEffect(() => {
         async function fetchAllStats() {
             try {
                 setLoading(true);
-                const [eventStats, odStats, studentStats] = await Promise.all([
+                const [eventStats, odStats, studentStats, facultiesRes, adminSudoStats] = await Promise.all([
                     getEventStats(),
                     getODStats(),
-                    getStudentStats()
+                    getStudentStats(),
+                    databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.FACULTIES, [Query.limit(1)]),
+                    getAdminSudoCounts(),
                 ]);
 
+                let totalSub = odStats.total || 0;
+                let pending = odStats.pending || 0;
+                let approved = odStats.approved || 0;
+                let rejected = Math.max(0, totalSub - pending - approved);
+
+                // Chart initialization
+                let lineCurrent = new Array(7).fill(0);
+                let linePrev = new Array(7).fill(0);
+                let lineLabels = Array.from({ length: 7 }).map((_, i) => format(subDays(new Date(), 6 - i), 'MMM dd'));
+
+                let demandLabels = [];
+                let demandDataArr = [];
+                let stackedAcc = [];
+                let stackedRej = [];
+                let stackedPen = [];
+
+                try {
+                    const eventsRes = await getEvents(20);
+                    const allEvents = eventsRes.documents || [];
+                    const topEvents = [...allEvents].sort((a, b) => (b.participation_count || 0) - (a.participation_count || 0)).slice(0, 5);
+
+                    demandLabels = topEvents.map(e => e.event_name?.length > 15 ? e.event_name.substring(0, 15) + '...' : e.event_name);
+                    demandDataArr = topEvents.map(e => e.participation_count || 0);
+
+                    const odsRes = await getAllODRequests(200);
+                    const ods = odsRes?.documents || [];
+
+                    const todayTime = startOfDay(new Date()).getTime();
+                    ods.forEach(od => {
+                        const odTime = startOfDay(parseISO(od.$createdAt)).getTime();
+                        const diff = Math.floor((todayTime - odTime) / (1000 * 60 * 60 * 24));
+                        if (diff >= 0 && diff < 7) {
+                            lineCurrent[6 - diff]++;
+                        } else if (diff >= 7 && diff < 14) {
+                            linePrev[13 - diff]++;
+                        }
+                    });
+
+                    const eventStatsMap = {};
+                    topEvents.forEach(e => {
+                        eventStatsMap[e.$id] = { accepted: 0, rejected: 0, pending: 0 };
+                    });
+
+                    ods.forEach(od => {
+                        if (od.event_id && eventStatsMap[od.event_id]) {
+                            if (od.current_status === 'granted' || od.current_status === 'approved') {
+                                eventStatsMap[od.event_id].accepted++;
+                            } else if (od.current_status === 'rejected') {
+                                eventStatsMap[od.event_id].rejected++;
+                            } else {
+                                eventStatsMap[od.event_id].pending++;
+                            }
+                        }
+                    });
+
+                    stackedAcc = topEvents.map(e => eventStatsMap[e.$id].accepted);
+                    stackedRej = topEvents.map(e => eventStatsMap[e.$id].rejected);
+                    stackedPen = topEvents.map(e => eventStatsMap[e.$id].pending);
+                } catch (err) {
+                    console.error("Failed fetching chart data", err);
+                }
+
                 setStatsData({
-                    totalEvents: eventStats.total,
-                    activeEvents: eventStats.total, // For now assuming all are active
-                    totalSubmissions: odStats.total,
-                    pendingApprovals: odStats.pending,
-                    approvedTotal: odStats.approved,
-                    totalStudents: studentStats.total
+                    totalEvents: eventStats.total || 0,
+                    activeEvents: eventStats.total || 0,
+                    totalSubmissions: totalSub,
+                    pendingApprovals: pending,
+                    approvedTotal: approved,
+                    rejectedTotal: rejected,
+                    totalStudents: studentStats.total || 0,
+                    totalFaculty: facultiesRes.total || 0,
+                    totalAdmins: adminSudoStats.admins || 0,
+                    totalSudo: adminSudoStats.sudos || 0
                 });
+
+                setChartData({
+                    lineChart: { current: lineCurrent, previous: linePrev, labels: lineLabels },
+                    demand: { labels: demandLabels, data: demandDataArr },
+                    stacked: { labels: demandLabels, accepted: stackedAcc, rejected: stackedRej, pending: stackedPen }
+                });
+
             } catch (error) {
                 console.error("Error fetching sudo dashboard stats:", error);
             } finally {
@@ -48,120 +166,310 @@ export default function SudoDashboardContent() {
         fetchAllStats();
     }, []);
 
-    const stats = [
-        { value: loading ? "--" : statsData.totalEvents, label: "Total Events", icon: <Icons.Events />, color: { bg: "bg-blue-600", text: "text-white" } },
-        { value: loading ? "--" : statsData.activeEvents, label: "Active Events", icon: <Icons.Events />, color: { bg: "bg-emerald-600", text: "text-white" } },
-        { value: loading ? "--" : statsData.totalSubmissions, label: "Total Submissions", icon: <Icons.Submissions />, color: { bg: "bg-emerald-700", text: "text-white" } },
-        { value: loading ? "--" : statsData.pendingApprovals, label: "Pending Approvals", icon: <Icons.Approvals />, color: { bg: "bg-orange-500", text: "text-white" } },
-        { value: loading ? "--" : statsData.approvedTotal, label: "Approved", icon: <Icons.Approvals />, color: { bg: "bg-green-600", text: "text-white" } },
-        { value: loading ? "--" : statsData.totalStudents, label: "Total Students", icon: <Icons.Students />, color: { bg: "bg-purple-600", text: "text-white" } },
-    ];
+    const config = {
+        bgGradient: "from-slate-800 via-slate-700 to-slate-900",
+        greeting: "System Overview",
+        emoji: "⚙️",
+        primaryAction: "Manage Users",
+        statsColors: [
+            "text-slate-600", "text-gray-700", "text-zinc-600", "text-neutral-600", "text-stone-600", "text-slate-700"
+        ]
+    };
+
+    const lineChartDataObj = {
+        labels: chartData.lineChart.labels,
+        datasets: [
+            {
+                label: 'Current Period',
+                data: chartData.lineChart.current,
+                borderColor: '#4F46E5',
+                backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                borderWidth: 2
+            },
+            {
+                label: 'Previous Period',
+                data: chartData.lineChart.previous,
+                borderColor: '#CBD5E1',
+                borderDash: [5, 5],
+                fill: false,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 0,
+                borderWidth: 2
+            }
+        ]
+    };
+
+    const lineChartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top', align: 'end', labels: { usePointStyle: true, boxWidth: 8, font: { family: 'Inter', size: 12 } } },
+            tooltip: {
+                mode: 'index', intersect: false, backgroundColor: '#ffffff', titleColor: '#1e293b', bodyColor: '#475569', borderColor: '#e2e8f0', borderWidth: 1, padding: 12, displayColors: true,
+            }
+        },
+        scales: {
+            x: { grid: { display: false }, border: { display: false } },
+            y: { grid: { color: '#f8fafc', drawBorder: false }, border: { display: false }, beginAtZero: true }
+        },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false }
+    };
+
+    const horizontalBarData = {
+        labels: chartData.demand.labels,
+        datasets: [
+            {
+                label: 'Applications',
+                data: chartData.demand.data,
+                backgroundColor: [
+                    '#4F46E5',
+                    '#E2E8F0',
+                    '#E2E8F0',
+                    '#E2E8F0',
+                    '#E2E8F0',
+                ],
+                borderRadius: 4,
+            }
+        ]
+    };
+
+    const horizontalBarOptions = {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { display: false },
+            tooltip: { backgroundColor: '#1E293B', padding: 10, cornerRadius: 8, }
+        },
+        scales: {
+            x: { display: false, grid: { display: false } },
+            y: { grid: { display: false }, border: { display: false } }
+        }
+    };
+
+    const acceptedTotal = statsData.approvedTotal;
+    const rejectedTotal = statsData.rejectedTotal;
+    const pendingTotal = statsData.pendingApprovals;
+    const totalDonut = acceptedTotal + rejectedTotal + pendingTotal;
+    const acceptPercent = totalDonut > 0 ? Math.round((acceptedTotal / totalDonut) * 100) : 0;
+
+    const donutData = {
+        labels: ['Accepted', 'Rejected', 'Pending'],
+        datasets: [{
+            data: [acceptedTotal, rejectedTotal, pendingTotal],
+            backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
+            borderWidth: 0,
+            hoverOffset: 4
+        }]
+    };
+
+    const donutOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: { usePointStyle: true, padding: 20, font: { family: 'Inter', size: 12 } }
+            },
+            tooltip: { backgroundColor: '#1E293B', padding: 12, cornerRadius: 8 }
+        }
+    };
+
+    const stackedBarDataObj = {
+        labels: chartData.stacked.labels,
+        datasets: [
+            {
+                label: 'Accepted',
+                data: chartData.stacked.accepted,
+                backgroundColor: '#10B981',
+                borderRadius: 4,
+            },
+            {
+                label: 'Rejected',
+                data: chartData.stacked.rejected,
+                backgroundColor: '#EF4444',
+                borderRadius: 4,
+            },
+            {
+                label: 'Pending',
+                data: chartData.stacked.pending,
+                backgroundColor: '#F59E0B',
+                borderRadius: 4,
+            }
+        ]
+    };
+
+    const stackedBarOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: { position: 'top', align: 'end', labels: { usePointStyle: true, font: { family: 'Inter', size: 12 } } },
+            tooltip: { mode: 'index', intersect: false, backgroundColor: '#1E293B', padding: 10, cornerRadius: 8 }
+        },
+        scales: {
+            x: { stacked: true, grid: { display: false }, border: { display: false } },
+            y: { stacked: true, grid: { color: '#F1F5F9' }, border: { display: false }, beginAtZero: true }
+        }
+    };
 
     return (
-        <>
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-8 md:mb-10">
-                <div className="min-w-0">
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#1E2761] flex flex-wrap items-center gap-2 sm:gap-3 tracking-tight">
-                        System Dashboard, {user?.name?.split(" ")[0]} <span className="animate-bounce">🚀</span>
-                    </h1>
-                    <div className="mt-3 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                        <div className="bg-[#1E2761] text-white text-[10px] font-black px-3 py-1 rounded shadow-sm tracking-wider uppercase">
-                            Role: {user?.labels?.[0]}
+        <div className="space-y-6 pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 bg-[#F5F7FA] -mx-4 sm:-mx-6 md:-mx-8 px-4 sm:px-6 md:px-8 pt-4 -mt-4">
+            {/* Minimal Hero / Stats Header */}
+            <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r ${config.bgGradient} p-6 sm:p-8 shadow-sm`}>
+                <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">
+                            System Dashboard
+                        </h1>
+                        <p className="text-white/80 font-medium">
+                            {config.greeting}, {user?.name?.split(" ")[0]}
+                        </p>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4 mt-4 sm:mt-0">
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Students</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalStudents}</div>
                         </div>
-                        <div className="text-gray-400 text-sm font-medium sm:border-l border-gray-200 sm:pl-3">
-                            Full system overview and control
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Faculty</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalFaculty}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Admins</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalAdmins}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Sudo</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalSudo}</div>
                         </div>
                     </div>
-                </div>
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 text-[#3E7BCB] font-bold text-[11px] uppercase tracking-widest transition-all shadow-sm active:scale-95"
-                    >
-                        <Icons.Refresh />
-                        Refresh
-                    </button>
                 </div>
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-10">
-                {stats.map((stat, idx) => (
-                    <StatCard key={idx} {...stat} />
-                ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard title="Events" value={loading ? "..." : statsData.totalEvents} icon={<Icons.Events />} colorClass="text-blue-600" delay="0" />
+                <StatCard title="Submissions" value={loading ? "..." : statsData.totalSubmissions} icon={<Icons.Submissions />} colorClass="text-indigo-500" delay="150" />
+                <StatCard title="Pending" value={loading ? "..." : statsData.pendingApprovals} icon={<Icons.Approvals />} colorClass="text-amber-500" delay="200" alert={statsData.pendingApprovals > 0} />
+                <StatCard title="Approved" value={loading ? "..." : statsData.approvedTotal} icon={<Icons.Certificate />} colorClass="text-emerald-500" delay="250" />
             </div>
 
-            {/* Participation Table - Still Placeholder for now */}
-            <section className="bg-white rounded-2xl shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden mb-10">
-                <div className="p-4 sm:p-6 md:p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            {/* 1. TOP ROW: Line Chart (Trend) */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 relative">
+                {loading && <LoaderOverlay />}
+                <div className="flex justify-between items-start mb-6">
                     <div>
-                        <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">Participation & Prize by Class</h2>
-                        <p className="text-gray-400 text-sm font-medium mt-1">Real-time participation metrics by academic year</p>
+                        <h2 className="text-lg font-bold text-slate-800">Applications Over Time</h2>
+                        <p className="text-sm text-slate-500 font-medium mt-1">Application trend over the current month</p>
+                    </div>
+                    <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-100 shadow-sm">
+                         Live Feed
                     </div>
                 </div>
-                <div className="overflow-x-auto min-h-[200px]">
-                    <table className="w-full min-w-[560px] text-left">
-                        <thead className="bg-[#F8F9FA]">
-                            <tr>
-                                <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Class</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Participated</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-gray-400 uppercase tracking-[0.2em]">Prize (₹)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td colSpan="3" className="px-8 py-16 text-center">
-                                    <div className="flex flex-col items-center gap-3">
-                                        <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center text-gray-200 mb-2">
-                                            <Icons.Submissions />
-                                        </div>
-                                        <p className="text-gray-400 font-bold text-sm">Detailed class analytics coming soon</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div className="h-[280px] w-full">
+                    <Line data={lineChartDataObj} options={lineChartOptions} />
                 </div>
-            </section>
+            </div>
 
-            {/* Bottom Cards */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 pb-10">
-                <div className="bg-gradient-to-br from-[#00BCD4] to-[#0097A7] rounded-3xl p-6 sm:p-8 md:p-10 text-white relative overflow-hidden shadow-xl">
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-4 mb-8 md:mb-10">
-                            <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
-                                <Icons.Dashboard />
-                            </div>
-                            <h3 className="text-xl sm:text-2xl font-black tracking-tight">Real-Time Analytics</h3>
+            {/* 2. MIDDLE ROW: Horizontal Bar + Donut Chart */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Horizontal Bar: Demand */}
+                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 relative">
+                    {loading && <LoaderOverlay />}
+                    <div className="mb-6 flex justify-between items-start pr-2">
+                        <div>
+                            <h2 className="text-lg font-bold text-slate-800">Applications Per Event</h2>
+                            <p className="text-sm text-slate-500 font-medium mt-1">Highest to lowest demand</p>
                         </div>
-                        <div className="grid grid-cols-2 gap-4 sm:gap-8 md:gap-10">
-                            <div>
-                                <div className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em] mb-3">Live Connections</div>
-                                <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter">1</div>
-                            </div>
-                            <div>
-                                <div className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em] mb-3">Recent Activity</div>
-                                <div className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter">{statsData.totalSubmissions}</div>
-                            </div>
+                        <div className="bg-orange-50 text-orange-600 px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 border border-orange-100 shadow-sm">
+                             Most Popular
                         </div>
                     </div>
+
+                    <div className="h-[260px] w-full relative -ml-4">
+                        <Bar data={horizontalBarData} options={horizontalBarOptions} />
+                    </div>
                 </div>
-                <div className="bg-gradient-to-br from-[#7986CB] to-[#5C6BC0] rounded-3xl p-6 sm:p-8 md:p-10 text-white relative overflow-hidden shadow-xl">
-                    <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
-                        <div className="flex items-center gap-4 mb-4">
-                            <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
-                                <Icons.Reports />
-                            </div>
-                            <h3 className="text-xl sm:text-2xl font-black tracking-tight">System Health</h3>
+
+                {/* Donut Chart: Distribution */}
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 relative flex flex-col">
+                    {loading && <LoaderOverlay />}
+                    <div className="mb-4 text-center">
+                        <h2 className="text-lg font-bold text-slate-800">Global Acceptance Rate</h2>
+                    </div>
+
+                    <div className="flex-1 relative min-h-[180px]">
+                        <Doughnut data={donutData} options={donutOptions} />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none mt-[-28px]">
+                            <span className="text-3xl font-black text-slate-800">
+                                {acceptPercent}%
+                            </span>
                         </div>
-                        <div className="mt-6">
-                            <div className="text-[10px] font-black uppercase opacity-60 tracking-[0.2em] mb-4">Database Status</div>
-                            <div className="text-4xl font-black tracking-tighter mb-2">ONLINE</div>
-                            <div className="inline-block px-4 py-1.5 bg-white/10 rounded-full text-[10px] font-bold">Appwrite Connected</div>
-                        </div>
+                    </div>
+
+                    <div className="text-center mt-4 border-t border-slate-100 pt-4">
+                        <p className="text-[13px] text-slate-500 font-medium tracking-wide">
+                            <span className="text-emerald-500 font-bold">{acceptedTotal}</span> Accepted <span className="mx-2 opacity-30">|</span> <span className="text-red-500 font-bold">{rejectedTotal}</span> Rejected <span className="mx-2 opacity-30">|</span> <span className="text-amber-500 font-bold">{pendingTotal}</span> Pending
+                        </p>
                     </div>
                 </div>
             </div>
-        </>
+
+            {/* 3. BOTTOM ROW: Stacked Bar */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 sm:p-8 relative">
+                {loading && <LoaderOverlay />}
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold text-slate-800">Event Performance Comparison</h2>
+                    <p className="text-sm text-slate-500 font-medium mt-1">Comparing accepted vs rejected ratio per event</p>
+                </div>
+                <div className="h-[280px] w-full">
+                    <Bar data={stackedBarDataObj} options={stackedBarOptions} />
+                </div>
+            </div>
+
+        </div>
+    );
+}
+
+function StatCard({ title, value, icon, colorClass, delay, alert }) {
+    return (
+        <div style={{ animationDelay: `${delay}ms` }} className="animate-in fade-in slide-in-from-bottom-4 fill-mode-both bg-white rounded-2xl p-4 sm:p-5 border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group cursor-default">
+            {alert && (
+                <div className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full animate-ping"></div>
+            )}
+            {alert && (
+                <div className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full"></div>
+            )}
+            <div className="flex items-center justify-between mb-3">
+                <div className={`p-3 rounded-xl bg-slate-50 transition-colors duration-300 group-hover:bg-slate-100 ${colorClass}`}>
+                    {icon}
+                </div>
+            </div>
+            <div>
+                <div className="text-2xl font-black text-slate-800 tracking-tight">
+                    {value}
+                </div>
+                <div className="text-[11px] font-semibold text-slate-500 mt-1 uppercase tracking-wider">{title}</div>
+            </div>
+            <div className={`absolute -bottom-4 -right-4 w-20 h-20 opacity-5 group-hover:opacity-10 transition-opacity duration-300 group-hover:scale-110 ${colorClass}`}>
+                {icon}
+            </div>
+        </div>
+    );
+}
+
+function LoaderOverlay() {
+    return (
+        <div className="absolute inset-0 bg-white/70 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+        </div>
     );
 }

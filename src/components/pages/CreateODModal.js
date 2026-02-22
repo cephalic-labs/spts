@@ -184,8 +184,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             setFormError("OD start date cannot be after OD end date.");
             return;
         }
-        if (selectedEventDate && (formData.od_start_date > selectedEventDate || formData.od_end_date > selectedEventDate)) {
-            setFormError("OD dates must be on or before the selected event date.");
+        if (selectedEventDate && (formData.od_start_date > selectedEventDate || formData.od_end_date < selectedEventDate)) {
+            setFormError("The OD date range must include the event date (" + selectedEventDate + ").");
             return;
         }
         if (!formData.mentor_id) {
@@ -268,7 +268,17 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                             required
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
                             value={formData.event_id}
-                            onChange={(e) => setFormData({ ...formData, event_id: e.target.value, od_start_date: "", od_end_date: "" })}
+                            onChange={(e) => {
+                                const eventId = e.target.value;
+                                const ev = events.find(event => event.$id === eventId);
+                                const evDate = normalizeDateOnly(ev?.event_time);
+                                setFormData({
+                                    ...formData,
+                                    event_id: eventId,
+                                    od_start_date: evDate || "",
+                                    od_end_date: evDate || ""
+                                });
+                            }}
                         >
                             <option value="">
                                 {fetchingParticipation || fetchingEvents
@@ -301,7 +311,6 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
                                 value={formData.od_start_date}
                                 onChange={(e) => setFormData({ ...formData, od_start_date: e.target.value })}
-                                max={selectedEventDate || undefined}
                             />
                         </div>
                         <div>
@@ -313,14 +322,13 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                                 value={formData.od_end_date}
                                 onChange={(e) => setFormData({ ...formData, od_end_date: e.target.value })}
                                 min={formData.od_start_date || undefined}
-                                max={selectedEventDate || undefined}
                             />
                         </div>
                     </div>
 
                     {selectedEventDate && (
                         <p className="text-xs text-gray-500 -mt-2">
-                            Selected event date: <span className="font-bold text-gray-700">{selectedEventDate}</span>. OD dates must be on or before this date.
+                            Selected event date: <span className="font-bold text-gray-700">{selectedEventDate}</span>. Your OD range must include this date.
                         </p>
                     )}
 
@@ -349,7 +357,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                             </option>
                             {mentors.map(faculty => (
                                 <option key={faculty.$id} value={faculty.$id}>
-                                    {faculty.name} ({faculty.role} - {faculty.department})
+                                    {faculty.name} ({(String(faculty.role || "")).charAt(0).toUpperCase() + (String(faculty.role || "")).slice(1)}, {faculty.department})
                                 </option>
                             ))}
                         </select>

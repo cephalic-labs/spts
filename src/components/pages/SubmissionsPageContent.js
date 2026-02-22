@@ -8,6 +8,10 @@ import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
+import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail } from "@/lib/services/studentService";
+import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
+import { getUserByAppwriteId } from "@/lib/services/userService";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 const statusColors = {
     [OD_STATUS.PENDING_MENTOR]: "bg-yellow-100 text-yellow-700",
@@ -42,18 +46,61 @@ export default function SubmissionsPageContent({ role }) {
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [cancelLoadingId, setCancelLoadingId] = useState(null);
     const [cancelDialogSubmission, setCancelDialogSubmission] = useState(null);
+    const [filterDept, setFilterDept] = useState("");
+    const [filterSection, setFilterSection] = useState("");
+    const [userDepartment, setUserDepartment] = useState(null);
+    const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
+    const [studentMap, setStudentMap] = useState({});
+
+    const needsDeptLock = !["sudo", "admin", "student"].includes(role);
+
+    // For all faculty roles (hod, coordinator, advisor, mentor, principal):
+    // fetch their faculty profile to resolve department and lock the filter
+    useEffect(() => {
+        if (!needsDeptLock || !user?.$id) return;
+
+        async function resolveDepartment() {
+            try {
+                // Try 1: lookup by Appwrite user ID
+                let faculty = await getFacultyByAppwriteId(user.$id);
+                console.log("[Dept Resolution] By appwrite_user_id:", faculty?.department || "not found");
+
+                // Try 2: fallback to email lookup
+                if (!faculty && user.email) {
+                    faculty = await getFacultyByEmail(user.email);
+                    console.log("[Dept Resolution] By email:", faculty?.department || "not found");
+                }
+
+                if (faculty?.department) {
+                    console.log("[Dept Resolution] Locked to department:", faculty.department);
+                    setUserDepartment(faculty.department);
+                    setFilterDept(faculty.department);
+                } else {
+                    console.warn("[Dept Resolution] Could not resolve department for user:", user.$id, user.email);
+                }
+            } catch (err) {
+                console.error("[Dept Resolution] Error:", err);
+            } finally {
+                setDeptResolved(true);
+            }
+        }
+
+        resolveDepartment();
+    }, [role, user?.$id, user?.email]);
 
     useEffect(() => {
+        if (!deptResolved) return; // wait for dept to be resolved before loading
         if (user || role !== 'student') {
             loadSubmissions();
         }
-    }, [role, user?.$id]);
+    }, [role, user?.$id, filterDept, deptResolved]);
 
     async function loadSubmissions() {
         try {
             setLoading(true);
             setError(null);
             let response;
+            let currentStudentMap = { ...studentMap };
 
             if (role === "student") {
                 const studentId = user?.$id;
@@ -61,15 +108,76 @@ export default function SubmissionsPageContent({ role }) {
                     setSubmissions([]);
                     return;
                 }
-                // Students see their own submissions
                 response = await getStudentODRequests(studentId);
             } else {
-                // Others see all submissions
-                response = await getAllODRequests(100);
+                // For admins/sudo/faculty, fetch recent requests
+                // We fetch a larger batch to allow effective client-side filtering
+                response = await getAllODRequests(200);
             }
 
             const docs = response?.documents || [];
             setSubmissions(docs);
+
+            // Fetch missing student details if others
+            if (role !== "student") {
+                const missingIds = [...new Set(docs.map(s => s.student_id).filter(id => id && !currentStudentMap[id]))];
+
+                if (missingIds.length > 0) {
+                    try {
+                        // 1. Try fetching by Appwrite User IDs (most common for student_id)
+                        const studentsByAppwriteRes = await getStudentsByAppwriteUserIds(missingIds, 100);
+                        studentsByAppwriteRes.forEach(s => {
+                            if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
+                            currentStudentMap[s.$id] = s;
+                        });
+
+                        // 2. Try fetching by Student Document IDs for those still missing
+                        const stillMissingById = missingIds.filter(id => !currentStudentMap[id]);
+                        if (stillMissingById.length > 0) {
+                            const studentsByIdRes = await getStudentsByIds(stillMissingById);
+                            studentsByIdRes.forEach(s => {
+                                if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
+                                currentStudentMap[s.$id] = s;
+                            });
+                        }
+
+                        // 3. Try to get email from User record and search by email
+                        const finalStillMissing = missingIds.filter(id => !currentStudentMap[id]);
+                        if (finalStillMissing.length > 0) {
+                            await Promise.all(finalStillMissing.map(async (missingId) => {
+                                try {
+                                    const userRecord = await getUserByAppwriteId(missingId);
+                                    if (userRecord && userRecord.user_email) {
+                                        const email = userRecord.user_email;
+                                        // Try to find student by email
+                                        const studentByEmail = await getStudentByEmail(email);
+                                        if (studentByEmail) {
+                                            // Link the Appwrite User ID to this student profile in our map
+                                            currentStudentMap[missingId] = studentByEmail;
+                                            if (studentByEmail.appwrite_user_id) {
+                                                currentStudentMap[studentByEmail.appwrite_user_id] = studentByEmail;
+                                            }
+                                            currentStudentMap[studentByEmail.$id] = studentByEmail;
+                                        } else {
+                                            // Fallback if no student profile found at all
+                                            currentStudentMap[missingId] = {
+                                                name: userRecord.user_name || "Unknown User",
+                                                department: "Profile Missing",
+                                                email: userRecord.user_email
+                                            };
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Ignore
+                                }
+                            }));
+                        }
+                    } catch (err) {
+                        console.error("Error fetching students for mapping:", err);
+                    }
+                }
+                setStudentMap(currentStudentMap);
+            }
 
             // Fetch event details
             const eventIds = [...new Set(docs.map(s => s.event_id).filter(Boolean))];
@@ -141,6 +249,21 @@ export default function SubmissionsPageContent({ role }) {
         return new Date(value).toLocaleDateString();
     }
 
+    const filteredSubmissions = submissions.filter(sub => {
+        if (role === 'student') return true;
+        const student = studentMap[sub.student_id];
+        // Exclude submissions where student profile is missing or unresolved
+        if (!student || !student.department || student.department === "Profile Missing") return false;
+
+        // Department Filter
+        if (filterDept && student.department !== filterDept) return false;
+
+        // Section Filter
+        if (filterSection && student.section !== filterSection) return false;
+
+        return true;
+    });
+
     if (loading && submissions.length === 0) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -172,6 +295,90 @@ export default function SubmissionsPageContent({ role }) {
                 )}
             </div>
 
+            {/* Filter Section */}
+            {/* sudo/admin: full interactive department filter */}
+            {["sudo", "admin"].includes(role) && (
+                <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-full sm:w-64">
+                        <select
+                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
+                            value={filterDept}
+                            onChange={(e) => setFilterDept(e.target.value)}
+                        >
+                            <option value="">All Departments</option>
+                            {DEPARTMENTS_LIST.map(dept => (
+                                <option key={dept} value={dept}>{dept}</option>
+                            ))}
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div className="relative w-full sm:w-48">
+                        <select
+                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
+                            value={filterSection}
+                            onChange={(e) => setFilterSection(e.target.value)}
+                        >
+                            <option value="">All Sections</option>
+                            <option value="A">Section A</option>
+                            <option value="B">Section B</option>
+                            <option value="C">Section C</option>
+                            <option value="D">Section D</option>
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    {(filterDept || filterSection) && (
+                        <button
+                            onClick={() => { setFilterDept(""); setFilterSection(""); }}
+                            className="text-xs font-bold text-[#1E2761] hover:underline"
+                        >
+                            Clear Filters
+                        </button>
+                    )}
+                </div>
+            )}
+            {/* Non-sudo/admin faculty roles: show a read-only department badge + section filter */}
+            {needsDeptLock && (
+                <div className="mb-6 flex flex-wrap items-center gap-4">
+                    {userDepartment && (
+                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-xl text-sm font-bold">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                            {userDepartment} Department
+                        </span>
+                    )}
+
+                    <div className="relative w-full sm:w-48">
+                        <select
+                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
+                            value={filterSection}
+                            onChange={(e) => setFilterSection(e.target.value)}
+                        >
+                            <option value="">All Sections</option>
+                            <option value="A">Section A</option>
+                            <option value="B">Section B</option>
+                            <option value="C">Section C</option>
+                            <option value="D">Section D</option>
+                        </select>
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <CreateODModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
@@ -199,25 +406,32 @@ export default function SubmissionsPageContent({ role }) {
 
             {/* Submissions Table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                {submissions.length === 0 && !error ? (
+                {filteredSubmissions.length === 0 && !error ? (
                     <div className="p-12 text-center">
                         <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Icons.Submissions />
                         </div>
                         <h3 className="text-lg font-bold text-gray-700 mb-2">No Submissions Found</h3>
                         <p className="text-gray-500">
-                            {role === "student" ? "Submit your first OD request using the 'New Request' button above." : "No submissions to display."}
+                            {role === "student" ? "Submit your first OD request using the 'New Request' button above." : (filterDept ? `No submissions found for ${filterDept} department.` : "No submissions to display.")}
                         </p>
                     </div>
-                ) : submissions.length > 0 ? (
+                ) : filteredSubmissions.length > 0 ? (
                     <>
                         <div className="md:hidden p-3 space-y-3">
-                            {submissions.map((submission) => (
+                            {filteredSubmissions.map((submission) => (
                                 <div key={submission.$id} className="border border-gray-100 rounded-xl p-4 bg-white">
                                     <div className="flex items-start justify-between gap-2 mb-3">
-                                        <p className="text-xs font-mono text-gray-400">
-                                            #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
-                                        </p>
+                                        <div>
+                                            <p className="text-xs font-mono text-gray-400">
+                                                #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
+                                            </p>
+                                            {role !== 'student' && studentMap[submission.student_id] && (
+                                                <p className="text-[10px] font-bold text-gray-500 uppercase mt-0.5">
+                                                    {studentMap[submission.student_id].name} ({studentMap[submission.student_id].department})
+                                                </p>
+                                            )}
+                                        </div>
                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${statusColors[submission.current_status] || "bg-gray-100 text-gray-600"}`}>
                                             {statusLabels[submission.current_status] || submission.current_status}
                                         </span>
@@ -262,6 +476,7 @@ export default function SubmissionsPageContent({ role }) {
                                 <thead className="bg-[#F8F9FA] border-b border-gray-100">
                                     <tr>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
+                                        {role !== "student" && <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Student</th>}
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Event</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date Range</th>
                                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
@@ -270,11 +485,17 @@ export default function SubmissionsPageContent({ role }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {submissions.map((submission) => (
+                                    {filteredSubmissions.map((submission) => (
                                         <tr key={submission.$id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4 text-sm font-mono text-gray-400">
                                                 #{submission.od_id?.slice(0, 8) || submission.$id.slice(0, 8)}
                                             </td>
+                                            {role !== "student" && (
+                                                <td className="px-6 py-4">
+                                                    <div className="text-sm font-bold text-gray-800">{studentMap[submission.student_id]?.name || "N/A"}</div>
+                                                    <div className="text-[10px] text-gray-400 uppercase font-black">{studentMap[submission.student_id]?.department || "N/A"}</div>
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4 text-sm text-gray-800 font-medium">
                                                 {getEventName(submission)}
                                             </td>

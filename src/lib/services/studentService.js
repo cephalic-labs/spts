@@ -30,6 +30,9 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
         if (filters.mentor_id) {
             queries.push(Query.equal("mentor_id", filters.mentor_id));
         }
+        if (filters.search) {
+            queries.push(Query.contains("name", filters.search));
+        }
 
         const response = await databases.listDocuments(
             DATABASE_ID,
@@ -55,6 +58,9 @@ export async function getStudentById(studentId) {
         );
         return student;
     } catch (error) {
+        if (error.code === 404 || error.message?.includes("could not be found")) {
+            return null;
+        }
         console.error("Error getting student:", error);
         throw error;
     }
@@ -140,7 +146,7 @@ export async function createStudent(data) {
         department: data.department,
         year: parseInt(data.year),
         section: data.section,
-        phone: data.phone || "",
+        phone: data.phone ? parseInt(String(data.phone).replace(/\D/g, '')) : null,
         cgpa: (data.cgpa !== undefined && data.cgpa !== "" && data.cgpa !== null) ? parseFloat(data.cgpa) : null,
         advisor_id: data.advisor_id || null,
         mentor_id: data.mentor_id || null,
@@ -181,6 +187,9 @@ export async function updateStudent(studentId, data) {
     if (updateData.year) updateData.year = parseInt(updateData.year);
     if (updateData.cgpa !== undefined && updateData.cgpa !== "") {
         updateData.cgpa = parseFloat(updateData.cgpa);
+    }
+    if (updateData.phone !== undefined) {
+        updateData.phone = updateData.phone ? parseInt(String(updateData.phone).replace(/\D/g, '')) : null;
     }
 
     try {
@@ -239,12 +248,50 @@ export async function deleteStudent(studentId) {
     }
 }
 
+/**
+ * Get multiple students by their IDs
+ */
+export async function getStudentsByIds(ids) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) return [];
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.equal("$id", ids), Query.limit(ids.length)]
+        );
+        return response.documents;
+    } catch (error) {
+        console.error("Error getting students by IDs:", error);
+        return [];
+    }
+}
+
+/**
+ * Get multiple students by their Appwrite User IDs
+ */
+export async function getStudentsByAppwriteUserIds(ids, limit = 100) {
+    if (!ids || !Array.isArray(ids) || ids.length === 0) return [];
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.equal("appwrite_user_id", ids), Query.limit(limit)]
+        );
+        return response.documents;
+    } catch (error) {
+        console.error("Error getting students by Appwrite User IDs:", error);
+        return [];
+    }
+}
+
 export default {
     getStudents,
     getStudentById,
     getStudentByRegNo,
     getStudentByAppwriteUserId,
     getStudentByEmail,
+    getStudentsByIds,
+    getStudentsByAppwriteUserIds,
     createStudent,
     updateStudent,
     getStudentStats,

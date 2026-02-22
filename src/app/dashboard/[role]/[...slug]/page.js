@@ -10,9 +10,7 @@ import {
     StudentsPageContent,
     FacultyPageContent,
     SettingsPageContent,
-    DepartmentsPageContent,
-    ImportPageContent,
-    ReportsPageContent
+    ImportPageContent
 } from "@/components/pages";
 
 // Required for static export - generates all sub-pages at build time
@@ -55,18 +53,14 @@ export default async function CatchAllPage({ params }) {
             case "students":
                 return <StudentsPageContent role={role} />;
             case "faculty":
+                return <FacultyPageContent role={role} />;
             case "admins":
                 return <FacultyPageContent role={role} filterRole="admin" />;
             case "settings":
                 return <SettingsPageContent role={role} />;
-            case "departments":
-            case "department":
-            case "class":
-                return <DepartmentsPageContent role={role} />;
+
             case "import":
                 return <ImportPageContent role={role} />;
-            case "reports":
-                return <ReportsPageContent role={role} />;
             default:
                 return (
                     <PlaceholderPage

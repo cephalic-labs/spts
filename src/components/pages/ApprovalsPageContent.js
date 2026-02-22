@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
+import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
+import { getStudentByAppwriteUserId, getStudentById } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 
@@ -55,11 +57,97 @@ export default function ApprovalsPageContent({ role }) {
     const [rejectDialog, setRejectDialog] = useState({ isOpen: false, odId: null, remarks: "" });
     const [rejectFormError, setRejectFormError] = useState("");
 
+
+    // New State for View Request Modal
+    const [viewRequest, setViewRequest] = useState(null);
+    const [studentDetails, setStudentDetails] = useState(null);
+    const [eventDetails, setEventDetails] = useState(null);
+    const [detailsLoading, setDetailsLoading] = useState(false);
+
+    // New State for All Logs Modal
+    const [allLogsModalOpen, setAllLogsModalOpen] = useState(false);
+    const [allLogs, setAllLogs] = useState([]);
+    const [fetchingAllLogs, setFetchingAllLogs] = useState(false);
+    const [eventsMap, setEventsMap] = useState({});
+
     useEffect(() => {
         if (user) {
             loadPendingRequests();
         }
     }, [role, user?.$id]);
+
+    // Fetch student and event details when viewRequest changes
+    useEffect(() => {
+        async function fetchDetails() {
+            if (viewRequest) {
+                setDetailsLoading(true);
+                try {
+                    // Fetch student details if not already present
+                    if (!viewRequest.student && viewRequest.student_id) {
+                        try {
+                            // Try fetching by Appwrite User ID first
+                            let student = await getStudentByAppwriteUserId(viewRequest.student_id);
+
+                            // If not found, try fetching by Document ID
+                            if (!student) {
+                                try {
+                                    student = await getStudentById(viewRequest.student_id);
+                                } catch (innerErr) {
+                                    // Quietly fail if not found by ID either
+                                }
+                            }
+
+                            // LAST RESORT: Try fetching from Users collection to at least get the name
+                            if (!student) {
+                                try {
+                                    const userRecord = await getUserByAppwriteId(viewRequest.student_id);
+                                    if (userRecord) {
+                                        student = {
+                                            name: userRecord.user_name || "Unknown User",
+                                            email: userRecord.user_email,
+                                            department: "Profile Incomplete",
+                                            section: "-",
+                                            year: null,
+                                            student_register_no: "Not Set"
+                                        };
+                                    }
+                                } catch (userErr) {
+                                    // Ignore
+                                }
+                            }
+
+                            setStudentDetails(student);
+                        } catch (err) {
+                            console.error("Error fetching student details:", err);
+                        }
+                    } else if (viewRequest.student) {
+                        setStudentDetails(viewRequest.student);
+                    }
+
+                    // Fetch event details
+                    if (viewRequest.event_id) {
+                        try {
+                            const event = await getEventById(viewRequest.event_id);
+                            setEventDetails(event);
+                        } catch (err) {
+                            console.error("Error fetching event details:", err);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching details:", error);
+                } finally {
+                    setDetailsLoading(false);
+                }
+            }
+        }
+
+        if (viewRequest) {
+            fetchDetails();
+        } else {
+            setStudentDetails(null);
+            setEventDetails(null);
+        }
+    }, [viewRequest]);
 
     async function loadPendingRequests() {
         try {
@@ -110,30 +198,99 @@ export default function ApprovalsPageContent({ role }) {
             }
 
             // Fetch pending requests
+            let requests = [];
             if (status && approverIds.length > 0) {
                 const response = await getODRequestsByStatus(status, 50, {
                     approverRole: role,
                     approverIds: approverIds,
                 });
-                setPendingRequests(response?.documents || []);
+                requests = response?.documents || [];
             } else if (status && !currentFacultyId) {
                 // If not found as faculty, but has role (e.g. admin/sudo viewing as mentor), show all
                 try {
                     const response = await getODRequestsByStatus(status, 50);
-                    setPendingRequests(response?.documents || []);
+                    requests = response?.documents || [];
                 } catch (e) {
-                    setPendingRequests([]);
+                    requests = [];
                 }
-            } else {
-                setPendingRequests([]);
             }
 
+            // Fetch Student Details for each request
+            const enhancedRequests = await Promise.all(requests.map(async (req) => {
+                try {
+                    if (req.student_id) {
+                        // Try fetching by Appwrite User ID first
+                        let studentBody = await getStudentByAppwriteUserId(req.student_id);
+
+                        // If not found, try fetching by Document ID
+                        if (!studentBody) {
+                            try {
+                                studentBody = await getStudentById(req.student_id);
+                            } catch (e) {
+                                // Quietly fail if not found by ID either
+                            }
+                        }
+
+                        // LAST RESORT: Try fetching from Users collection
+                        if (!studentBody) {
+                            try {
+                                const userRecord = await getUserByAppwriteId(req.student_id);
+                                if (userRecord) {
+                                    studentBody = {
+                                        name: userRecord.user_name || "Unknown User",
+                                        email: userRecord.user_email,
+                                        department: "Profile Incomplete",
+                                        section: "-",
+                                        year: null,
+                                        student_register_no: "Not Set"
+                                    };
+                                }
+                            } catch (e) {
+                                // Ignore
+                            }
+                        }
+
+                        return { ...req, student: studentBody };
+                    }
+                } catch (e) {
+                    console.error("Error fetching student for req:", req.$id, e);
+                }
+                return req;
+            }));
+
+            setPendingRequests(enhancedRequests);
+
+            // Fetch event details for pending requests
+            const eventIds = [...new Set(enhancedRequests.map(r => r.event_id).filter(Boolean))];
+
             // Fetch recent logs
+            let logs = [];
             try {
                 const logsResponse = await getRecentApprovalLogs(10);
-                setRecentLogs(logsResponse?.documents || []);
+                logs = logsResponse?.documents || [];
+                setRecentLogs(logs);
+
+                // Add event IDs from logs to fetch list
+                logs.forEach(log => {
+                    if (log.event_id) eventIds.push(log.event_id);
+                });
             } catch (e) {
                 setRecentLogs([]);
+            }
+
+            // Bulk fetch and map all events
+            const uniqueEventIds = [...new Set(eventIds)];
+            if (uniqueEventIds.length > 0) {
+                try {
+                    const eventDocs = await getEventsByIds(uniqueEventIds);
+                    const newEventsMap = { ...eventsMap };
+                    eventDocs.forEach(ev => {
+                        newEventsMap[ev.$id] = ev;
+                    });
+                    setEventsMap(newEventsMap);
+                } catch (e) {
+                    console.error("Error fetching events for map:", e);
+                }
             }
         } catch (err) {
             console.error("Error loading pending requests:", err);
@@ -142,11 +299,29 @@ export default function ApprovalsPageContent({ role }) {
         }
     }
 
+    async function handleShowAllLogs() {
+        setAllLogsModalOpen(true);
+        if (allLogs.length === 0) {
+            try {
+                setFetchingAllLogs(true);
+                const logsResponse = await getRecentApprovalLogs(500);
+                setAllLogs(logsResponse?.documents || []);
+            } catch (e) {
+                console.error("Failed to fetch all logs", e);
+            } finally {
+                setFetchingAllLogs(false);
+            }
+        }
+    }
+
     async function handleApprove(odId) {
         try {
             setActionLoading(odId);
             await approveODRequest(odId, role, user?.$id || user?.dbId, "Approved", approverFacultyId);
             await loadPendingRequests();
+            if (viewRequest && viewRequest.$id === odId) {
+                setViewRequest(null);
+            }
         } catch (err) {
             console.error("Error approving request:", err);
             setErrorModalMessage(err?.message || "Failed to approve request");
@@ -165,6 +340,12 @@ export default function ApprovalsPageContent({ role }) {
         setRejectFormError("");
     }
 
+    function closeViewDialog() {
+        setViewRequest(null);
+        setStudentDetails(null);
+        setEventDetails(null);
+    }
+
     async function submitReject() {
         const remarks = rejectDialog.remarks?.trim();
         if (!remarks) {
@@ -177,12 +358,25 @@ export default function ApprovalsPageContent({ role }) {
             await rejectODRequest(rejectDialog.odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
             await loadPendingRequests();
             closeRejectDialog();
+            if (viewRequest && viewRequest.$id === rejectDialog.odId) {
+                setViewRequest(null);
+            }
         } catch (err) {
             console.error("Error rejecting request:", err);
             setErrorModalMessage(err?.message || "Failed to reject request");
         } finally {
             setActionLoading(null);
         }
+    }
+
+
+
+    function calculateDays(start, end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        const diffTime = Math.abs(endDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return diffDays;
     }
 
     if (loading) {
@@ -238,94 +432,109 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                    <div className="text-3xl font-bold text-[#1E2761]">{pendingRequests.length}</div>
-                    <div className="text-sm text-gray-500">Pending Your Review</div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                    <div className="text-3xl font-bold text-green-600">0</div>
-                    <div className="text-sm text-gray-500">Approved Today</div>
-                </div>
-                <div className="bg-white rounded-xl border border-gray-100 p-5">
-                    <div className="text-3xl font-bold text-red-600">0</div>
-                    <div className="text-sm text-gray-500">Rejected Today</div>
-                </div>
-            </div>
 
-            {/* Pending Requests */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+
+            {/* Pending Requests Table */}
+            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-12">
                 {pendingRequests.length === 0 ? (
-                    <div className="p-12 text-center">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <h3 className="text-lg font-bold text-gray-700 mb-2">All Caught Up!</h3>
-                        <p className="text-gray-500">No pending requests requiring your approval.</p>
+                    <div className="p-12 text-center text-gray-500">
+                        No pending requests to show.
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-50">
-                        {pendingRequests.map((request) => (
-                            <div key={request.$id} className="p-6 hover:bg-gray-50 transition-colors">
-                                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className="font-mono text-sm text-gray-400">
-                                                #{request.od_id?.slice(0, 8) || request.$id.slice(0, 8)}
+                    <div className="overflow-x-auto">
+                        <table className="w-full min-w-[800px] text-left">
+                            <thead className="bg-gray-50 border-b border-gray-100">
+                                <tr>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Student</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Event & Dates</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Duration</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                                {pendingRequests.map((req) => (
+                                    <tr key={req.$id} className="hover:bg-gray-50 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-[#1E2761] text-sm">{req.student?.name || "Unknown"}</span>
+                                                <span className="text-xs text-gray-400 font-medium">{req.student?.department} • {req.student?.year} Year</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <div className="flex flex-col">
+                                                <span className="font-semibold text-gray-700 text-sm">
+                                                    {eventsMap[req.event_id]?.event_name || `Event: ${req.event_id?.slice(0, 8)}...`}
+                                                </span>
+                                                <span className="text-xs text-gray-400">
+                                                    {new Date(req.od_start_date).toLocaleDateString()} - {new Date(req.od_end_date).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <span className="text-sm font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                                                {calculateDays(req.od_start_date, req.od_end_date)} Days
                                             </span>
-                                            <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">
-                                                Pending
-                                            </span>
-                                        </div>
-                                        <h4 className="font-bold text-gray-800 mb-1">
-                                            OD Request - Student: {request.student_id?.slice(0, 12)}...
-                                        </h4>
-                                        <p className="text-sm text-gray-500 mb-2">{request.reason}</p>
-                                        <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
-                                            <span>
-                                                📅 {new Date(request.od_start_date).toLocaleDateString()} - {new Date(request.od_end_date).toLocaleDateString()}
-                                            </span>
-                                            <span>
-                                                🕐 Requested {new Date(request.$createdAt).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    {canApprove && (
-                                        <div className="flex items-center gap-2 self-end lg:self-auto">
-                                            <button
-                                                onClick={() => openRejectDialog(request.$id)}
-                                                disabled={actionLoading === request.$id}
-                                                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                                            >
-                                                Reject
-                                            </button>
-                                            <button
-                                                onClick={() => handleApprove(request.$id)}
-                                                disabled={actionLoading === request.$id}
-                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-                                            >
-                                                {actionLoading === request.$id ? "..." : "Approve"}
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                                        </td>
+                                        <td className="px-6 py-4 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => setViewRequest(req)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="View Details"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => openRejectDialog(req.$id)}
+                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                    title="Reject"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleApprove(req.$id)}
+                                                    disabled={actionLoading === req.$id}
+                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                    title="Approve"
+                                                >
+                                                    {actionLoading === req.$id ? (
+                                                        <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    ) : (
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
             </div>
 
             {/* Recent Activity Section */}
-            <div className="mt-12">
+            <div>
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="text-xl font-bold text-[#1E2761]">Recent Approval Activity</h2>
                         <p className="text-gray-500 text-sm">Review recent actions taken on OD requests</p>
                     </div>
+                    {recentLogs.length > 0 && (
+                        <button
+                            onClick={handleShowAllLogs}
+                            className="px-4 py-2 bg-white border border-gray-200 text-[#1E2761] hover:bg-gray-50 rounded-xl text-sm font-bold transition-colors shadow-sm"
+                        >
+                            Show All
+                        </button>
+                    )}
                 </div>
 
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
@@ -363,9 +572,11 @@ export default function ApprovalsPageContent({ role }) {
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className="font-mono text-xs text-blue-600">
-                                                    #{log.od_id?.slice(0, 8)}
-                                                </span>
+                                                <div className="flex flex-col">
+                                                    <span className="font-medium text-blue-600 text-xs">
+                                                        {eventsMap[log.event_id]?.event_name || `#${log.event_id?.slice(0, 8)}`}
+                                                    </span>
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
@@ -390,6 +601,178 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             </div>
 
+            {/* View Details Modal */}
+            {viewRequest && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl p-6 border border-gray-100 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-[#1E2761]">OD Request Details</h3>
+                            <button onClick={closeViewDialog} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {detailsLoading ? (
+                            <div className="flex justify-center py-10">
+                                <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Student Info Section */}
+                                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                    <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-blue-100 pb-2">Student Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Name</p>
+                                            <p className="font-semibold text-gray-800">{studentDetails?.name || "Unknown"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Register No</p>
+                                            <p className="font-semibold text-gray-800">{studentDetails?.student_register_no || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Department</p>
+                                            <p className={`font-semibold ${studentDetails?.department === "Profile Incomplete" ? "text-red-500" : "text-gray-800"}`}>
+                                                {studentDetails?.department || "-"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Year / Section</p>
+                                            <p className="font-semibold text-gray-800">
+                                                {studentDetails?.year ? `${studentDetails.year} Year` : "-"} / {studentDetails?.section || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Event Details Section */}
+                                <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100">
+                                    <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-purple-100 pb-2">Event Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <p className="text-xs text-gray-500 uppercase">Event Name</p>
+                                            <p className="font-semibold text-gray-800">{eventDetails?.event_name || "Unknown Event"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Event Host</p>
+                                            <p className="font-medium text-gray-800">{eventDetails?.event_host || "Unknown Host"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Event Date</p>
+                                            <p className="font-medium text-gray-800">
+                                                {eventDetails?.event_time
+                                                    ? new Date(eventDetails.event_time).toDateString()
+                                                    : "-"}
+                                            </p>
+                                        </div>
+                                        {eventDetails?.event_url && (
+                                            <div className="md:col-span-2">
+                                                <a
+                                                    href={eventDetails.event_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                                >
+                                                    View Event Page
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Request Details Section */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-gray-100 pb-2">Request Details</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Start Date</p>
+                                            <p className="font-medium text-gray-800">{new Date(viewRequest.od_start_date).toDateString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">End Date</p>
+                                            <p className="font-medium text-gray-800">{new Date(viewRequest.od_end_date).toDateString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Duration</p>
+                                            <p className="font-medium text-gray-800">
+                                                {calculateDays(viewRequest.od_start_date, viewRequest.od_end_date)} Days
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Status</p>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {viewRequest.current_status}
+                                            </span>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <p className="text-xs text-gray-500 uppercase mb-1">Reason</p>
+                                            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                {viewRequest.reason || "No reason provided."}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {viewRequest.attachments && viewRequest.attachments.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-gray-100 pb-2">Attachments</h4>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {viewRequest.attachments.map((att, idx) => (
+                                                <a
+                                                    key={idx}
+                                                    href={att}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg max-w-xs hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                    </svg>
+                                                    <span className="text-sm text-blue-600 truncate">Attachment {idx + 1}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                    <button
+                                        onClick={closeViewDialog}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                                    >
+                                        Close
+                                    </button>
+
+                                    {canApprove && (
+                                        <>
+                                            <button
+                                                onClick={() => openRejectDialog(viewRequest.$id)}
+                                                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition-colors"
+                                            >
+                                                Reject
+                                            </button>
+                                            <button
+                                                onClick={() => handleApprove(viewRequest.$id)}
+                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                                            >
+                                                Approve
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Reject Dialog */}
             {rejectDialog.isOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 border border-gray-100 shadow-2xl">
@@ -428,6 +811,7 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
+            {/* Error Message Modal */}
             {errorModalMessage && (
                 <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
                     <div className="bg-white rounded-2xl w-full max-w-sm p-6 border border-gray-100 shadow-2xl">
@@ -439,6 +823,102 @@ export default function ApprovalsPageContent({ role }) {
                                 className="w-full sm:w-auto px-4 py-2 rounded-lg bg-[#1E2761] text-white font-semibold hover:bg-[#2d3a7d]"
                             >
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* All Logs Modal */}
+            {allLogsModalOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                        <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">All Approval Activity</h2>
+                                <p className="text-gray-400 text-sm font-medium">Complete history of all actions</p>
+                            </div>
+                            <button onClick={() => setAllLogsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-gray-50/50">
+                            {fetchingAllLogs ? (
+                                <div className="flex justify-center py-20">
+                                    <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
+                                </div>
+                            ) : allLogs.length === 0 ? (
+                                <div className="p-12 text-center text-gray-500">
+                                    No activity found.
+                                </div>
+                            ) : (
+                                <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[940px] text-left">
+                                            <thead className="bg-[#F8F9FA] border-b border-gray-100">
+                                                <tr>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Log ID</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">OD ID</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action By</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
+                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Remarks</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-gray-50">
+                                                {allLogs.map((log) => (
+                                                    <tr key={log.$id} className="hover:bg-gray-50 transition-colors text-sm">
+                                                        <td className="px-6 py-4 text-gray-500 font-medium whitespace-nowrap">
+                                                            {new Date(log.action_at).toLocaleString([], {
+                                                                year: 'numeric',
+                                                                month: 'short',
+                                                                day: 'numeric',
+                                                                hour: '2-digit',
+                                                                minute: '2-digit'
+                                                            })}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="font-mono text-xs text-gray-400">
+                                                                #{log.log_id?.slice(0, 8) || log.$id.slice(0, 8)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="font-mono text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">
+                                                                #{log.od_id?.slice(0, 8)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold text-gray-700 capitalize">{log.action_by_role}</span>
+                                                                <span className="text-xs text-gray-400">({log.action_by_user_id?.slice(0, 8)})</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`px-2 py-1 rounded text-[10px] uppercase tracking-widest font-black ${getLogActionMeta(log.action).className}`}>
+                                                                {getLogActionMeta(log.action).label}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-gray-600 italic">
+                                                            {log.remarks || "-"}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end shrink-0">
+                            <button
+                                onClick={() => setAllLogsModalOpen(false)}
+                                className="px-6 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
+                            >
+                                Close Activity
                             </button>
                         </div>
                     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createStudent, updateStudent } from "@/lib/services/studentService";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function AddStudentModal({ isOpen, onClose, onSuccess, initialData = null }) {
     const isEdit = !!initialData;
@@ -136,12 +137,9 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                 onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                             >
                                 <option value="">Select Dept</option>
-                                <option value="CSE">CSE</option>
-                                <option value="ECE">ECE</option>
-                                <option value="EEE">EEE</option>
-                                <option value="MECH">MECH</option>
-                                <option value="IT">IT</option>
-                                <option value="AIDS">AIDS</option>
+                                {DEPARTMENTS_LIST.map(dept => (
+                                    <option key={dept} value={dept}>{dept}</option>
+                                ))}
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -174,7 +172,8 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                         <div>
                             <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Phone Number</label>
                             <input
-                                type="text"
+                                type="tel"
+                                placeholder="9876543210"
                                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
                                 value={formData.phone}
                                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}

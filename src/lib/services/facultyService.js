@@ -21,6 +21,9 @@ export async function getFaculties(filters = {}, limit = 100, offset = 0) {
         if (filters.role) {
             queries.push(Query.equal("role", filters.role));
         }
+        if (filters.search) {
+            queries.push(Query.contains("name", filters.search));
+        }
 
         const response = await databases.listDocuments(
             DATABASE_ID,

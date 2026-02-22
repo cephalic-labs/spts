@@ -1,29 +1,68 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getFaculties, deleteFaculty } from "@/lib/services/facultyService";
+import { useAuth } from "@/lib/AuthContext";
+import { getFaculties, deleteFaculty, getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
+import { getAdminFacultyFromLabels } from "@/actions/auth";
+import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function FacultyPageContent({ role, filterRole }) {
+    const { user } = useAuth();
     const [faculty, setFaculty] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState({ department: "", role: filterRole || "" });
+    const [filter, setFilter] = useState({ department: "", role: filterRole || "", search: "" });
+    const [userDepartment, setUserDepartment] = useState(null);
+    const [deptResolved, setDeptResolved] = useState(["sudo", "admin"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedFaculty, setSelectedFaculty] = useState(null);
 
+    const needsDeptLock = !["sudo", "admin"].includes(role);
+
+    // Resolve department for faculty roles
     useEffect(() => {
+        if (!needsDeptLock || !user?.$id) return;
+
+        async function resolveDepartment() {
+            try {
+                let currentFaculty = await getFacultyByAppwriteId(user.$id);
+                if (!currentFaculty && user.email) {
+                    currentFaculty = await getFacultyByEmail(user.email);
+                }
+
+                if (currentFaculty?.department) {
+                    setUserDepartment(currentFaculty.department);
+                    setFilter(prev => ({ ...prev, department: currentFaculty.department }));
+                }
+            } catch (err) {
+                console.error("[Dept Resolution] Error:", err);
+            } finally {
+                setDeptResolved(true);
+            }
+        }
+
+        resolveDepartment();
+    }, [role, user?.$id, user?.email]);
+
+    useEffect(() => {
+        if (!deptResolved) return;
         loadFaculty();
-    }, [filter]);
+    }, [filter, deptResolved]);
 
     async function loadFaculty() {
         try {
             setLoading(true);
-            const response = await getFaculties(filter, 100);
-            setFaculty(response.documents || []);
+            if (filterRole === "admin") {
+                const adminList = await getAdminFacultyFromLabels();
+                setFaculty(adminList || []);
+            } else {
+                const response = await getFaculties(filter, 100);
+                setFaculty(response.documents || []);
+            }
         } catch (err) {
             setError("Failed to load faculty");
             console.error(err);
@@ -54,7 +93,7 @@ export default function FacultyPageContent({ role, filterRole }) {
         }
     };
 
-    const canManageFaculty = ["sudo", "admin"].includes(role);
+    const canManageFaculty = ["sudo", "admin", "hod"].includes(role);
 
     if (loading && faculty.length === 0) {
         return (
@@ -112,20 +151,40 @@ export default function FacultyPageContent({ role, filterRole }) {
             />
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <select
-                    className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
-                    value={filter.department}
-                    onChange={(e) => setFilter({ ...filter, department: e.target.value })}
-                >
-                    <option value="">All Departments</option>
-                    <option value="CSE">CSE</option>
-                    <option value="ECE">ECE</option>
-                    <option value="EEE">EEE</option>
-                    <option value="MECH">MECH</option>
-                    <option value="IT">IT</option>
-                    <option value="AIDS">AIDS</option>
-                </select>
+            <div className="flex flex-wrap items-center gap-4 mb-6">
+                <div className="relative w-full sm:w-64">
+                    <input
+                        type="text"
+                        placeholder="Search by name..."
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.search}
+                        onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
+                {!needsDeptLock ? (
+                    <select
+                        className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.department}
+                        onChange={(e) => setFilter({ ...filter, department: e.target.value })}
+                    >
+                        <option value="">All Departments</option>
+                        {DEPARTMENTS_LIST.map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                    </select>
+                ) : userDepartment && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-lg text-sm font-bold">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        {userDepartment}
+                    </div>
+                )}
                 {!filterRole && (
                     <select
                         className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
@@ -162,7 +221,6 @@ export default function FacultyPageContent({ role, filterRole }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Designation</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -183,24 +241,6 @@ export default function FacultyPageContent({ role, filterRole }) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="inline-flex items-center justify-end gap-3">
-                                                <button
-                                                    onClick={() => handleEdit(member)}
-                                                    className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                                >
-                                                    Edit
-                                                </button>
-                                                {role === "sudo" && (
-                                                    <button
-                                                        onClick={() => handleDelete(member.$id)}
-                                                        className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
