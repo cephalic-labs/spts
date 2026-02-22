@@ -150,7 +150,7 @@ export default function SudoDashboardContent() {
                     <div className="relative z-10 text-center flex flex-col items-center justify-center h-full">
                         <div className="flex items-center gap-4 mb-4">
                             <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md">
-                                <Icons.Reports />
+                                <Icons.Dashboard />
                             </div>
                             <h3 className="text-xl sm:text-2xl font-black tracking-tight">System Health</h3>
                         </div>
