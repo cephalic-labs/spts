@@ -10,7 +10,6 @@ import {
     StudentsPageContent,
     FacultyPageContent,
     SettingsPageContent,
-    DepartmentsPageContent,
     ImportPageContent
 } from "@/components/pages";
 
@@ -59,10 +58,7 @@ export default async function CatchAllPage({ params }) {
                 return <FacultyPageContent role={role} filterRole="admin" />;
             case "settings":
                 return <SettingsPageContent role={role} />;
-            case "departments":
-            case "department":
-            case "class":
-                return <DepartmentsPageContent role={role} />;
+
             case "import":
                 return <ImportPageContent role={role} />;
             default:

@@ -8,7 +8,6 @@ export const pageConfig = {
     "sudo/approvals": { title: "Approvals", description: "Review and approve pending submissions.", icon: "Approvals" },
     "sudo/students": { title: "Students", description: "Manage student records.", icon: "Students" },
     "sudo/faculty": { title: "Faculty", description: "Manage faculty accounts.", icon: "Faculty" },
-    "sudo/departments": { title: "Departments", description: "Configure departments.", icon: "Departments" },
     "sudo/import": { title: "Excel Import", description: "Bulk import data from Excel.", icon: "Import" },
     "sudo/settings": { title: "Settings", description: "System-wide settings.", icon: "Settings" },
     "sudo/admins": { title: "Admins", description: "Manage admin accounts.", icon: "Faculty" },
@@ -19,7 +18,6 @@ export const pageConfig = {
     "admin/approvals": { title: "Approvals", description: "Review approvals.", icon: "Approvals" },
     "admin/students": { title: "Students", description: "Manage students.", icon: "Students" },
     "admin/faculty": { title: "Faculty", description: "Manage faculty.", icon: "Faculty" },
-    "admin/departments": { title: "Departments", description: "Manage departments.", icon: "Departments" },
     "admin/settings": { title: "Settings", description: "Admin settings.", icon: "Settings" },
 
     // Advisor pages
@@ -27,7 +25,6 @@ export const pageConfig = {
     "advisor/submissions": { title: "Submissions", description: "Review student submissions.", icon: "Submissions" },
     "advisor/approvals": { title: "Approvals", description: "Approve submissions.", icon: "Approvals" },
     "advisor/students": { title: "Students", description: "View your students.", icon: "Students" },
-    "advisor/class": { title: "Class", description: "Manage your class.", icon: "Departments" },
     "advisor/settings": { title: "Settings", description: "Advisor settings.", icon: "Settings" },
 
     // Coordinator pages
@@ -35,7 +32,6 @@ export const pageConfig = {
     "coordinator/submissions": { title: "Submissions", description: "View department submissions.", icon: "Submissions" },
     "coordinator/approvals": { title: "Approvals", description: "Final approvals.", icon: "Approvals" },
     "coordinator/students": { title: "Students", description: "View students.", icon: "Students" },
-    "coordinator/department": { title: "Department", description: "Department overview.", icon: "Departments" },
     "coordinator/settings": { title: "Settings", description: "Coordinator settings.", icon: "Settings" },
 
     // HOD pages
@@ -43,7 +39,6 @@ export const pageConfig = {
     "hod/submissions": { title: "Submissions", description: "View submissions.", icon: "Submissions" },
     "hod/approvals": { title: "Approvals", description: "Department approvals.", icon: "Approvals" },
     "hod/students": { title: "Students", description: "Department students.", icon: "Students" },
-    "hod/department": { title: "Department", description: "Department overview.", icon: "Departments" },
     "hod/settings": { title: "Settings", description: "HOD settings.", icon: "Settings" },
     "hod/faculty": { title: "Faculty", description: "Department faculty.", icon: "Faculty" },
 
@@ -52,7 +47,6 @@ export const pageConfig = {
     "mentor/submissions": { title: "Submissions", description: "Mentee submissions.", icon: "Submissions" },
     "mentor/approvals": { title: "Approvals", description: "Approve submissions.", icon: "Approvals" },
     "mentor/students": { title: "Students", description: "Your mentees.", icon: "Students" },
-    "mentor/department": { title: "Department", description: "Department info.", icon: "Departments" },
     "mentor/settings": { title: "Settings", description: "Mentor settings.", icon: "Settings" },
 
     // Principal pages
@@ -61,7 +55,6 @@ export const pageConfig = {
     "principal/approvals": { title: "Approvals", description: "Institution approvals.", icon: "Approvals" },
     "principal/students": { title: "Students", description: "All students.", icon: "Students" },
     "principal/faculty": { title: "Faculty", description: "All faculty.", icon: "Faculty" },
-    "principal/departments": { title: "Departments", description: "All departments.", icon: "Departments" },
     "principal/settings": { title: "Settings", description: "Principal settings.", icon: "Settings" },
 
     // Student pages

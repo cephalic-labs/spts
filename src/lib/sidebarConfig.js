@@ -9,7 +9,6 @@ export const sidebarConfig = {
         { name: "Approvals", path: "/dashboard/sudo/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/sudo/students", icon: "Students" },
         { name: "Faculty", path: "/dashboard/sudo/faculty", icon: "Faculty" },
-        { name: "Departments", path: "/dashboard/sudo/departments", icon: "Departments" },
         { name: "Excel Import", path: "/dashboard/sudo/import", icon: "Import" },
         { name: "Settings", path: "/dashboard/sudo/settings", icon: "Settings" },
         { name: "Admins", path: "/dashboard/sudo/admins", icon: "Faculty" },
@@ -21,7 +20,6 @@ export const sidebarConfig = {
         { name: "Approvals", path: "/dashboard/admin/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/admin/students", icon: "Students" },
         { name: "Faculty", path: "/dashboard/admin/faculty", icon: "Faculty" },
-        { name: "Departments", path: "/dashboard/admin/departments", icon: "Departments" },
         { name: "Settings", path: "/dashboard/admin/settings", icon: "Settings" },
     ],
     advisor: [
@@ -30,7 +28,6 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/advisor/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/advisor/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/advisor/students", icon: "Students" },
-        { name: "Class", path: "/dashboard/advisor/class", icon: "Departments" },
         { name: "Settings", path: "/dashboard/advisor/settings", icon: "Settings" },
     ],
     coordinator: [
@@ -39,7 +36,6 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/coordinator/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/coordinator/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/coordinator/students", icon: "Students" },
-        { name: "Department", path: "/dashboard/coordinator/department", icon: "Departments" },
         { name: "Settings", path: "/dashboard/coordinator/settings", icon: "Settings" },
     ],
     hod: [
@@ -48,7 +44,6 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/hod/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/hod/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/hod/students", icon: "Students" },
-        { name: "Department", path: "/dashboard/hod/department", icon: "Departments" },
         { name: "Settings", path: "/dashboard/hod/settings", icon: "Settings" },
         { name: "Faculty", path: "/dashboard/hod/faculty", icon: "Faculty" },
     ],
@@ -58,7 +53,6 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/mentor/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/mentor/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/mentor/students", icon: "Students" },
-        { name: "Department", path: "/dashboard/mentor/department", icon: "Departments" },
         { name: "Settings", path: "/dashboard/mentor/settings", icon: "Settings" },
     ],
     principal: [
@@ -68,7 +62,6 @@ export const sidebarConfig = {
         { name: "Approvals", path: "/dashboard/principal/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/principal/students", icon: "Students" },
         { name: "Faculty", path: "/dashboard/principal/faculty", icon: "Faculty" },
-        { name: "Departments", path: "/dashboard/principal/departments", icon: "Departments" },
         { name: "Settings", path: "/dashboard/principal/settings", icon: "Settings" },
     ],
     student: [
