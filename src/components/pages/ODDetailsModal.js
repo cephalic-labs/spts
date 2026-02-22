@@ -163,6 +163,16 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const isRejected = odRequest?.current_status === OD_STATUS.REJECTED;
     const isCancelled = odRequest?.current_status === OD_STATUS.CANCELLED;
 
+    const calculateDays = () => {
+        if (!odRequest?.od_start_date || !odRequest?.od_end_date) return 0;
+        const start = new Date(odRequest.od_start_date);
+        const end = new Date(odRequest.od_end_date);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        return Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    };
+    const odDays = calculateDays();
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -348,9 +358,14 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                 </div>
                                 <div>
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Duration</h4>
-                                    <p className="font-bold text-[#1E2761]">
-                                        {new Date(odRequest.od_start_date).toLocaleDateString()} - {new Date(odRequest.od_end_date).toLocaleDateString()}
-                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-bold text-[#1E2761]">
+                                            {new Date(odRequest.od_start_date).toLocaleDateString()} - {new Date(odRequest.od_end_date).toLocaleDateString()}
+                                        </p>
+                                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase tracking-widest rounded">
+                                            {odDays} {odDays === 1 ? 'Day' : 'Days'}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="col-span-2">
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Reason</h4>

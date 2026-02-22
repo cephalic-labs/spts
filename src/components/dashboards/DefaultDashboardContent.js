@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { Icons } from "@/components/layout";
 import { getRoleDisplayName } from "@/lib/sidebarConfig";
-import { getODStats } from "@/lib/services/odRequestService";
-import { getEventStats } from "@/lib/services/eventService";
+import { getODStats, getAllODRequests, getStudentODRequests } from "@/lib/services/odRequestService";
+import { getEventStats, getEvents } from "@/lib/services/eventService";
+import { format, subDays, parseISO, startOfDay } from "date-fns";
 
 // Chart.js imports
 import {
@@ -47,7 +48,11 @@ export default function DefaultDashboardContent({ role }) {
         approved: 0,
         rejected: 0
     });
-    const [loading, setLoading] = useState(true);
+    const [chartData, setChartData] = useState({
+        lineChart: { current: [], previous: [], labels: [] },
+        demand: { labels: [], data: [] },
+        stacked: { labels: [], accepted: [], rejected: [] }
+    });
 
     useEffect(() => {
         async function fetchStats() {
@@ -62,20 +67,80 @@ export default function DefaultDashboardContent({ role }) {
                 let approved = odData.approved || 0;
                 let rejected = Math.max(0, totalSub - pending - approved);
 
-                // For demo purposes, if there is no data, provide nice defaults so charts look good rather than empty
-                if (totalSub === 0) {
-                    totalSub = 245;
-                    approved = 180;
-                    pending = 40;
-                    rejected = 25;
+                // Initialize empty chart arrays
+                let lineCurrent = new Array(7).fill(0);
+                let linePrev = new Array(7).fill(0);
+                let lineLabels = Array.from({ length: 7 }).map((_, i) => format(subDays(new Date(), 6 - i), 'MMM dd'));
+
+                let demandLabels = [];
+                let demandDataArr = [];
+                let stackedAcc = [];
+                let stackedRej = [];
+
+                try {
+                    // Fetch real events
+                    const eventsRes = await getEvents(20);
+                    const allEvents = eventsRes.documents || [];
+                    const topEvents = [...allEvents].sort((a, b) => (b.participation_count || 0) - (a.participation_count || 0)).slice(0, 5);
+
+                    demandLabels = topEvents.map(e => e.event_name?.length > 15 ? e.event_name.substring(0, 15) + '...' : e.event_name);
+                    demandDataArr = topEvents.map(e => e.participation_count || 0);
+
+                    // Fetch real ODs for line & stacked chart
+                    let odsRes;
+                    if (role === 'student') {
+                        odsRes = await getStudentODRequests(user?.$id || user?.dbId, 200);
+                    } else {
+                        odsRes = await getAllODRequests(200);
+                    }
+                    const ods = odsRes?.documents || [];
+
+                    // Calculate Time Series
+                    const todayTime = startOfDay(new Date()).getTime();
+                    ods.forEach(od => {
+                        const odTime = startOfDay(parseISO(od.$createdAt)).getTime();
+                        const diff = Math.floor((todayTime - odTime) / (1000 * 60 * 60 * 24));
+                        if (diff >= 0 && diff < 7) {
+                            lineCurrent[6 - diff]++;
+                        } else if (diff >= 7 && diff < 14) {
+                            linePrev[13 - diff]++;
+                        }
+                    });
+
+                    // Calculate Event Performance
+                    const eventStatsMap = {};
+                    topEvents.forEach(e => {
+                        eventStatsMap[e.$id] = { accepted: 0, rejected: 0 };
+                    });
+
+                    ods.forEach(od => {
+                        if (od.event_id && eventStatsMap[od.event_id]) {
+                            if (od.current_status === 'granted' || od.current_status === 'approved') {
+                                eventStatsMap[od.event_id].accepted++;
+                            } else if (od.current_status === 'rejected') {
+                                eventStatsMap[od.event_id].rejected++;
+                            }
+                        }
+                    });
+
+                    stackedAcc = topEvents.map(e => eventStatsMap[e.$id].accepted);
+                    stackedRej = topEvents.map(e => eventStatsMap[e.$id].rejected);
+                } catch (err) {
+                    console.error("Failed fetching chart data", err);
                 }
 
                 setStats({
-                    events: eventData.total || 12,
+                    events: eventData.total || 0,
                     submissions: totalSub,
                     pending: pending,
                     approved: approved,
                     rejected: rejected
+                });
+
+                setChartData({
+                    lineChart: { current: lineCurrent, previous: linePrev, labels: lineLabels },
+                    demand: { labels: demandLabels, data: demandDataArr },
+                    stacked: { labels: demandLabels, accepted: stackedAcc, rejected: stackedRej }
                 });
             } catch (error) {
                 console.error("Error fetching dashboard stats:", error);
@@ -123,11 +188,11 @@ export default function DefaultDashboardContent({ role }) {
 
     // 1. Line Chart: Applications Over Time (Trend)
     const lineChartData = {
-        labels: ['Jan 01', 'Jan 05', 'Jan 10', 'Jan 15', 'Jan 20', 'Jan 25', 'Jan 30'],
+        labels: chartData.lineChart.labels,
         datasets: [
             {
                 label: 'Current Period',
-                data: [10, 25, 30, Math.floor(stats.submissions * 0.4), Math.floor(stats.submissions * 0.7), Math.floor(stats.submissions * 0.9), stats.submissions],
+                data: chartData.lineChart.current,
                 borderColor: '#4F46E5', // Indigo-600
                 backgroundColor: 'rgba(79, 70, 229, 0.1)',
                 fill: true,
@@ -138,7 +203,7 @@ export default function DefaultDashboardContent({ role }) {
             },
             {
                 label: 'Previous Period',
-                data: [5, 15, 20, Math.floor(stats.submissions * 0.3), Math.floor(stats.submissions * 0.5), Math.floor(stats.submissions * 0.6), Math.floor(stats.submissions * 0.8)],
+                data: chartData.lineChart.previous,
                 borderColor: '#CBD5E1', // Slate-300
                 borderDash: [5, 5],
                 fill: false,
@@ -166,23 +231,13 @@ export default function DefaultDashboardContent({ role }) {
         interaction: { mode: 'nearest', axis: 'x', intersect: false }
     };
 
-    // Data prep for Bar Charts
-    const demandLabels = ['Tech Symposium', 'Hackathon 2026', 'Cultural Fest', 'Sports Meet', 'Guest Lecture'];
-    const tempSubmissions = stats.submissions > 0 ? stats.submissions : 150;
-
     // 2. Horizontal Bar: Applications Per Event (Demand)
     const horizontalBarData = {
-        labels: demandLabels,
+        labels: chartData.demand.labels,
         datasets: [
             {
                 label: 'Applications',
-                data: [
-                    Math.floor(tempSubmissions * 0.35),
-                    Math.floor(tempSubmissions * 0.25),
-                    Math.floor(tempSubmissions * 0.20),
-                    Math.floor(tempSubmissions * 0.15),
-                    Math.floor(tempSubmissions * 0.05),
-                ],
+                data: chartData.demand.data,
                 backgroundColor: [
                     '#4F46E5', // dark for top bar
                     '#E2E8F0', // light for others
@@ -210,9 +265,10 @@ export default function DefaultDashboardContent({ role }) {
     };
 
     // 3. Donut Chart: Accepted vs Rejected
-    const acceptedTotal = stats.approved > 0 ? stats.approved : 180;
-    const rejectedTotal = stats.rejected > 0 ? stats.rejected : 65;
-    const acceptPercent = Math.round((acceptedTotal / (acceptedTotal + rejectedTotal)) * 100);
+    const acceptedTotal = stats.approved;
+    const rejectedTotal = stats.rejected;
+    const totalDonut = acceptedTotal + rejectedTotal;
+    const acceptPercent = totalDonut > 0 ? Math.round((acceptedTotal / totalDonut) * 100) : 0;
 
     const donutData = {
         labels: ['Accepted', 'Rejected'],
@@ -239,29 +295,17 @@ export default function DefaultDashboardContent({ role }) {
 
     // 4. Stacked Bar Chart: Event Performance Comparison
     const stackedBarData = {
-        labels: demandLabels,
+        labels: chartData.stacked.labels,
         datasets: [
             {
                 label: 'Accepted',
-                data: [
-                    Math.floor(tempSubmissions * 0.35 * 0.8), // 80% accepted
-                    Math.floor(tempSubmissions * 0.25 * 0.9), // 90%
-                    Math.floor(tempSubmissions * 0.20 * 0.4), // 40%
-                    Math.floor(tempSubmissions * 0.15 * 0.7), // 70%
-                    Math.floor(tempSubmissions * 0.05 * 0.9), // 90%
-                ],
+                data: chartData.stacked.accepted,
                 backgroundColor: '#10B981', // Green
                 borderRadius: 4,
             },
             {
                 label: 'Rejected',
-                data: [
-                    Math.floor(tempSubmissions * 0.35 * 0.2),
-                    Math.floor(tempSubmissions * 0.25 * 0.1),
-                    Math.floor(tempSubmissions * 0.20 * 0.6),
-                    Math.floor(tempSubmissions * 0.15 * 0.3),
-                    Math.floor(tempSubmissions * 0.05 * 0.1),
-                ],
+                data: chartData.stacked.rejected,
                 backgroundColor: '#EF4444', // Red
                 borderRadius: 4,
             }
