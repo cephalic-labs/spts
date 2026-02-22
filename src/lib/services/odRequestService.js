@@ -525,7 +525,6 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
             COLLECTIONS.APPROVAL_LOGS,
             ID.unique(),
             {
-                log_id: ID.unique(),
                 od_id: odId,
                 from_status: fromStatus,
                 to_status: toStatus,
