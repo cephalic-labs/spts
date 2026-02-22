@@ -9,6 +9,7 @@ import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
 import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail } from "@/lib/services/studentService";
+import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
@@ -46,13 +47,52 @@ export default function SubmissionsPageContent({ role }) {
     const [cancelLoadingId, setCancelLoadingId] = useState(null);
     const [cancelDialogSubmission, setCancelDialogSubmission] = useState(null);
     const [filterDept, setFilterDept] = useState("");
+    const [userDepartment, setUserDepartment] = useState(null);
+    const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [studentMap, setStudentMap] = useState({});
 
+    const needsDeptLock = !["sudo", "admin", "student"].includes(role);
+
+    // For all faculty roles (hod, coordinator, advisor, mentor, principal):
+    // fetch their faculty profile to resolve department and lock the filter
     useEffect(() => {
+        if (!needsDeptLock || !user?.$id) return;
+
+        async function resolveDepartment() {
+            try {
+                // Try 1: lookup by Appwrite user ID
+                let faculty = await getFacultyByAppwriteId(user.$id);
+                console.log("[Dept Resolution] By appwrite_user_id:", faculty?.department || "not found");
+
+                // Try 2: fallback to email lookup
+                if (!faculty && user.email) {
+                    faculty = await getFacultyByEmail(user.email);
+                    console.log("[Dept Resolution] By email:", faculty?.department || "not found");
+                }
+
+                if (faculty?.department) {
+                    console.log("[Dept Resolution] Locked to department:", faculty.department);
+                    setUserDepartment(faculty.department);
+                    setFilterDept(faculty.department);
+                } else {
+                    console.warn("[Dept Resolution] Could not resolve department for user:", user.$id, user.email);
+                }
+            } catch (err) {
+                console.error("[Dept Resolution] Error:", err);
+            } finally {
+                setDeptResolved(true);
+            }
+        }
+
+        resolveDepartment();
+    }, [role, user?.$id, user?.email]);
+
+    useEffect(() => {
+        if (!deptResolved) return; // wait for dept to be resolved before loading
         if (user || role !== 'student') {
             loadSubmissions();
         }
-    }, [role, user?.$id, filterDept]);
+    }, [role, user?.$id, filterDept, deptResolved]);
 
     async function loadSubmissions() {
         try {
@@ -211,8 +251,9 @@ export default function SubmissionsPageContent({ role }) {
     const filteredSubmissions = submissions.filter(sub => {
         if (!filterDept || role === 'student') return true;
         const student = studentMap[sub.student_id];
-        // Ensure we handle both cases: student profile found or "Profile Missing" placeholder
-        return student?.department === filterDept;
+        // Exclude submissions where student profile is missing or unresolved
+        if (!student || !student.department || student.department === "Profile Missing") return false;
+        return student.department === filterDept;
     });
 
     if (loading && submissions.length === 0) {
@@ -246,8 +287,9 @@ export default function SubmissionsPageContent({ role }) {
                 )}
             </div>
 
-            {/* Filter Section (Only for non-students) */}
-            {role !== "student" && (
+            {/* Filter Section */}
+            {/* sudo/admin: full interactive department filter */}
+            {["sudo", "admin"].includes(role) && (
                 <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
                     <div className="relative w-full sm:w-64">
                         <select
@@ -274,6 +316,17 @@ export default function SubmissionsPageContent({ role }) {
                             Clear Filter
                         </button>
                     )}
+                </div>
+            )}
+            {/* Non-sudo/admin faculty roles: show a read-only department badge */}
+            {needsDeptLock && userDepartment && (
+                <div className="mb-6 flex items-center gap-3">
+                    <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-xl text-sm font-bold">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        {userDepartment} Department
+                    </span>
                 </div>
             )}
 

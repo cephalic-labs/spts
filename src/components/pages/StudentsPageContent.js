@@ -1,22 +1,55 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { getStudents, deleteStudent } from "@/lib/services/studentService";
+import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function StudentsPageContent({ role }) {
+    const { user } = useAuth();
     const [students, setStudents] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ department: "", year: "" });
+    const [userDepartment, setUserDepartment] = useState(null);
+    const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
+    const needsDeptLock = !["sudo", "admin", "student"].includes(role);
+
+    // Resolve department for faculty roles
     useEffect(() => {
+        if (!needsDeptLock || !user?.$id) return;
+
+        async function resolveDepartment() {
+            try {
+                let faculty = await getFacultyByAppwriteId(user.$id);
+                if (!faculty && user.email) {
+                    faculty = await getFacultyByEmail(user.email);
+                }
+
+                if (faculty?.department) {
+                    setUserDepartment(faculty.department);
+                    setFilter(prev => ({ ...prev, department: faculty.department }));
+                }
+            } catch (err) {
+                console.error("[Dept Resolution] Error:", err);
+            } finally {
+                setDeptResolved(true);
+            }
+        }
+
+        resolveDepartment();
+    }, [role, user?.$id, user?.email]);
+
+    useEffect(() => {
+        if (!deptResolved) return;
         loadStudents();
-    }, [filter]);
+    }, [filter, deptResolved]);
 
     async function loadStudents() {
         try {
@@ -53,7 +86,7 @@ export default function StudentsPageContent({ role }) {
         }
     };
 
-    const canManageStudents = ["sudo", "admin", "hod", "coordinator"].includes(role);
+    const canManageStudents = ["sudo", "admin", "coordinator"].includes(role);
 
     if (loading && students.length === 0) {
         return (
@@ -91,17 +124,26 @@ export default function StudentsPageContent({ role }) {
             />
 
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <select
-                    className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
-                    value={filter.department}
-                    onChange={(e) => setFilter({ ...filter, department: e.target.value })}
-                >
-                    <option value="">All Departments</option>
-                    {DEPARTMENTS_LIST.map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
-                    ))}
-                </select>
+            <div className="flex flex-wrap items-center gap-4 mb-6">
+                {!needsDeptLock ? (
+                    <select
+                        className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.department}
+                        onChange={(e) => setFilter({ ...filter, department: e.target.value })}
+                    >
+                        <option value="">All Departments</option>
+                        {DEPARTMENTS_LIST.map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                    </select>
+                ) : userDepartment && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-lg text-sm font-bold">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        {userDepartment}
+                    </div>
+                )}
                 <select
                     className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                     value={filter.year}
@@ -169,7 +211,7 @@ export default function StudentsPageContent({ role }) {
                                                 >
                                                     Edit
                                                 </button>
-                                                {["sudo", "admin"].includes(role) && (
+                                                {["sudo", "admin", "hod"].includes(role) && (
                                                     <button
                                                         onClick={() => handleDelete(student.$id)}
                                                         className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
