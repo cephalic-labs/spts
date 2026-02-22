@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
+import { getODRequestsByStatus, approveODRequest, rejectODRequest } from "@/lib/services/odRequestService";
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
@@ -48,7 +48,6 @@ function getLogActionMeta(action) {
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
     const [pendingRequests, setPendingRequests] = useState([]);
-    const [recentLogs, setRecentLogs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
     const [approverFacultyId, setApproverFacultyId] = useState(null);
@@ -64,12 +63,6 @@ export default function ApprovalsPageContent({ role }) {
     const [teamMembersData, setTeamMembersData] = useState([]);
     const [eventDetails, setEventDetails] = useState(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
-
-    // New State for All Logs Modal
-    const [allLogsModalOpen, setAllLogsModalOpen] = useState(false);
-    const [allLogs, setAllLogs] = useState([]);
-    const [fetchingAllLogs, setFetchingAllLogs] = useState(false);
-    const [eventsMap, setEventsMap] = useState({});
 
     useEffect(() => {
         if (user) {
@@ -278,39 +271,6 @@ export default function ApprovalsPageContent({ role }) {
             }));
 
             setPendingRequests(enhancedRequests);
-
-            // Fetch event details for pending requests
-            const eventIds = [...new Set(enhancedRequests.map(r => r.event_id).filter(Boolean))];
-
-            // Fetch recent logs
-            let logs = [];
-            try {
-                const logsResponse = await getRecentApprovalLogs(10);
-                logs = logsResponse?.documents || [];
-                setRecentLogs(logs);
-
-                // Add event IDs from logs to fetch list
-                logs.forEach(log => {
-                    if (log.event_id) eventIds.push(log.event_id);
-                });
-            } catch (e) {
-                setRecentLogs([]);
-            }
-
-            // Bulk fetch and map all events
-            const uniqueEventIds = [...new Set(eventIds)];
-            if (uniqueEventIds.length > 0) {
-                try {
-                    const eventDocs = await getEventsByIds(uniqueEventIds);
-                    const newEventsMap = { ...eventsMap };
-                    eventDocs.forEach(ev => {
-                        newEventsMap[ev.$id] = ev;
-                    });
-                    setEventsMap(newEventsMap);
-                } catch (e) {
-                    console.error("Error fetching events for map:", e);
-                }
-            }
         } catch (err) {
             console.error("Error loading pending requests:", err);
         } finally {
@@ -318,20 +278,7 @@ export default function ApprovalsPageContent({ role }) {
         }
     }
 
-    async function handleShowAllLogs() {
-        setAllLogsModalOpen(true);
-        if (allLogs.length === 0) {
-            try {
-                setFetchingAllLogs(true);
-                const logsResponse = await getRecentApprovalLogs(500);
-                setAllLogs(logsResponse?.documents || []);
-            } catch (e) {
-                console.error("Failed to fetch all logs", e);
-            } finally {
-                setFetchingAllLogs(false);
-            }
-        }
-    }
+
 
     async function handleApprove(odId) {
         try {
@@ -546,86 +493,7 @@ export default function ApprovalsPageContent({ role }) {
                 )}
             </div>
 
-            {/* Recent Activity Section */}
-            <div>
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h2 className="text-xl font-bold text-[#1E2761]">Recent Approval Activity</h2>
-                        <p className="text-gray-500 text-sm">Review recent actions taken on OD requests</p>
-                    </div>
-                    {recentLogs.length > 0 && (
-                        <button
-                            onClick={handleShowAllLogs}
-                            className="px-4 py-2 bg-white border border-gray-200 text-[#1E2761] hover:bg-gray-50 rounded-xl text-sm font-bold transition-colors shadow-sm"
-                        >
-                            Show All
-                        </button>
-                    )}
-                </div>
 
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                    {recentLogs.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            No recent activity found.
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[940px] text-left">
-                                <thead className="bg-gray-50 border-b border-gray-100">
-                                    <tr>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Log ID</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">OD ID</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action By</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
-                                        <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Remarks</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {recentLogs.map((log) => (
-                                        <tr key={log.$id} className="hover:bg-gray-50 transition-colors text-sm">
-                                            <td className="px-6 py-4 text-gray-500">
-                                                {new Date(log.action_at).toLocaleString([], {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
-                                                })}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="font-mono text-xs text-gray-400">
-                                                    #{log.log_id?.slice(0, 8) || log.$id.slice(0, 8)}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col">
-                                                    <span className="font-medium text-blue-600 text-xs">
-                                                        {eventsMap[log.event_id]?.event_name || `#${log.event_id?.slice(0, 8)}`}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-gray-700 capitalize">{log.action_by_role}</span>
-                                                    <span className="text-xs text-gray-400">({log.action_by_user_id?.slice(0, 8)})</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${getLogActionMeta(log.action).className}`}>
-                                                    {getLogActionMeta(log.action).label}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600 italic">
-                                                {log.remarks || "-"}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            </div>
 
             {/* View Details Modal */}
             {viewRequest && (
@@ -877,101 +745,7 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
-            {/* All Logs Modal */}
-            {allLogsModalOpen && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center shrink-0">
-                            <div>
-                                <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">All Approval Activity</h2>
-                                <p className="text-gray-400 text-sm font-medium">Complete history of all actions</p>
-                            </div>
-                            <button onClick={() => setAllLogsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                </svg>
-                            </button>
-                        </div>
 
-                        <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-gray-50/50">
-                            {fetchingAllLogs ? (
-                                <div className="flex justify-center py-20">
-                                    <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
-                                </div>
-                            ) : allLogs.length === 0 ? (
-                                <div className="p-12 text-center text-gray-500">
-                                    No activity found.
-                                </div>
-                            ) : (
-                                <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[940px] text-left">
-                                            <thead className="bg-[#F8F9FA] border-b border-gray-100">
-                                                <tr>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Time</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Log ID</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">OD ID</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action By</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Action</th>
-                                                    <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Remarks</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {allLogs.map((log) => (
-                                                    <tr key={log.$id} className="hover:bg-gray-50 transition-colors text-sm">
-                                                        <td className="px-6 py-4 text-gray-500 font-medium whitespace-nowrap">
-                                                            {new Date(log.action_at).toLocaleString([], {
-                                                                year: 'numeric',
-                                                                month: 'short',
-                                                                day: 'numeric',
-                                                                hour: '2-digit',
-                                                                minute: '2-digit'
-                                                            })}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="font-mono text-xs text-gray-400">
-                                                                #{log.log_id?.slice(0, 8) || log.$id.slice(0, 8)}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="font-mono text-xs text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded">
-                                                                #{log.od_id?.slice(0, 8)}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-bold text-gray-700 capitalize">{log.action_by_role}</span>
-                                                                <span className="text-xs text-gray-400">({log.action_by_user_id?.slice(0, 8)})</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={`px-2 py-1 rounded text-[10px] uppercase tracking-widest font-black ${getLogActionMeta(log.action).className}`}>
-                                                                {getLogActionMeta(log.action).label}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-gray-600 italic">
-                                                            {log.remarks || "-"}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="p-4 sm:p-6 border-t border-gray-100 flex justify-end shrink-0">
-                            <button
-                                onClick={() => setAllLogsModalOpen(false)}
-                                className="px-6 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95"
-                            >
-                                Close Activity
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
