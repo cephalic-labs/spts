@@ -6,6 +6,7 @@ import { Icons } from "@/components/layout";
 import { getRoleDisplayName } from "@/lib/sidebarConfig";
 import { getODStats, getAllODRequests, getStudentODRequests } from "@/lib/services/odRequestService";
 import { getEventStats, getEvents } from "@/lib/services/eventService";
+import { getStudentByAppwriteUserId, getStudentByEmail } from "@/lib/services/studentService";
 import { format, subDays, parseISO, startOfDay } from "date-fns";
 
 // Chart.js imports
@@ -54,6 +55,7 @@ export default function DefaultDashboardContent({ role }) {
         demand: { labels: [], data: [] },
         stacked: { labels: [], accepted: [], rejected: [], pending: [] }
     });
+    const [odCount, setOdCount] = useState(role === 'student' ? 7 : null);
 
     useEffect(() => {
         async function fetchStats() {
@@ -62,6 +64,26 @@ export default function DefaultDashboardContent({ role }) {
                 const eventData = await getEventStats();
                 const odFilter = role === 'student' ? { student_id: user?.$id || user?.dbId } : {};
                 const odData = await getODStats(odFilter);
+
+                // Fetch student OD count for student role
+                if (role === 'student' && user) {
+                    try {
+                        let student = null;
+                        if (user.email) {
+                            student = await getStudentByEmail(user.email);
+                        }
+                        if (!student && user.$id) {
+                            student = await getStudentByAppwriteUserId(user.$id);
+                        }
+                        if (student) {
+                            const count = student.od_count !== undefined && student.od_count !== null ? student.od_count : 7;
+                            setOdCount(count);
+                        }
+                    } catch (err) {
+                        console.warn("Failed to fetch student OD count:", err);
+                        // Fallback: keep default of 7
+                    }
+                }
 
                 let totalSub = odData.total || 0;
                 let pending = odData.pending || 0;
@@ -351,7 +373,18 @@ export default function DefaultDashboardContent({ role }) {
                             {config.greeting}
                         </p>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 flex-wrap">
+                        {role === 'student' && (
+                            <div className={`backdrop-blur-md rounded-xl p-4 border text-white ${odCount > 3
+                                ? 'bg-white/10 border-white/20'
+                                : odCount > 0
+                                    ? 'bg-amber-500/20 border-amber-300/30'
+                                    : 'bg-red-500/20 border-red-300/30'
+                                }`}>
+                                <div className="text-xs font-semibold uppercase opacity-70 mb-1">OD Remaining</div>
+                                <div className="text-2xl font-black">{odCount !== null ? odCount : '—'}</div>
+                            </div>
+                        )}
                         <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-white">
                             <div className="text-xs font-semibold uppercase opacity-70 mb-1">Total Submissions</div>
                             <div className="text-2xl font-black">{stats.submissions}</div>

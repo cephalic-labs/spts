@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { getODRequestById, getApprovalLogsByODId } from "@/lib/services/odRequestService";
 import { getEventById } from "@/lib/services/eventService";
-import { getStudentByAppwriteUserId, getStudentByEmail } from "@/lib/services/studentService";
+import { getStudentByAppwriteUserId, getStudentByEmail, getStudentByRollNo } from "@/lib/services/studentService";
 import { getFacultyById, getFacultyByFacultyId, getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { OD_STATUS } from "@/lib/dbConfig";
@@ -95,6 +95,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const [submitterEmail, setSubmitterEmail] = useState("");
     const [advisorName, setAdvisorName] = useState("N/A");
     const [logUsers, setLogUsers] = useState({});
+    const [teamMembersData, setTeamMembersData] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -183,6 +184,24 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
             setStudentDetails(studentData);
             setAdvisorName(resolvedAdvisorName);
             setLogUsers(logUsersMap);
+
+            // Resolve team members
+            const teamRolls = data.team || [];
+            if (teamRolls.length > 0) {
+                const teamResults = await Promise.all(
+                    teamRolls.map(async (rollNo) => {
+                        try {
+                            const member = await getStudentByRollNo(rollNo);
+                            return member || { roll_no: rollNo, name: rollNo };
+                        } catch {
+                            return { roll_no: rollNo, name: rollNo };
+                        }
+                    })
+                );
+                setTeamMembersData(teamResults);
+            } else {
+                setTeamMembersData([]);
+            }
         } catch (error) {
             console.error("Error loading OD details:", error);
         } finally {
@@ -384,6 +403,28 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                     </div>
                                 </div>
 
+                                {/* Team Members Section */}
+                                {teamMembersData.length > 0 && (
+                                    <div className="bg-purple-50/50 rounded-2xl p-6 border border-purple-100">
+                                        <h4 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em] mb-4">👥 Team Members ({teamMembersData.length})</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                            {teamMembersData.map((member, idx) => (
+                                                <div key={member.$id || idx} className="flex items-center gap-3 bg-white border border-purple-100 rounded-xl px-4 py-3">
+                                                    <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded-lg flex items-center justify-center text-xs font-black shrink-0">
+                                                        {member.name?.charAt(0)?.toUpperCase() || "?"}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-bold text-[#1E2761]">{member.name || member.roll_no}</p>
+                                                        <p className="text-[10px] text-gray-400 font-medium">
+                                                            {member.roll_no}{member.department ? ` • ${member.department}` : ''}{member.year ? ` • ${member.year}Y` : ''}{member.section ? ` ${member.section}` : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Info Grid */}
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                                     <div>
@@ -555,6 +596,22 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                         <h3 className="font-bold text-lg mb-3 uppercase tracking-wide text-gray-800">Reason for Outward Duty</h3>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm">{odRequest.reason}</p>
                     </div>
+
+                    {/* Team Members (Print) */}
+                    {teamMembersData.length > 0 && (
+                        <div className="border border-black p-5 rounded mb-8">
+                            <h3 className="font-bold text-lg mb-3 uppercase tracking-wide text-gray-800">Team Members ({teamMembersData.length})</h3>
+                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                {teamMembersData.map((member, idx) => (
+                                    <p key={member.$id || idx}>
+                                        <span className="font-bold">{idx + 1}.</span> {member.name || member.roll_no}
+                                        {member.roll_no ? ` (${member.roll_no})` : ''}
+                                        {member.department ? ` - ${member.department}` : ''}
+                                    </p>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Approval Signatures / Timestamps */}
                     <h3 className="font-bold text-lg mb-4 uppercase tracking-wide text-gray-800">Authorization / Digital Signatures</h3>

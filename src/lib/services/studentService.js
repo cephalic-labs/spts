@@ -151,6 +151,7 @@ export async function createStudent(data) {
         advisor_id: data.advisor_id || null,
         mentor_id: data.mentor_id || null,
         status: data.status || "active",
+        od_count: (data.od_count !== undefined && data.od_count !== "" && data.od_count !== null) ? parseInt(data.od_count) : 7,
     };
 
     try {
@@ -190,6 +191,9 @@ export async function updateStudent(studentId, data) {
     }
     if (updateData.phone !== undefined) {
         updateData.phone = updateData.phone ? parseInt(String(updateData.phone).replace(/\D/g, '')) : null;
+    }
+    if (updateData.od_count !== undefined && updateData.od_count !== "") {
+        updateData.od_count = parseInt(updateData.od_count);
     }
 
     try {
@@ -284,10 +288,48 @@ export async function getStudentsByAppwriteUserIds(ids, limit = 100) {
     }
 }
 
+/**
+ * Get student by roll number (exact match)
+ */
+export async function getStudentByRollNo(rollNo) {
+    if (!rollNo) return null;
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.equal("roll_no", rollNo.trim()), Query.limit(1)]
+        );
+        return response.documents.length > 0 ? response.documents[0] : null;
+    } catch (error) {
+        console.error("Error getting student by roll no:", error);
+        return null;
+    }
+}
+
+/**
+ * Search students by roll number (partial match / contains)
+ */
+export async function searchStudentsByRollNo(query, limit = 10) {
+    if (!query || query.trim().length < 1) return [];
+    try {
+        const response = await databases.listDocuments(
+            DATABASE_ID,
+            COLLECTIONS.STUDENTS,
+            [Query.contains("roll_no", query.trim()), Query.limit(limit)]
+        );
+        return response.documents || [];
+    } catch (error) {
+        console.error("Error searching students by roll no:", error);
+        return [];
+    }
+}
+
 export default {
     getStudents,
     getStudentById,
     getStudentByRegNo,
+    getStudentByRollNo,
+    searchStudentsByRollNo,
     getStudentByAppwriteUserId,
     getStudentByEmail,
     getStudentsByIds,

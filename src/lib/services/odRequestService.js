@@ -202,6 +202,12 @@ export async function createODRequest(data) {
             throw new Error("Your student profile was not found. Please contact your coordinator to add you to the system.");
         }
 
+        // Check OD count - block if student has exhausted their OD quota
+        const currentODCount = studentRecord.od_count !== undefined && studentRecord.od_count !== null ? studentRecord.od_count : 7;
+        if (currentODCount <= 0) {
+            throw new Error("You have exhausted all your OD requests (OD count is 0). Please contact your advisor to get more ODs allocated.");
+        }
+
         // AUTO-SYNC: If student record exists but doesn't have appwrite_user_id yet, update it
         if (!studentRecord.appwrite_user_id && data.student_id) {
             try {
@@ -258,6 +264,7 @@ export async function createODRequest(data) {
                 coordinator_id: coordinator ? coordinator.$id : null,
                 hod_id: hod ? hod.$id : null,
                 final_decision: null,
+                team: Array.isArray(data.team) ? data.team : [],
             }
         );
         return odRequest;
@@ -404,6 +411,40 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
             odId,
             updateData
         );
+
+        // If HOD granted, decrement the student's od_count AND all team members
+        if (role === "hod") {
+            try {
+                // Decrement requesting student's od_count
+                const studentRecord = await getStudentRecordForOD(odRequest.student_id, null);
+                if (studentRecord) {
+                    const currentCount = studentRecord.od_count !== undefined && studentRecord.od_count !== null ? studentRecord.od_count : 7;
+                    const newCount = Math.max(0, currentCount - 1);
+                    await updateStudent(studentRecord.$id, { od_count: newCount });
+                }
+
+                // Decrement team members' od_count
+                const teamRollNumbers = odRequest.team || [];
+                if (teamRollNumbers.length > 0) {
+                    const { getStudentByRollNo } = await import('./studentService');
+                    await Promise.all(teamRollNumbers.map(async (rollNo) => {
+                        try {
+                            const teamMember = await getStudentByRollNo(rollNo);
+                            if (teamMember) {
+                                const memberCount = teamMember.od_count !== undefined && teamMember.od_count !== null ? teamMember.od_count : 7;
+                                const newMemberCount = Math.max(0, memberCount - 1);
+                                await updateStudent(teamMember.$id, { od_count: newMemberCount });
+                            }
+                        } catch (teamErr) {
+                            console.warn(`Failed to decrement OD count for team member ${rollNo}:`, teamErr);
+                        }
+                    }));
+                }
+            } catch (odCountErr) {
+                console.warn("Failed to decrement student OD count:", odCountErr);
+                // Non-critical: don't block the approval
+            }
+        }
 
         // Log the approval
         await logApproval(odId, fromStatus, toStatus, "approve", userId, role, remarks);

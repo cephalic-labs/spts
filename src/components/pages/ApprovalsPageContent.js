@@ -6,7 +6,7 @@ import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentAppr
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
-import { getStudentByAppwriteUserId, getStudentById } from "@/lib/services/studentService";
+import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 
@@ -61,6 +61,7 @@ export default function ApprovalsPageContent({ role }) {
     // New State for View Request Modal
     const [viewRequest, setViewRequest] = useState(null);
     const [studentDetails, setStudentDetails] = useState(null);
+    const [teamMembersData, setTeamMembersData] = useState([]);
     const [eventDetails, setEventDetails] = useState(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
 
@@ -122,6 +123,24 @@ export default function ApprovalsPageContent({ role }) {
                         }
                     } else if (viewRequest.student) {
                         setStudentDetails(viewRequest.student);
+                    }
+
+                    // Resolve team members
+                    const teamRolls = viewRequest.team || [];
+                    if (teamRolls.length > 0) {
+                        const resolved = await Promise.all(
+                            teamRolls.map(async (rollNo) => {
+                                try {
+                                    const member = await getStudentByRollNo(rollNo);
+                                    return member || { roll_no: rollNo, name: rollNo };
+                                } catch {
+                                    return { roll_no: rollNo, name: rollNo };
+                                }
+                            })
+                        );
+                        setTeamMembersData(resolved);
+                    } else {
+                        setTeamMembersData([]);
                     }
 
                     // Fetch event details
@@ -457,7 +476,14 @@ export default function ApprovalsPageContent({ role }) {
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">
                                                 <span className="font-bold text-[#1E2761] text-sm">{req.student?.name || "Unknown"}</span>
-                                                <span className="text-xs text-gray-400 font-medium">{req.student?.department} • {req.student?.year} Year</span>
+                                                <span className="text-xs text-gray-400 font-medium">
+                                                    {req.student?.department} • {req.student?.year} Year
+                                                    {req.team && req.team.length > 0 && (
+                                                        <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold">
+                                                            👥 +{req.team.length} team
+                                                        </span>
+                                                    )}
+                                                </span>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4">
@@ -684,6 +710,28 @@ export default function ApprovalsPageContent({ role }) {
                                         )}
                                     </div>
                                 </div>
+
+                                {/* Team Members Section */}
+                                {teamMembersData.length > 0 && (
+                                    <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-indigo-100 pb-2">👥 Team Members ({teamMembersData.length})</h4>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {teamMembersData.map((member, idx) => (
+                                                <div key={member.$id || idx} className="flex items-center gap-2 bg-white border border-indigo-100 rounded-lg px-3 py-2">
+                                                    <div className="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-lg flex items-center justify-center text-xs font-black shrink-0">
+                                                        {member.name?.charAt(0)?.toUpperCase() || "?"}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-gray-800">{member.name || member.roll_no}</p>
+                                                        <p className="text-[10px] text-gray-400 font-medium">
+                                                            {member.roll_no}{member.department ? ` • ${member.department}` : ''}{member.year ? ` • ${member.year}Y` : ''}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* Request Details Section */}
                                 <div>
