@@ -63,6 +63,7 @@ export default function ApprovalsPageContent({ role }) {
     const [teamMembersData, setTeamMembersData] = useState([]);
     const [eventDetails, setEventDetails] = useState(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
+    const [eventsMap, setEventsMap] = useState({});
 
     useEffect(() => {
         if (user) {
@@ -271,6 +272,21 @@ export default function ApprovalsPageContent({ role }) {
             }));
 
             setPendingRequests(enhancedRequests);
+
+            // Fetch event details for pending requests to show event names in the list
+            const eventIds = [...new Set(enhancedRequests.map(r => r.event_id).filter(Boolean))];
+            if (eventIds.length > 0) {
+                try {
+                    const eventDocs = await getEventsByIds(eventIds);
+                    const newEventsMap = {};
+                    eventDocs.forEach(ev => {
+                        newEventsMap[ev.$id] = ev;
+                    });
+                    setEventsMap(newEventsMap);
+                } catch (e) {
+                    console.error("Error fetching events for map:", e);
+                }
+            }
         } catch (err) {
             console.error("Error loading pending requests:", err);
         } finally {

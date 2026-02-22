@@ -4,6 +4,33 @@ import { ID, Query } from "appwrite";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
+// Mapping between frontend roles/labels and database Enum values
+const ROLE_MAP = {
+    "sudo": "super_admin",
+    "faculty": "mentor" // Faculty role doesn't exist in USERS Enum, defaulting to mentor
+};
+
+const REVERSE_ROLE_MAP = Object.fromEntries(
+    Object.entries(ROLE_MAP).map(([k, v]) => [v, k])
+);
+
+/**
+ * Convert frontend role to database-safe Enum value
+ */
+function toDbRole(role) {
+    return ROLE_MAP[role] || role;
+}
+
+/**
+ * Convert database Enum value back to frontend/label role
+ */
+function fromDbRole(role) {
+    // If we have a reverse mapping, use it (e.g. super_admin -> sudo)
+    // Otherwise return as is
+    return REVERSE_ROLE_MAP[role] || role;
+}
+
+
 /**
  * Sync Appwrite user to Users collection
  * Creates new user if doesn't exist, returns existing user if found
@@ -29,7 +56,7 @@ export async function syncUserToDatabase(appwriteUser) {
                     user_name: appwriteUser.name || "User",
                     user_email: appwriteUser.email,
                     profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
-                    role: (appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : "unassigned",
+                    role: toDbRole((appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : "unassigned"),
                 }
             );
             return newUser;
@@ -59,7 +86,14 @@ export async function getUserByAppwriteId(appwriteUserId) {
             [Query.equal("user_id", appwriteUserId), Query.limit(1)]
         );
 
-        return response.documents.length > 0 ? response.documents[0] : null;
+        if (response.documents.length > 0) {
+            const user = response.documents[0];
+            return {
+                ...user,
+                role: fromDbRole(user.role)
+            };
+        }
+        return null;
     } catch (error) {
         console.error("Error getting user by Appwrite ID:", error);
         return null;
@@ -75,9 +109,12 @@ export async function updateUserRole(documentId, role) {
             DATABASE_ID,
             COLLECTIONS.USERS,
             documentId,
-            { role }
+            { role: toDbRole(role) }
         );
-        return updatedUser;
+        return {
+            ...updatedUser,
+            role: fromDbRole(updatedUser.role)
+        };
     } catch (error) {
         console.error("Error updating user role:", error);
         throw error;
@@ -93,9 +130,12 @@ export async function updateUserProfile(documentId, data) {
             DATABASE_ID,
             COLLECTIONS.USERS,
             documentId,
-            data
+            updateData
         );
-        return updatedUser;
+        return {
+            ...updatedUser,
+            role: fromDbRole(updatedUser.role)
+        };
     } catch (error) {
         console.error("Error updating user profile:", error);
         throw error;
@@ -112,7 +152,13 @@ export async function getAllUsers(limit = 100, offset = 0) {
             COLLECTIONS.USERS,
             [Query.limit(limit), Query.offset(offset)]
         );
-        return response;
+        return {
+            ...response,
+            documents: response.documents.map(u => ({
+                ...u,
+                role: fromDbRole(u.role)
+            }))
+        };
     } catch (error) {
         console.error("Error getting all users:", error);
         throw error;

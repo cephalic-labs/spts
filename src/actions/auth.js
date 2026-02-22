@@ -92,8 +92,10 @@ export async function assignUserRole(userId, email) {
                     "mentor": "mentor",
                     "admin": "admin",
                     "principal": "principal",
-                    "faculty": "faculty",
-                    "student": "student" // just in case
+                    "faculty": "mentor",
+                    "student": "student",
+                    "sudo": "sudo",
+                    "super admin": "sudo"
                 };
 
                 const mappedRoles = dbRoles
