@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getODRequestsByStatus, approveODRequest, rejectODRequest, getRecentApprovalLogs } from "@/lib/services/odRequestService";
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
+import { getEventById } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
+import { getStudentByAppwriteUserId, getStudentById } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 
@@ -55,11 +57,90 @@ export default function ApprovalsPageContent({ role }) {
     const [rejectDialog, setRejectDialog] = useState({ isOpen: false, odId: null, remarks: "" });
     const [rejectFormError, setRejectFormError] = useState("");
 
+    // New State for View Request Modal
+    const [viewRequest, setViewRequest] = useState(null);
+    const [studentDetails, setStudentDetails] = useState(null);
+    const [eventDetails, setEventDetails] = useState(null);
+    const [detailsLoading, setDetailsLoading] = useState(false);
+
     useEffect(() => {
         if (user) {
             loadPendingRequests();
         }
     }, [role, user?.$id]);
+
+    // Fetch student and event details when viewRequest changes
+    useEffect(() => {
+        async function fetchDetails() {
+            if (viewRequest) {
+                setDetailsLoading(true);
+                try {
+                    // Fetch student details if not already present
+                    if (!viewRequest.student && viewRequest.student_id) {
+                        try {
+                            // Try fetching by Appwrite User ID first
+                            let student = await getStudentByAppwriteUserId(viewRequest.student_id);
+
+                            // If not found, try fetching by Document ID
+                            if (!student) {
+                                try {
+                                    student = await getStudentById(viewRequest.student_id);
+                                } catch (innerErr) {
+                                    // Quietly fail if not found by ID either
+                                }
+                            }
+
+                            // LAST RESORT: Try fetching from Users collection to at least get the name
+                            if (!student) {
+                                try {
+                                    const userRecord = await getUserByAppwriteId(viewRequest.student_id);
+                                    if (userRecord) {
+                                        student = {
+                                            name: userRecord.user_name || "Unknown User",
+                                            email: userRecord.user_email,
+                                            department: "Profile Incomplete",
+                                            section: "-",
+                                            year: null,
+                                            student_register_no: "Not Set"
+                                        };
+                                    }
+                                } catch (userErr) {
+                                    // Ignore
+                                }
+                            }
+
+                            setStudentDetails(student);
+                        } catch (err) {
+                            console.error("Error fetching student details:", err);
+                        }
+                    } else if (viewRequest.student) {
+                        setStudentDetails(viewRequest.student);
+                    }
+
+                    // Fetch event details
+                    if (viewRequest.event_id) {
+                        try {
+                            const event = await getEventById(viewRequest.event_id);
+                            setEventDetails(event);
+                        } catch (err) {
+                            console.error("Error fetching event details:", err);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching details:", error);
+                } finally {
+                    setDetailsLoading(false);
+                }
+            }
+        }
+
+        if (viewRequest) {
+            fetchDetails();
+        } else {
+            setStudentDetails(null);
+            setEventDetails(null);
+        }
+    }, [viewRequest]);
 
     async function loadPendingRequests() {
         try {
@@ -110,23 +191,67 @@ export default function ApprovalsPageContent({ role }) {
             }
 
             // Fetch pending requests
+            let requests = [];
             if (status && approverIds.length > 0) {
                 const response = await getODRequestsByStatus(status, 50, {
                     approverRole: role,
                     approverIds: approverIds,
                 });
-                setPendingRequests(response?.documents || []);
+                requests = response?.documents || [];
             } else if (status && !currentFacultyId) {
                 // If not found as faculty, but has role (e.g. admin/sudo viewing as mentor), show all
                 try {
                     const response = await getODRequestsByStatus(status, 50);
-                    setPendingRequests(response?.documents || []);
+                    requests = response?.documents || [];
                 } catch (e) {
-                    setPendingRequests([]);
+                    requests = [];
                 }
-            } else {
-                setPendingRequests([]);
             }
+
+            // Fetch Student Details for each request
+            const enhancedRequests = await Promise.all(requests.map(async (req) => {
+                try {
+                    if (req.student_id) {
+                        // Try fetching by Appwrite User ID first
+                        let studentBody = await getStudentByAppwriteUserId(req.student_id);
+
+                        // If not found, try fetching by Document ID
+                        if (!studentBody) {
+                            try {
+                                studentBody = await getStudentById(req.student_id);
+                            } catch (e) {
+                                // Quietly fail if not found by ID either
+                            }
+                        }
+
+                        // LAST RESORT: Try fetching from Users collection
+                        if (!studentBody) {
+                            try {
+                                const userRecord = await getUserByAppwriteId(req.student_id);
+                                if (userRecord) {
+                                    studentBody = {
+                                        name: userRecord.user_name || "Unknown User",
+                                        email: userRecord.user_email,
+                                        department: "Profile Incomplete",
+                                        section: "-",
+                                        year: null,
+                                        student_register_no: "Not Set"
+                                    };
+                                }
+                            } catch (e) {
+                                // Ignore
+                            }
+                        }
+
+                        return { ...req, student: studentBody };
+                    }
+                } catch (e) {
+                    console.error("Error fetching student for req:", req.$id, e);
+                }
+                return req;
+            }));
+
+            setPendingRequests(enhancedRequests);
 
             // Fetch recent logs
             try {
@@ -147,6 +272,9 @@ export default function ApprovalsPageContent({ role }) {
             setActionLoading(odId);
             await approveODRequest(odId, role, user?.$id || user?.dbId, "Approved", approverFacultyId);
             await loadPendingRequests();
+            if (viewRequest && viewRequest.$id === odId) {
+                setViewRequest(null);
+            }
         } catch (err) {
             console.error("Error approving request:", err);
             setErrorModalMessage(err?.message || "Failed to approve request");
@@ -165,6 +293,12 @@ export default function ApprovalsPageContent({ role }) {
         setRejectFormError("");
     }
 
+    function closeViewDialog() {
+        setViewRequest(null);
+        setStudentDetails(null);
+        setEventDetails(null);
+    }
+
     async function submitReject() {
         const remarks = rejectDialog.remarks?.trim();
         if (!remarks) {
@@ -177,12 +311,23 @@ export default function ApprovalsPageContent({ role }) {
             await rejectODRequest(rejectDialog.odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
             await loadPendingRequests();
             closeRejectDialog();
+            if (viewRequest && viewRequest.$id === rejectDialog.odId) {
+                setViewRequest(null);
+            }
         } catch (err) {
             console.error("Error rejecting request:", err);
             setErrorModalMessage(err?.message || "Failed to reject request");
         } finally {
             setActionLoading(null);
         }
+    }
+
+    function calculateDays(start, end) {
+        const startDate = new Date(start);
+        const endDate = new Date(end);
+        const diffTime = Math.abs(endDate - startDate);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return diffDays;
     }
 
     if (loading) {
@@ -281,9 +426,17 @@ export default function ApprovalsPageContent({ role }) {
                                             </span>
                                         </div>
                                         <h4 className="font-bold text-gray-800 mb-1">
-                                            OD Request - Student: {request.student_id?.slice(0, 12)}...
+                                            {request.student?.name || "Unknown Student"}
+                                            <span className="text-sm font-normal text-gray-500 ml-2">
+                                                ({request.student?.student_register_no || request.student_id?.slice(0, 8)})
+                                            </span>
                                         </h4>
-                                        <p className="text-sm text-gray-500 mb-2">{request.reason}</p>
+                                        <p className="text-xs text-gray-500 mb-2">
+                                            {request.student?.department} • {request.student?.year} Year
+                                        </p>
+                                        <p className="text-sm text-gray-600 mb-2 bg-gray-50 p-2 rounded border border-gray-100 italic">
+                                            "{request.reason}"
+                                        </p>
                                         <div className="flex flex-wrap items-center gap-4 text-xs text-gray-400">
                                             <span>
                                                 📅 {new Date(request.od_start_date).toLocaleDateString()} - {new Date(request.od_end_date).toLocaleDateString()}
@@ -309,6 +462,13 @@ export default function ApprovalsPageContent({ role }) {
                                                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
                                             >
                                                 {actionLoading === request.$id ? "..." : "Approve"}
+                                            </button>
+
+                                            <button
+                                                onClick={() => setViewRequest(request)}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                                            >
+                                                Details
                                             </button>
                                         </div>
                                     )}
@@ -389,6 +549,177 @@ export default function ApprovalsPageContent({ role }) {
                     )}
                 </div>
             </div>
+
+            {/* View Details Modal */}
+            {viewRequest && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl p-6 border border-gray-100 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-[#1E2761]">OD Request Details</h3>
+                            <button onClick={closeViewDialog} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        {detailsLoading ? (
+                            <div className="flex justify-center py-10">
+                                <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Student Info Section */}
+                                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                                    <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-blue-100 pb-2">Student Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Name</p>
+                                            <p className="font-semibold text-gray-800">{studentDetails?.name || "Unknown"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Register No</p>
+                                            <p className="font-semibold text-gray-800">{studentDetails?.student_register_no || "-"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Department</p>
+                                            <p className={`font-semibold ${studentDetails?.department === "Profile Incomplete" ? "text-red-500" : "text-gray-800"}`}>
+                                                {studentDetails?.department || "-"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Year / Section</p>
+                                            <p className="font-semibold text-gray-800">
+                                                {studentDetails?.year ? `${studentDetails.year} Year` : "-"} / {studentDetails?.section || "-"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Event Details Section */}
+                                <div className="bg-purple-50/50 p-4 rounded-xl border border-purple-100">
+                                    <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-purple-100 pb-2">Event Information</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="md:col-span-2">
+                                            <p className="text-xs text-gray-500 uppercase">Event Name</p>
+                                            <p className="font-semibold text-gray-800">{eventDetails?.event_name || "Unknown Event"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Event Host</p>
+                                            <p className="font-medium text-gray-800">{eventDetails?.event_host || "Unknown Host"}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Event Date</p>
+                                            <p className="font-medium text-gray-800">
+                                                {eventDetails?.event_time
+                                                    ? new Date(eventDetails.event_time).toDateString()
+                                                    : "-"}
+                                            </p>
+                                        </div>
+                                        {eventDetails?.event_url && (
+                                            <div className="md:col-span-2">
+                                                <a
+                                                    href={eventDetails.event_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-sm text-blue-600 hover:text-blue-800 underline flex items-center gap-1"
+                                                >
+                                                    View Event Page
+                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Request Details Section */}
+                                <div>
+                                    <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-gray-100 pb-2">Request Details</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Start Date</p>
+                                            <p className="font-medium text-gray-800">{new Date(viewRequest.od_start_date).toDateString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">End Date</p>
+                                            <p className="font-medium text-gray-800">{new Date(viewRequest.od_end_date).toDateString()}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Duration</p>
+                                            <p className="font-medium text-gray-800">
+                                                {calculateDays(viewRequest.od_start_date, viewRequest.od_end_date)} Days
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 uppercase">Status</p>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {viewRequest.current_status}
+                                            </span>
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <p className="text-xs text-gray-500 uppercase mb-1">Reason</p>
+                                            <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                                {viewRequest.reason || "No reason provided."}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {viewRequest.attachments && viewRequest.attachments.length > 0 && (
+                                    <div>
+                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-gray-100 pb-2">Attachments</h4>
+                                        <div className="flex gap-2 flex-wrap">
+                                            {viewRequest.attachments.map((att, idx) => (
+                                                <a
+                                                    key={idx}
+                                                    href={att}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg max-w-xs hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                                                    </svg>
+                                                    <span className="text-sm text-blue-600 truncate">Attachment {idx + 1}</span>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                                    <button
+                                        onClick={closeViewDialog}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                                    >
+                                        Close
+                                    </button>
+
+                                    {canApprove && (
+                                        <>
+                                            <button
+                                                onClick={() => openRejectDialog(viewRequest.$id)}
+                                                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition-colors"
+                                            >
+                                                Reject
+                                            </button>
+                                            <button
+                                                onClick={() => handleApprove(viewRequest.$id)}
+                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+                                            >
+                                                Approve
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {rejectDialog.isOpen && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

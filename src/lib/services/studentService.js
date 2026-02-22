@@ -55,6 +55,9 @@ export async function getStudentById(studentId) {
         );
         return student;
     } catch (error) {
+        if (error.code === 404 || error.message?.includes("could not be found")) {
+            return null;
+        }
         console.error("Error getting student:", error);
         throw error;
     }
