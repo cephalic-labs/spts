@@ -14,7 +14,7 @@ export default function FacultyPageContent({ role, filterRole }) {
     const [faculty, setFaculty] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [filter, setFilter] = useState({ department: "", role: filterRole || "" });
+    const [filter, setFilter] = useState({ department: "", role: filterRole || "", search: "" });
     const [userDepartment, setUserDepartment] = useState(null);
     const [deptResolved, setDeptResolved] = useState(["sudo", "admin"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -152,6 +152,20 @@ export default function FacultyPageContent({ role, filterRole }) {
 
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-4 mb-6">
+                <div className="relative w-full sm:w-64">
+                    <input
+                        type="text"
+                        placeholder="Search by name..."
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
+                        value={filter.search}
+                        onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                    />
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                </div>
                 {!needsDeptLock ? (
                     <select
                         className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
@@ -207,7 +221,6 @@ export default function FacultyPageContent({ role, filterRole }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Designation</th>
-                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -228,26 +241,6 @@ export default function FacultyPageContent({ role, filterRole }) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
-                                        <td className="px-6 py-4 text-right">
-                                            <div className="inline-flex items-center justify-end gap-3">
-                                                {!member._isAuthOnly && (
-                                                    <button
-                                                        onClick={() => handleEdit(member)}
-                                                        className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                                    >
-                                                        Edit
-                                                    </button>
-                                                )}
-                                                {["sudo", "admin", "hod"].includes(role) && !member._isAuthOnly && (
-                                                    <button
-                                                        onClick={() => handleDelete(member.$id)}
-                                                        className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
-                                                    >
-                                                        Delete
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
                                     </tr>
                                 ))}
                             </tbody>

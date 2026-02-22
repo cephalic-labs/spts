@@ -36,6 +36,7 @@ export const sidebarConfig = {
         { name: "Submissions", path: "/dashboard/coordinator/submissions", icon: "Submissions" },
         { name: "Approvals", path: "/dashboard/coordinator/approvals", icon: "Approvals" },
         { name: "Students", path: "/dashboard/coordinator/students", icon: "Students" },
+        { name: "Faculty", path: "/dashboard/coordinator/faculty", icon: "Faculty" },
         { name: "Settings", path: "/dashboard/coordinator/settings", icon: "Settings" },
     ],
     hod: [

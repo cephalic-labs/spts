@@ -32,6 +32,7 @@ export const pageConfig = {
     "coordinator/submissions": { title: "Submissions", description: "View department submissions.", icon: "Submissions" },
     "coordinator/approvals": { title: "Approvals", description: "Final approvals.", icon: "Approvals" },
     "coordinator/students": { title: "Students", description: "View students.", icon: "Students" },
+    "coordinator/faculty": { title: "Faculty", description: "Manage faculty.", icon: "Faculty" },
     "coordinator/settings": { title: "Settings", description: "Coordinator settings.", icon: "Settings" },
 
     // HOD pages

@@ -30,6 +30,9 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
         if (filters.mentor_id) {
             queries.push(Query.equal("mentor_id", filters.mentor_id));
         }
+        if (filters.search) {
+            queries.push(Query.contains("name", filters.search));
+        }
 
         const response = await databases.listDocuments(
             DATABASE_ID,
