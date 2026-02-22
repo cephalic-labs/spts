@@ -7,6 +7,9 @@ import { getEventStats, getEvents } from "@/lib/services/eventService";
 import { getODStats, getAllODRequests } from "@/lib/services/odRequestService";
 import { getStudentStats } from "@/lib/services/studentService";
 import { format, subDays, parseISO, startOfDay } from "date-fns";
+import { databases } from "@/lib/appwrite";
+import { DB_CONFIG } from "@/lib/dbConfig";
+import { Query } from "appwrite";
 
 // Chart.js imports
 import {
@@ -46,7 +49,10 @@ export default function SudoDashboardContent() {
         pendingApprovals: 0,
         approvedTotal: 0,
         rejectedTotal: 0,
-        totalStudents: 0
+        totalStudents: 0,
+        totalFaculty: 0,
+        totalAdmins: 0,
+        totalSudo: 0
     });
     const [loading, setLoading] = useState(true);
 
@@ -60,10 +66,13 @@ export default function SudoDashboardContent() {
         async function fetchAllStats() {
             try {
                 setLoading(true);
-                const [eventStats, odStats, studentStats] = await Promise.all([
+                const [eventStats, odStats, studentStats, facultiesRes, adminsRes, sudosRes] = await Promise.all([
                     getEventStats(),
                     getODStats(),
-                    getStudentStats()
+                    getStudentStats(),
+                    databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.FACULTIES, [Query.limit(1)]),
+                    databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.USERS, [Query.equal("role", "admin"), Query.limit(1)]),
+                    databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.USERS, [Query.equal("role", "sudo"), Query.limit(1)]),
                 ]);
 
                 let totalSub = odStats.total || 0;
@@ -135,7 +144,10 @@ export default function SudoDashboardContent() {
                     pendingApprovals: pending,
                     approvedTotal: approved,
                     rejectedTotal: rejected,
-                    totalStudents: studentStats.total || 0
+                    totalStudents: studentStats.total || 0,
+                    totalFaculty: facultiesRes.total || 0,
+                    totalAdmins: adminsRes.total || 0,
+                    totalSudo: sudosRes.total || 0
                 });
 
                 setChartData({
@@ -320,14 +332,26 @@ export default function SudoDashboardContent() {
                             {config.greeting}, {user?.name?.split(" ")[0]}
                         </p>
                     </div>
-                    <div className="flex gap-4">
-                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-white">
-                            <div className="text-xs font-semibold uppercase opacity-70 mb-1">Total Users</div>
-                            <div className="text-2xl font-black">{statsData.totalStudents}</div>
+                    <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4 mt-4 sm:mt-0">
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Students</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalStudents}</div>
                         </div>
-                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 text-white">
-                            <div className="text-xs font-semibold uppercase opacity-70 mb-1">Submissions</div>
-                            <div className="text-2xl font-black">{statsData.totalSubmissions}</div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Faculty</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalFaculty}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Admins</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalAdmins}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Sudo</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalSudo}</div>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-md rounded-xl p-3 sm:p-4 border border-white/20 text-white min-w-[90px] text-center sm:text-left">
+                            <div className="text-[10px] sm:text-xs font-semibold uppercase opacity-70 mb-1">Submissions</div>
+                            <div className="text-xl sm:text-2xl font-black">{statsData.totalSubmissions}</div>
                         </div>
                     </div>
                 </div>
