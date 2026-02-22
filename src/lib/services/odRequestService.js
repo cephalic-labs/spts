@@ -1,6 +1,7 @@
 import { databases } from "../appwrite";
 import { DB_CONFIG, OD_STATUS, canRoleApprove, getNextStatus } from "../dbConfig";
 import { ID, Query } from "appwrite";
+import { updateStudent } from "./studentService";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -199,6 +200,17 @@ export async function createODRequest(data) {
         const studentRecord = await getStudentRecordForOD(data.student_id, data.student_email || null);
         if (!studentRecord) {
             throw new Error("Your student profile was not found. Please contact your coordinator to add you to the system.");
+        }
+
+        // AUTO-SYNC: If student record exists but doesn't have appwrite_user_id yet, update it
+        if (!studentRecord.appwrite_user_id && data.student_id) {
+            try {
+                await updateStudent(studentRecord.$id, { appwrite_user_id: data.student_id });
+                studentRecord.appwrite_user_id = data.student_id; // Update local copy
+            } catch (syncErr) {
+                console.warn("Failed to auto-sync appwrite_user_id to student profile:", syncErr);
+                // Continue anyway, this is non-critical for request creation
+            }
         }
 
         // Validate mentor

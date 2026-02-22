@@ -8,7 +8,8 @@ import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
-import { getStudents, getStudentsByAppwriteUserIds } from "@/lib/services/studentService";
+import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail } from "@/lib/services/studentService";
+import { getUserByAppwriteId } from "@/lib/services/userService";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 const statusColors = {
@@ -68,33 +69,9 @@ export default function SubmissionsPageContent({ role }) {
                 }
                 response = await getStudentODRequests(studentId);
             } else {
-                // For admins/sudo
-                if (filterDept) {
-                    // 1. Fetch students of that department first
-                    // We fetch up to 100 for now to avoid query complexity limits
-                    const deptStudents = await getStudents({ department: filterDept }, 100);
-                    const sIds = deptStudents.documents.map(s => s.$id);
-
-                    if (sIds.length === 0) {
-                        setSubmissions([]);
-                        setLoading(false);
-                        return;
-                    }
-
-                    // Update map with these students - index by both for safety
-                    deptStudents.documents.forEach(s => {
-                        if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
-                        currentStudentMap[s.$id] = s;
-                    });
-
-                    // 2. Fetch OD requests for these specific students
-                    // Important: use appwrite_user_id if available as that's what's typically stored in student_id
-                    const filterIds = deptStudents.documents.map(s => s.appwrite_user_id || s.$id);
-                    response = await getAllODRequests(100, filterIds);
-                } else {
-                    // No filter, fetch all
-                    response = await getAllODRequests(100);
-                }
+                // For admins/sudo/faculty, fetch recent requests
+                // We fetch a larger batch to allow effective client-side filtering
+                response = await getAllODRequests(200);
             }
 
             const docs = response?.documents || [];
@@ -102,34 +79,57 @@ export default function SubmissionsPageContent({ role }) {
 
             // Fetch missing student details if others
             if (role !== "student") {
-                // Populate map with students we already have
-                docs.forEach(submission => {
-                    const sId = submission.student_id;
-                    if (sId && !currentStudentMap[sId]) {
-                        // We'll fetch these below
-                    }
-                });
-
                 const missingIds = [...new Set(docs.map(s => s.student_id).filter(id => id && !currentStudentMap[id]))];
 
                 if (missingIds.length > 0) {
                     try {
-                        // Fetch specifically the students we need by their Appwrite User IDs
-                        const studentsRes = await getStudentsByAppwriteUserIds(missingIds, 100);
-                        studentsRes.forEach(s => {
+                        // 1. Try fetching by Appwrite User IDs (most common for student_id)
+                        const studentsByAppwriteRes = await getStudentsByAppwriteUserIds(missingIds, 100);
+                        studentsByAppwriteRes.forEach(s => {
                             if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
                             currentStudentMap[s.$id] = s;
                         });
 
-                        // If some are still missing, they might be indexed by $id directly
-                        const stillMissing = missingIds.filter(id => !currentStudentMap[id]);
-                        if (stillMissing.length > 0) {
-                            // This is a fall back for legacy data or different indexing
-                            const allStudents = await getStudents({}, 100);
-                            allStudents.documents.forEach(s => {
+                        // 2. Try fetching by Student Document IDs for those still missing
+                        const stillMissingById = missingIds.filter(id => !currentStudentMap[id]);
+                        if (stillMissingById.length > 0) {
+                            const studentsByIdRes = await getStudentsByIds(stillMissingById);
+                            studentsByIdRes.forEach(s => {
                                 if (s.appwrite_user_id) currentStudentMap[s.appwrite_user_id] = s;
                                 currentStudentMap[s.$id] = s;
                             });
+                        }
+
+                        // 3. Try to get email from User record and search by email
+                        const finalStillMissing = missingIds.filter(id => !currentStudentMap[id]);
+                        if (finalStillMissing.length > 0) {
+                            await Promise.all(finalStillMissing.map(async (missingId) => {
+                                try {
+                                    const userRecord = await getUserByAppwriteId(missingId);
+                                    if (userRecord && userRecord.user_email) {
+                                        const email = userRecord.user_email;
+                                        // Try to find student by email
+                                        const studentByEmail = await getStudentByEmail(email);
+                                        if (studentByEmail) {
+                                            // Link the Appwrite User ID to this student profile in our map
+                                            currentStudentMap[missingId] = studentByEmail;
+                                            if (studentByEmail.appwrite_user_id) {
+                                                currentStudentMap[studentByEmail.appwrite_user_id] = studentByEmail;
+                                            }
+                                            currentStudentMap[studentByEmail.$id] = studentByEmail;
+                                        } else {
+                                            // Fallback if no student profile found at all
+                                            currentStudentMap[missingId] = {
+                                                name: userRecord.user_name || "Unknown User",
+                                                department: "Profile Missing",
+                                                email: userRecord.user_email
+                                            };
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Ignore
+                                }
+                            }));
                         }
                     } catch (err) {
                         console.error("Error fetching students for mapping:", err);
@@ -208,7 +208,12 @@ export default function SubmissionsPageContent({ role }) {
         return new Date(value).toLocaleDateString();
     }
 
-    const filteredSubmissions = submissions;
+    const filteredSubmissions = submissions.filter(sub => {
+        if (!filterDept || role === 'student') return true;
+        const student = studentMap[sub.student_id];
+        // Ensure we handle both cases: student profile found or "Profile Missing" placeholder
+        return student?.department === filterDept;
+    });
 
     if (loading && submissions.length === 0) {
         return (
