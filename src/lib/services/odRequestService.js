@@ -446,9 +446,6 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
             }
         }
 
-        // Log the approval
-        await logApproval(odId, fromStatus, toStatus, "approve", userId, role, remarks);
-
         return updatedOD;
     } catch (error) {
         console.error("Error approving OD request:", error);
@@ -511,9 +508,6 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
             updateData
         );
 
-        // Log the rejection
-        await logApproval(odId, fromStatus, OD_STATUS.REJECTED, "reject", userId, role, remarks);
-
         return updatedOD;
     } catch (error) {
         console.error("Error rejecting OD request:", error);
@@ -551,16 +545,6 @@ export async function cancelODRequest(odId, studentUserId, remarks = "Cancelled 
             }
         );
 
-        await logApproval(
-            odId,
-            fromStatus,
-            OD_STATUS.CANCELLED,
-            "cancel",
-            studentUserId,
-            "student",
-            remarks
-        );
-
         return updatedOD;
     } catch (error) {
         console.error("Error cancelling OD request:", error);
@@ -568,70 +552,7 @@ export async function cancelODRequest(odId, studentUserId, remarks = "Cancelled 
     }
 }
 
-/**
- * Log approval action
- */
-async function logApproval(odId, fromStatus, toStatus, action, userId, role, remarks) {
-    try {
-        await databases.createDocument(
-            DATABASE_ID,
-            COLLECTIONS.APPROVAL_LOGS,
-            ID.unique(),
-            {
-                od_id: odId,
-                from_status: fromStatus,
-                to_status: toStatus,
-                action: action,
-                action_by_user_id: userId,
-                action_by_role: role,
-                remarks: remarks || null,
-                action_at: new Date().toISOString(),
-            }
-        );
-    } catch (error) {
-        console.error("Error logging approval:", error);
-    }
-}
 
-/**
- * Get approval logs for a specific OD request
- */
-export async function getApprovalLogsByODId(odId) {
-    try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.APPROVAL_LOGS,
-            [
-                Query.equal("od_id", odId),
-                Query.orderAsc("action_at"),
-            ]
-        );
-        return response;
-    } catch (error) {
-        console.error("Error getting approval logs:", error);
-        throw error;
-    }
-}
-
-/**
- * Get recent approval logs
- */
-export async function getRecentApprovalLogs(limit = 20) {
-    try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.APPROVAL_LOGS,
-            [
-                Query.orderDesc("action_at"),
-                Query.limit(limit),
-            ]
-        );
-        return response;
-    } catch (error) {
-        console.error("Error getting recent approval logs:", error);
-        throw error;
-    }
-}
 
 /**
  * Get all OD requests (for admin/sudo)
@@ -700,7 +621,5 @@ export default {
     rejectODRequest,
     cancelODRequest,
     getAllODRequests,
-    getApprovalLogsByODId,
-    getRecentApprovalLogs,
     getODStats,
 };

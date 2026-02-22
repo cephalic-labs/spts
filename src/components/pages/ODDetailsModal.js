@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getODRequestById, getApprovalLogsByODId } from "@/lib/services/odRequestService";
+import { getODRequestById } from "@/lib/services/odRequestService";
 import { getEventById } from "@/lib/services/eventService";
 import { getStudentByAppwriteUserId, getStudentByEmail, getStudentByRollNo } from "@/lib/services/studentService";
 import { getFacultyById, getFacultyByFacultyId, getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
@@ -49,52 +49,20 @@ function getStepState(odRequest, step) {
     if (odRequest.current_status === step.pendingStatus) return "current";
 
     // 3. Infer "approved" based on pipeline position
-    // If request status is later in the pipeline than this step's pending status, 
-    // we can assume this step was approved.
     const currentIndex = PIPELINE_ORDER.indexOf(odRequest.current_status);
     const stepIndex = PIPELINE_ORDER.indexOf(step.pendingStatus);
 
     if (currentIndex > stepIndex) return "approved";
 
-    // 4. Handle Rejected case slightly differently?
-    // If rejected, we typically reset or just show the rejection banner.
-    // The individual step circles will stay "waiting" unless explicitly marked rejected.
-
     return "waiting";
-}
-
-function getLogActionMeta(action) {
-    if (action === "approve") {
-        return {
-            label: "Approved",
-            iconClass: "bg-green-100 text-green-600",
-            badgeClass: "text-green-600",
-        };
-    }
-
-    if (action === "cancel") {
-        return {
-            label: "Cancelled",
-            iconClass: "bg-amber-100 text-amber-700",
-            badgeClass: "text-amber-700",
-        };
-    }
-
-    return {
-        label: "Rejected",
-        iconClass: "bg-red-100 text-red-600",
-        badgeClass: "text-red-600",
-    };
 }
 
 export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const [odRequest, setOdRequest] = useState(null);
-    const [logs, setLogs] = useState([]);
     const [eventDetails, setEventDetails] = useState(null);
     const [studentDetails, setStudentDetails] = useState(null);
     const [submitterEmail, setSubmitterEmail] = useState("");
     const [advisorName, setAdvisorName] = useState("N/A");
-    const [logUsers, setLogUsers] = useState({});
     const [teamMembersData, setTeamMembersData] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -110,7 +78,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
             const data = await getODRequestById(odId);
             setOdRequest(data);
 
-            // Prefer querying sece-students by submitter email (more reliable than appwrite_user_id in some setups).
+            // Prefer querying sece-students by submitter email
             const resolveSubmitterEmail = async (odRequestData) => {
                 if (!odRequestData) return "";
                 if (odRequestData.student_email && odRequestData.student_email.includes("@")) {
@@ -136,34 +104,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                 studentData = await getStudentByAppwriteUserId(data.student_id).catch(() => null);
             }
 
-            const [logsData, eventData] = await Promise.all([
-                getApprovalLogsByODId(odId),
-                data.event_id ? getEventById(data.event_id).catch(() => null) : Promise.resolve(null),
-            ]);
-
-            const logsDocs = logsData.documents || [];
-
-            // Resolve Log Users
-            const userIdsToResolve = [...new Set(logsDocs.map(log => log.action_by_user_id).filter(Boolean))];
-            const logUsersMap = {};
-            await Promise.all(userIdsToResolve.map(async (uid) => {
-                let fac = await getFacultyByAppwriteId(uid).catch(() => null);
-                let dbUser = null;
-                if (!fac) {
-                    dbUser = await getUserByAppwriteId(uid).catch(() => null);
-                    if (dbUser && dbUser.user_email) {
-                        fac = await getFacultyByEmail(dbUser.user_email).catch(() => null);
-                    }
-                }
-
-                if (fac) {
-                    logUsersMap[uid] = { name: fac.name, department: fac.department || "" };
-                } else if (dbUser) {
-                    logUsersMap[uid] = { name: dbUser.user_name || dbUser.name || "Unknown", department: "" };
-                } else {
-                    logUsersMap[uid] = { name: "Unknown", department: "" };
-                }
-            }));
+            const eventData = data.event_id ? await getEventById(data.event_id).catch(() => null) : null;
 
             let resolvedAdvisorName = "N/A";
             if (studentData?.advisor_id) {
@@ -179,11 +120,9 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                 }
             }
 
-            setLogs(logsDocs);
             setEventDetails(eventData);
             setStudentDetails(studentData);
             setAdvisorName(resolvedAdvisorName);
-            setLogUsers(logUsersMap);
 
             // Resolve team members
             const teamRolls = data.team || [];
@@ -248,7 +187,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                             </div>
                         ) : odRequest ? (
                             <div className="space-y-8">
-                                {/* Final Status Banner */}
+                                {/* Status Banners */}
                                 {isGranted && (
                                     <div className="bg-green-50 border border-green-200 rounded-2xl p-6 text-center">
                                         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -268,7 +207,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                             </svg>
                                         </div>
                                         <h3 className="text-xl font-black text-red-700 mb-1">OD Rejected</h3>
-                                        <p className="text-red-600 text-sm">Your OD request was rejected. See details below.</p>
+                                        <p className="text-red-600 text-sm">Your OD request was rejected.</p>
                                     </div>
                                 )}
                                 {isCancelled && (
@@ -288,17 +227,14 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Approval Progress</h4>
                                     <div className="overflow-x-auto">
                                         <div className="relative min-w-[520px]">
-                                            {/* Progress line */}
                                             <div className="absolute top-5 left-5 right-5 h-[2px] bg-gray-200 z-0"></div>
                                             <div className="relative flex justify-between z-10">
                                                 {APPROVAL_STEPS.map((step, idx) => {
                                                     const state = getStepState(odRequest, step);
                                                     const actionAt = odRequest[step.actionAtField];
-                                                    const remarks = odRequest[step.remarksField];
 
                                                     return (
                                                         <div key={step.key} className="flex flex-col items-center" style={{ width: '25%' }}>
-                                                            {/* Circle */}
                                                             <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${state === "approved"
                                                                 ? "bg-green-500 border-green-500 text-white"
                                                                 : state === "rejected"
@@ -319,7 +255,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                                     <span className="text-xs font-black">{idx + 1}</span>
                                                                 )}
                                                             </div>
-                                                            {/* Label */}
                                                             <span className={`mt-2 text-xs font-bold text-center ${state === "approved" ? "text-green-600"
                                                                 : state === "rejected" ? "text-red-600"
                                                                     : state === "current" ? "text-[#1E2761]"
@@ -327,7 +262,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                                 }`}>
                                                                 {step.label}
                                                             </span>
-                                                            {/* Status text */}
                                                             <span className={`text-[10px] mt-0.5 ${state === "approved" ? "text-green-500"
                                                                 : state === "rejected" ? "text-red-500"
                                                                     : state === "current" ? "text-yellow-600"
@@ -338,7 +272,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                                         : state === "current" ? "Awaiting..."
                                                                             : "Pending"}
                                                             </span>
-                                                            {/* Timestamp */}
                                                             {actionAt && (
                                                                 <span className="text-[9px] text-gray-400 mt-0.5">
                                                                     {new Date(actionAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
@@ -348,18 +281,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                                     );
                                                 })}
                                             </div>
-
-                                            {/* Final granted step */}
-                                            {isGranted && (
-                                                <div className="mt-4 text-center">
-                                                    <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-black uppercase tracking-wider">
-                                                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                                            <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                                        </svg>
-                                                        OD Granted
-                                                    </span>
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -447,53 +368,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                         <p className="text-gray-600 leading-relaxed bg-gray-50 p-4 rounded-xl border border-gray-100">{odRequest.reason}</p>
                                     </div>
                                 </div>
-
-                                {/* Approval Timeline */}
-                                <div>
-                                    <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Approval Timeline</h4>
-                                    <div className="space-y-6">
-                                        {logs.length === 0 ? (
-                                            <p className="text-gray-400 italic text-sm">No activity recorded yet. Waiting for mentor approval.</p>
-                                        ) : (
-                                            logs.map((log, idx) => (
-                                                <div key={log.$id} className="relative flex gap-4">
-                                                    {idx !== logs.length - 1 && (
-                                                        <div className="absolute left-[11px] top-6 bottom-[-24px] w-[2px] bg-gray-100"></div>
-                                                    )}
-                                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 z-10 ${getLogActionMeta(log.action).iconClass}`}>
-                                                        {log.action === 'approve' ? (
-                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" /></svg>
-                                                        ) : log.action === 'cancel' ? (
-                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4 10a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1z" /></svg>
-                                                        ) : (
-                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" /></svg>
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="font-bold text-sm text-[#1E2761] capitalize">
-                                                                {log.action_by_role}
-                                                                {logUsers[log.action_by_user_id]?.name && (
-                                                                    <span className="text-gray-500 font-medium ml-1">
-                                                                        - {logUsers[log.action_by_user_id].name}
-                                                                        {logUsers[log.action_by_user_id].department ? ` (${logUsers[log.action_by_user_id].department.toUpperCase()})` : ''}
-                                                                    </span>
-                                                                )}
-                                                            </span>
-                                                            <span className={`text-[10px] font-black uppercase tracking-widest ${getLogActionMeta(log.action).badgeClass}`}>
-                                                                {getLogActionMeta(log.action).label}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs text-gray-500 mb-1">{log.remarks || 'No remarks'}</p>
-                                                        <div className="text-[10px] text-gray-400 font-medium">
-                                                            {new Date(log.action_at).toLocaleString()}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
                             </div>
                         ) : (
                             <div className="text-center py-12 text-gray-400">
@@ -531,18 +405,12 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                         __html: `
                         @media print {
                             @page { margin: 1cm; size: portrait; }
-                            
-                            /* Hide all elements by default */
                             body * {
                                 visibility: hidden !important;
                             }
-                            
-                            /* Show ONLY the print container and its contents */
                             .print-container, .print-container * {
                                 visibility: visible !important;
                             }
-                            
-                            /* Position the container precisely for physical paper */
                             .print-container {
                                 visibility: visible !important;
                                 position: absolute !important;
@@ -553,21 +421,16 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                 padding: 1.5cm !important;
                                 background: white !important;
                             }
-
-                            /* Remove URL/Date footers added by browsers */
                             header, footer { display: none !important; }
                         }
                     `}} />
 
-                    {/* Print Title */}
                     <div className="text-center border-b-2 border-black pb-4 mb-8">
                         <h1 className="text-2xl font-black uppercase tracking-tight">Sri Eshwar College of Engineering</h1>
                         <h2 className="text-xl font-bold mt-1">Outward Duty (OD) Approval Form</h2>
                     </div>
 
-                    {/* Print grid */}
                     <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
-                        {/* Student Info */}
                         <div className="border border-black p-5 rounded">
                             <h3 className="font-bold text-lg mb-4 border-b border-black pb-2 uppercase tracking-wide">Student Information</h3>
                             <div className="space-y-3">
@@ -579,7 +442,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                             </div>
                         </div>
 
-                        {/* Event Info */}
                         <div className="border border-black p-5 rounded">
                             <h3 className="font-bold text-lg mb-4 border-b border-black pb-2 uppercase tracking-wide">Event Information</h3>
                             <div className="space-y-3">
@@ -591,13 +453,11 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                         </div>
                     </div>
 
-                    {/* Reason */}
                     <div className="border border-black p-5 rounded mb-8">
                         <h3 className="font-bold text-lg mb-3 uppercase tracking-wide text-gray-800">Reason for Outward Duty</h3>
                         <p className="whitespace-pre-wrap leading-relaxed text-sm">{odRequest.reason}</p>
                     </div>
 
-                    {/* Team Members (Print) */}
                     {teamMembersData.length > 0 && (
                         <div className="border border-black p-5 rounded mb-8">
                             <h3 className="font-bold text-lg mb-3 uppercase tracking-wide text-gray-800">Team Members ({teamMembersData.length})</h3>
@@ -613,16 +473,11 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                         </div>
                     )}
 
-                    {/* Approval Signatures / Timestamps */}
                     <h3 className="font-bold text-lg mb-4 uppercase tracking-wide text-gray-800">Authorization / Digital Signatures</h3>
                     <div className="grid grid-cols-4 gap-4 text-center">
                         {APPROVAL_STEPS.map((step) => {
                             const state = getStepState(odRequest, step);
                             const actionAt = odRequest[step.actionAtField];
-                            const logForStep = logs.find(l => l.action_by_role === step.key && l.action === "approve");
-                            const facName = logForStep && logUsers[logForStep.action_by_user_id]
-                                ? `${logUsers[logForStep.action_by_user_id].name}${logUsers[logForStep.action_by_user_id].department ? ` (${logUsers[logForStep.action_by_user_id].department.toUpperCase()})` : ''}`
-                                : null;
 
                             return (
                                 <div key={step.key} className="border border-black p-3 rounded flex flex-col items-center justify-between min-h-[140px] bg-gray-50/20">
@@ -630,7 +485,6 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                     {state === "approved" ? (
                                         <>
                                             <div className="text-green-700 font-bold text-xs uppercase mb-1">APPROVED</div>
-                                            <div className="font-bold text-[10px] leading-tight mb-1 text-gray-900">{facName || "Verified Approver"}</div>
                                             <div className="text-[8px] text-gray-500 font-medium">
                                                 {actionAt ? new Date(actionAt).toLocaleString('en-IN') : ""}
                                             </div>
