@@ -160,10 +160,6 @@ export default function Home() {
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
-                  <span>Generate participation reports</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#C5B358] mt-2 flex-shrink-0"></div>
                   <span>Monitor institutional performance</span>
                 </li>
               </ul>
