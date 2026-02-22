@@ -165,8 +165,8 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
-                <div className="p-4 sm:p-8 border-b border-gray-100 flex justify-between items-center">
+            <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                <div className="p-4 sm:p-8 border-b border-gray-100 flex justify-between items-center shrink-0">
                     <div>
                         <h2 className="text-xl sm:text-2xl font-black text-[#1E2761]">OD Request Details</h2>
                         <p className="text-gray-400 text-sm font-medium">#{odId?.slice(0, 8)}</p>
@@ -178,7 +178,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                     </button>
                 </div>
 
-                <div className="p-4 sm:p-8 max-h-[calc(90vh-130px)] overflow-y-auto">
+                <div className="p-4 sm:p-8 overflow-y-auto flex-1">
                     {loading ? (
                         <div className="flex justify-center py-12">
                             <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
@@ -225,78 +225,78 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                 <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6">Approval Progress</h4>
                                 <div className="overflow-x-auto">
                                     <div className="relative min-w-[520px]">
-                                    {/* Progress line */}
-                                    <div className="absolute top-5 left-5 right-5 h-[2px] bg-gray-200 z-0"></div>
-                                    <div className="relative flex justify-between z-10">
-                                        {APPROVAL_STEPS.map((step, idx) => {
-                                            const state = getStepState(odRequest, step);
-                                            const actionAt = odRequest[step.actionAtField];
-                                            const remarks = odRequest[step.remarksField];
+                                        {/* Progress line */}
+                                        <div className="absolute top-5 left-5 right-5 h-[2px] bg-gray-200 z-0"></div>
+                                        <div className="relative flex justify-between z-10">
+                                            {APPROVAL_STEPS.map((step, idx) => {
+                                                const state = getStepState(odRequest, step);
+                                                const actionAt = odRequest[step.actionAtField];
+                                                const remarks = odRequest[step.remarksField];
 
-                                            return (
-                                                <div key={step.key} className="flex flex-col items-center" style={{ width: '25%' }}>
-                                                    {/* Circle */}
-                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${state === "approved"
-                                                        ? "bg-green-500 border-green-500 text-white"
-                                                        : state === "rejected"
-                                                            ? "bg-red-500 border-red-500 text-white"
-                                                            : state === "current"
-                                                                ? "bg-white border-[#1E2761] text-[#1E2761] animate-pulse shadow-lg shadow-[#1E2761]/20"
-                                                                : "bg-gray-100 border-gray-200 text-gray-400"
-                                                        }`}>
-                                                        {state === "approved" ? (
-                                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                                            </svg>
-                                                        ) : state === "rejected" ? (
-                                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
-                                                            </svg>
-                                                        ) : (
-                                                            <span className="text-xs font-black">{idx + 1}</span>
+                                                return (
+                                                    <div key={step.key} className="flex flex-col items-center" style={{ width: '25%' }}>
+                                                        {/* Circle */}
+                                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${state === "approved"
+                                                            ? "bg-green-500 border-green-500 text-white"
+                                                            : state === "rejected"
+                                                                ? "bg-red-500 border-red-500 text-white"
+                                                                : state === "current"
+                                                                    ? "bg-white border-[#1E2761] text-[#1E2761] animate-pulse shadow-lg shadow-[#1E2761]/20"
+                                                                    : "bg-gray-100 border-gray-200 text-gray-400"
+                                                            }`}>
+                                                            {state === "approved" ? (
+                                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                                                </svg>
+                                                            ) : state === "rejected" ? (
+                                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+                                                                </svg>
+                                                            ) : (
+                                                                <span className="text-xs font-black">{idx + 1}</span>
+                                                            )}
+                                                        </div>
+                                                        {/* Label */}
+                                                        <span className={`mt-2 text-xs font-bold text-center ${state === "approved" ? "text-green-600"
+                                                            : state === "rejected" ? "text-red-600"
+                                                                : state === "current" ? "text-[#1E2761]"
+                                                                    : "text-gray-400"
+                                                            }`}>
+                                                            {step.label}
+                                                        </span>
+                                                        {/* Status text */}
+                                                        <span className={`text-[10px] mt-0.5 ${state === "approved" ? "text-green-500"
+                                                            : state === "rejected" ? "text-red-500"
+                                                                : state === "current" ? "text-yellow-600"
+                                                                    : "text-gray-300"
+                                                            }`}>
+                                                            {state === "approved" ? "Approved"
+                                                                : state === "rejected" ? "Rejected"
+                                                                    : state === "current" ? "Awaiting..."
+                                                                        : "Pending"}
+                                                        </span>
+                                                        {/* Timestamp */}
+                                                        {actionAt && (
+                                                            <span className="text-[9px] text-gray-400 mt-0.5">
+                                                                {new Date(actionAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                                            </span>
                                                         )}
                                                     </div>
-                                                    {/* Label */}
-                                                    <span className={`mt-2 text-xs font-bold text-center ${state === "approved" ? "text-green-600"
-                                                        : state === "rejected" ? "text-red-600"
-                                                            : state === "current" ? "text-[#1E2761]"
-                                                                : "text-gray-400"
-                                                        }`}>
-                                                        {step.label}
-                                                    </span>
-                                                    {/* Status text */}
-                                                    <span className={`text-[10px] mt-0.5 ${state === "approved" ? "text-green-500"
-                                                        : state === "rejected" ? "text-red-500"
-                                                            : state === "current" ? "text-yellow-600"
-                                                                : "text-gray-300"
-                                                        }`}>
-                                                        {state === "approved" ? "Approved"
-                                                            : state === "rejected" ? "Rejected"
-                                                                : state === "current" ? "Awaiting..."
-                                                                    : "Pending"}
-                                                    </span>
-                                                    {/* Timestamp */}
-                                                    {actionAt && (
-                                                        <span className="text-[9px] text-gray-400 mt-0.5">
-                                                            {new Date(actionAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    {/* Final granted step */}
-                                    {isGranted && (
-                                        <div className="mt-4 text-center">
-                                            <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-black uppercase tracking-wider">
-                                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-                                                    <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                                                </svg>
-                                                OD Granted
-                                            </span>
+                                                );
+                                            })}
                                         </div>
-                                    )}
+
+                                        {/* Final granted step */}
+                                        {isGranted && (
+                                            <div className="mt-4 text-center">
+                                                <span className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-green-100 text-green-700 rounded-full text-xs font-black uppercase tracking-wider">
+                                                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
+                                                        <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
+                                                    </svg>
+                                                    OD Granted
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -320,6 +320,10 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                                         <p className="text-sm font-bold text-[#1E2761] break-all">
                                             {studentDetails?.email || submitterEmail || (odRequest?.student_id?.includes("@") ? odRequest.student_id : "N/A")}
                                         </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Department</p>
+                                        <p className="text-sm font-bold text-[#1E2761]">{studentDetails?.department || "N/A"}</p>
                                     </div>
                                     <div>
                                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider">Year</p>
@@ -400,7 +404,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                     )}
                 </div>
 
-                <div className="p-4 sm:p-8 border-t border-gray-100 flex justify-end">
+                <div className="p-4 sm:p-8 border-t border-gray-100 flex justify-end shrink-0">
                     <button
                         onClick={onClose}
                         className="px-6 py-3 bg-[#1E2761] text-white font-bold rounded-xl hover:bg-[#2d3a7d] transition-all active:scale-95"
