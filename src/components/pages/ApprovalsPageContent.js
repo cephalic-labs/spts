@@ -24,6 +24,27 @@ const roleSteps = {
     hod: "Stage 4/4",
 };
 
+function getLogActionMeta(action) {
+    if (action === "approve") {
+        return {
+            label: "APPROVED",
+            className: "bg-green-100 text-green-700",
+        };
+    }
+
+    if (action === "cancel") {
+        return {
+            label: "CANCELLED",
+            className: "bg-amber-100 text-amber-700",
+        };
+    }
+
+    return {
+        label: "REJECTED",
+        className: "bg-red-100 text-red-700",
+    };
+}
+
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
     const [pendingRequests, setPendingRequests] = useState([]);
@@ -42,8 +63,6 @@ export default function ApprovalsPageContent({ role }) {
     const [teamMembersData, setTeamMembersData] = useState([]);
     const [eventDetails, setEventDetails] = useState(null);
     const [detailsLoading, setDetailsLoading] = useState(false);
-
-    const [eventsMap, setEventsMap] = useState({});
 
     useEffect(() => {
         if (user) {
@@ -252,30 +271,14 @@ export default function ApprovalsPageContent({ role }) {
             }));
 
             setPendingRequests(enhancedRequests);
-
-            // Fetch event details for pending requests
-            const eventIds = [...new Set(enhancedRequests.map(r => r.event_id).filter(Boolean))];
-
-            // Bulk fetch and map all events
-            const uniqueEventIds = [...new Set(eventIds)];
-            if (uniqueEventIds.length > 0) {
-                try {
-                    const eventDocs = await getEventsByIds(uniqueEventIds);
-                    const newEventsMap = { ...eventsMap };
-                    eventDocs.forEach(ev => {
-                        newEventsMap[ev.$id] = ev;
-                    });
-                    setEventsMap(newEventsMap);
-                } catch (e) {
-                    console.error("Error fetching events for map:", e);
-                }
-            }
         } catch (err) {
             console.error("Error loading pending requests:", err);
         } finally {
             setLoading(false);
         }
     }
+
+
 
     async function handleApprove(odId) {
         try {
@@ -331,6 +334,8 @@ export default function ApprovalsPageContent({ role }) {
             setActionLoading(null);
         }
     }
+
+
 
     function calculateDays(start, end) {
         const startDate = new Date(start);
@@ -392,6 +397,8 @@ export default function ApprovalsPageContent({ role }) {
                     <p className="text-xs text-amber-700">{approverError}</p>
                 </div>
             )}
+
+
 
             {/* Pending Requests Table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-12">
@@ -486,24 +493,23 @@ export default function ApprovalsPageContent({ role }) {
                 )}
             </div>
 
+
+
             {/* View Details Modal */}
             {viewRequest && (
                 <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white rounded-2xl w-full max-w-2xl p-6 border border-gray-100 shadow-2xl max-h-[90vh] overflow-y-auto outline-none">
-                        <div className="flex justify-between items-center mb-6 border-b border-gray-50 pb-4 shrink-0">
-                            <div>
-                                <h3 className="text-xl font-bold text-[#1E2761]">OD Request Details</h3>
-                                <p className="text-xs text-gray-400 font-medium">#{viewRequest.$id.slice(0, 8)}</p>
-                            </div>
-                            <button onClick={closeViewDialog} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="bg-white rounded-2xl w-full max-w-2xl p-6 border border-gray-100 shadow-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-xl font-bold text-[#1E2761]">OD Request Details</h3>
+                            <button onClick={closeViewDialog} className="text-gray-400 hover:text-gray-600">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
                         {detailsLoading ? (
-                            <div className="flex items-center justify-center py-12">
+                            <div className="flex justify-center py-10">
                                 <div className="animate-spin w-8 h-8 border-4 border-[#1E2761] border-t-transparent rounded-full"></div>
                             </div>
                         ) : (
@@ -738,6 +744,8 @@ export default function ApprovalsPageContent({ role }) {
                     </div>
                 </div>
             )}
+
+
         </div>
     );
 }
