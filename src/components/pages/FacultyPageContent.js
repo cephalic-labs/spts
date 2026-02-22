@@ -5,6 +5,7 @@ import { getFaculties, deleteFaculty } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
+import { getAdminFacultyFromLabels } from "@/actions/auth";
 
 export default function FacultyPageContent({ role, filterRole }) {
     const [faculty, setFaculty] = useState([]);
@@ -22,8 +23,13 @@ export default function FacultyPageContent({ role, filterRole }) {
     async function loadFaculty() {
         try {
             setLoading(true);
-            const response = await getFaculties(filter, 100);
-            setFaculty(response.documents || []);
+            if (filterRole === "admin") {
+                const adminList = await getAdminFacultyFromLabels();
+                setFaculty(adminList || []);
+            } else {
+                const response = await getFaculties(filter, 100);
+                setFaculty(response.documents || []);
+            }
         } catch (err) {
             setError("Failed to load faculty");
             console.error(err);
@@ -185,13 +191,15 @@ export default function FacultyPageContent({ role, filterRole }) {
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
                                         <td className="px-6 py-4 text-right">
                                             <div className="inline-flex items-center justify-end gap-3">
-                                                <button
-                                                    onClick={() => handleEdit(member)}
-                                                    className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
-                                                >
-                                                    Edit
-                                                </button>
-                                                {role === "sudo" && (
+                                                {!member._isAuthOnly && (
+                                                    <button
+                                                        onClick={() => handleEdit(member)}
+                                                        className="text-[#1E2761] hover:underline text-xs font-black uppercase tracking-widest"
+                                                    >
+                                                        Edit
+                                                    </button>
+                                                )}
+                                                {role === "sudo" && !member._isAuthOnly && (
                                                     <button
                                                         onClick={() => handleDelete(member.$id)}
                                                         className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"

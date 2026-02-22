@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createFaculty, updateFaculty } from "@/lib/services/facultyService";
+import { syncUserLabels } from "@/actions/auth";
 
 export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialData = null, preselectedRole = null }) {
     const isEdit = !!initialData;
@@ -51,10 +52,11 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
         e.preventDefault();
         try {
             setLoading(true);
+            const { roles, ...restData } = formData;
             const dataToSave = {
-                ...formData,
-                role: formData.roles,
-                assigned_sections: formData.assigned_sections.split(",").map(s => s.trim()).filter(s => s),
+                ...restData,
+                role: roles,
+                assigned_sections: restData.assigned_sections.split(",").map(s => s.trim()).filter(s => s),
             };
 
             if (isEdit) {
@@ -62,6 +64,10 @@ export default function AddFacultyModal({ isOpen, onClose, onSuccess, initialDat
             } else {
                 await createFaculty(dataToSave);
             }
+
+            // Sync specifically the Auth role labels securely 
+            await syncUserLabels(formData.email, roles);
+
             onSuccess();
             onClose();
         } catch (error) {

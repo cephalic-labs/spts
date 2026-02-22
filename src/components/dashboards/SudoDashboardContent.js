@@ -10,6 +10,7 @@ import { format, subDays, parseISO, startOfDay } from "date-fns";
 import { databases } from "@/lib/appwrite";
 import { DB_CONFIG } from "@/lib/dbConfig";
 import { Query } from "appwrite";
+import { getAdminSudoCounts } from "@/actions/auth";
 
 // Chart.js imports
 import {
@@ -66,13 +67,12 @@ export default function SudoDashboardContent() {
         async function fetchAllStats() {
             try {
                 setLoading(true);
-                const [eventStats, odStats, studentStats, facultiesRes, adminsRes, sudosRes] = await Promise.all([
+                const [eventStats, odStats, studentStats, facultiesRes, adminSudoStats] = await Promise.all([
                     getEventStats(),
                     getODStats(),
                     getStudentStats(),
                     databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.FACULTIES, [Query.limit(1)]),
-                    databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.USERS, [Query.equal("role", "admin"), Query.limit(1)]),
-                    databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.USERS, [Query.equal("role", "sudo"), Query.limit(1)]),
+                    getAdminSudoCounts(),
                 ]);
 
                 let totalSub = odStats.total || 0;
@@ -146,8 +146,8 @@ export default function SudoDashboardContent() {
                     rejectedTotal: rejected,
                     totalStudents: studentStats.total || 0,
                     totalFaculty: facultiesRes.total || 0,
-                    totalAdmins: adminsRes.total || 0,
-                    totalSudo: sudosRes.total || 0
+                    totalAdmins: adminSudoStats.admins || 0,
+                    totalSudo: adminSudoStats.sudos || 0
                 });
 
                 setChartData({

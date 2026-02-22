@@ -186,3 +186,140 @@ export async function assignUserRole(userId, email) {
         return { success: false, error: error.message };
     }
 }
+
+/**
+ * Accurately calculate the total counts for admin and sudo roles
+ * directly from the Appwrite Auth users collection via explicitly checking labels
+ */
+export async function getAdminSudoCounts() {
+    try {
+        let admins = 0;
+        let sudos = 0;
+
+        let hasMore = true;
+        let cursor = null;
+
+        while (hasMore) {
+            const queries = [Query.limit(100)];
+            if (cursor) {
+                queries.push(Query.cursorAfter(cursor));
+            }
+
+            const response = await users.list(queries);
+
+            for (const u of response.users) {
+                if (Array.isArray(u.labels)) {
+                    if (u.labels.includes("admin")) admins++;
+                    if (u.labels.includes("sudo")) sudos++;
+                }
+            }
+
+            if (response.users.length < 100) {
+                hasMore = false;
+            } else {
+                cursor = response.users[response.users.length - 1].$id;
+            }
+        }
+
+        return { admins, sudos };
+    } catch (error) {
+        console.error("Error computing label counts:", error);
+        return { admins: 0, sudos: 0 };
+    }
+}
+
+/**
+ * Get all admins/sudos directly mapped from Auth labels, 
+ * then fetched from the FACULTIES database for UI mapping.
+ */
+export async function getAdminFacultyFromLabels() {
+    try {
+        let adminUsers = [];
+        let hasMore = true;
+        let cursor = null;
+
+        while (hasMore) {
+            const queries = [Query.limit(100)];
+            if (cursor) queries.push(Query.cursorAfter(cursor));
+
+            const response = await users.list(queries);
+
+            for (const u of response.users) {
+                if (Array.isArray(u.labels) && (u.labels.includes("admin") || u.labels.includes("sudo"))) {
+                    adminUsers.push(u);
+                }
+            }
+
+            if (response.users.length < 100) {
+                hasMore = false;
+            } else {
+                cursor = response.users[response.users.length - 1].$id;
+            }
+        }
+
+        // Now lookup in database
+        const dbAdmins = [];
+        for (const u of adminUsers) {
+            try {
+                // Try to find them by appwrite_user_id or email
+                const res = await databases.listDocuments(DB_CONFIG.DATABASE_ID, DB_CONFIG.COLLECTIONS.FACULTIES, [
+                    Query.equal("email", u.email),
+                    Query.limit(1)
+                ]);
+
+                if (res.documents.length > 0) {
+                    dbAdmins.push({
+                        ...res.documents[0],
+                        // Enforce their specific label
+                        role: u.labels
+                    });
+                } else {
+                    dbAdmins.push({
+                        $id: u.$id,
+                        name: u.name || "Unknown",
+                        email: u.email,
+                        department: "ADMIN",
+                        designation: "System Administrator",
+                        role: u.labels,
+                        _isAuthOnly: true
+                    });
+                }
+            } catch (e) {
+                console.warn("Failed fetching metadata for user:", u.email);
+            }
+        }
+
+        return dbAdmins;
+    } catch (error) {
+        console.error("Error fetching getAdminFacultyFromLabels:", error);
+        return [];
+    }
+}
+
+/**
+ * Utility function to manually synchronize a user's Auth Labels
+ * Useful when a user is promoted to an Admin/Sudo via the dashboard.
+ */
+export async function syncUserLabels(email, newLabels) {
+    try {
+        if (!email || !Array.isArray(newLabels)) return { success: false, error: "Invalid data provided to syncUserLabels" };
+
+        // Find the user by exact email match
+        const authUsers = await users.list([
+            Query.equal("email", email.trim().toLowerCase())
+        ]);
+
+        if (authUsers.users.length > 0) {
+            const targetUserId = authUsers.users[0].$id;
+            console.log(`Manually syncing labels for ${email}:`, newLabels);
+            await users.updateLabels(targetUserId, newLabels);
+            return { success: true, userId: targetUserId, labels: newLabels };
+        }
+
+        return { success: false, error: "User not currently registered in Appwrite Auth System." };
+    } catch (error) {
+        console.error("Failed to sync labels:", error);
+        return { success: false, error: error.message };
+    }
+}
+
