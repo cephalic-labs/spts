@@ -169,7 +169,7 @@ export default function StudentsPageContent({ role }) {
                                                 >
                                                     Edit
                                                 </button>
-                                                {role === "sudo" && (
+                                                {["sudo", "admin"].includes(role) && (
                                                     <button
                                                         onClick={() => handleDelete(student.$id)}
                                                         className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"

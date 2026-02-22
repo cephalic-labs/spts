@@ -8,7 +8,7 @@ import { getEventById } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { getStudentByAppwriteUserId, getStudentById } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
-import { OD_STATUS, DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { OD_STATUS } from "@/lib/dbConfig";
 
 const roleToStatus = {
     mentor: OD_STATUS.PENDING_MENTOR,
@@ -56,7 +56,7 @@ export default function ApprovalsPageContent({ role }) {
     const [errorModalMessage, setErrorModalMessage] = useState("");
     const [rejectDialog, setRejectDialog] = useState({ isOpen: false, odId: null, remarks: "" });
     const [rejectFormError, setRejectFormError] = useState("");
-    const [filterDept, setFilterDept] = useState("");
+
 
     // New State for View Request Modal
     const [viewRequest, setViewRequest] = useState(null);
@@ -343,10 +343,7 @@ export default function ApprovalsPageContent({ role }) {
         }
     }
 
-    const filteredRequests = pendingRequests.filter(req => {
-        if (!filterDept) return true;
-        return req.student?.department === filterDept;
-    });
+
 
     function calculateDays(start, end) {
         const startDate = new Date(start);
@@ -409,36 +406,13 @@ export default function ApprovalsPageContent({ role }) {
                 </div>
             )}
 
-            {/* Filters (Only for non-students) */}
-            {role !== "student" && (
-                <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="relative w-full sm:w-64">
-                        <select
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
-                            value={filterDept}
-                            onChange={(e) => setFilterDept(e.target.value)}
-                        >
-                            <option value="">All Departments</option>
-                            {DEPARTMENTS_LIST.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
-                            ))}
-                        </select>
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* Pending Requests Table */}
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-12">
-                {filteredRequests.length === 0 ? (
+                {pendingRequests.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
-                        {filterDept
-                            ? `No pending requests for ${filterDept} department.`
-                            : "No pending requests to show."}
+                        No pending requests to show.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -452,7 +426,7 @@ export default function ApprovalsPageContent({ role }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {filteredRequests.map((req) => (
+                                {pendingRequests.map((req) => (
                                     <tr key={req.$id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col">

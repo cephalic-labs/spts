@@ -197,7 +197,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                                                         Edit
                                                     </button>
                                                 )}
-                                                {role === "sudo" && !member._isAuthOnly && (
+                                                {["sudo", "admin"].includes(role) && !member._isAuthOnly && (
                                                     <button
                                                         onClick={() => handleDelete(member.$id)}
                                                         className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"
