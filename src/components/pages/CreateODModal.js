@@ -162,7 +162,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     const selectedEventDate = normalizeDateOnly(selectedEvent?.event_time);
     const participatedEvents = events.filter((event) => participatedEventIds.has(event.$id));
     const isDataLoading = studentDataLoading || fetchingEvents || fetchingParticipation;
-    const canSubmit = Boolean(studentData) && participatedEvents.length > 0 && !isDataLoading;
+    const odCount = studentData?.od_count !== undefined && studentData?.od_count !== null ? studentData.od_count : 7;
+    const hasODsLeft = odCount > 0;
+    const canSubmit = Boolean(studentData) && participatedEvents.length > 0 && !isDataLoading && hasODsLeft;
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -259,6 +261,28 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                             <p className="text-xs text-orange-700">
                                 Your profile doesn't have a class advisor assigned. OD submission will fail. Contact your coordinator.
                             </p>
+                        </div>
+                    )}
+
+                    {/* OD Count Display */}
+                    {studentData && (
+                        <div className={`rounded-xl px-4 py-3 flex items-center justify-between ${hasODsLeft
+                                ? 'bg-blue-50 border border-blue-200'
+                                : 'bg-red-50 border border-red-200'
+                            }`}>
+                            <div>
+                                <p className={`text-sm font-semibold ${hasODsLeft ? 'text-blue-800' : 'text-red-800'}`}>
+                                    {hasODsLeft ? '📋 OD Requests Remaining' : '🚫 No OD Requests Left'}
+                                </p>
+                                <p className={`text-xs ${hasODsLeft ? 'text-blue-600' : 'text-red-600'}`}>
+                                    {hasODsLeft
+                                        ? `You have ${odCount} OD request${odCount !== 1 ? 's' : ''} remaining for this semester.`
+                                        : 'You have used all your OD requests. Contact your advisor to get more allocated.'}
+                                </p>
+                            </div>
+                            <span className={`text-2xl font-black ${hasODsLeft ? 'text-blue-700' : 'text-red-700'}`}>
+                                {odCount}
+                            </span>
                         </div>
                     )}
 

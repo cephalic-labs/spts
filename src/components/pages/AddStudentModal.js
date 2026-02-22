@@ -17,6 +17,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
         section: "",
         phone: "",
         cgpa: "",
+        od_count: "7",
         status: "active",
     });
 
@@ -32,6 +33,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 section: initialData.section || "",
                 phone: initialData.phone || "",
                 cgpa: initialData.cgpa || "",
+                od_count: initialData.od_count !== undefined && initialData.od_count !== null ? String(initialData.od_count) : "7",
                 status: initialData.status || "active",
             });
         } else {
@@ -45,6 +47,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                 section: "",
                 phone: "",
                 cgpa: "",
+                od_count: "7",
                 status: "active",
             });
         }
@@ -190,6 +193,18 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                                 value={formData.cgpa}
                                 onChange={(e) => setFormData({ ...formData, cgpa: e.target.value })}
                             />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">OD Count</label>
+                            <input
+                                type="number"
+                                step="1"
+                                min="0"
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 font-medium"
+                                value={formData.od_count}
+                                onChange={(e) => setFormData({ ...formData, od_count: e.target.value })}
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">Remaining OD requests allowed (default: 7)</p>
                         </div>
                     </div>
 

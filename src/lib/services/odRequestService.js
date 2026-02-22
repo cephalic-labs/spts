@@ -202,6 +202,12 @@ export async function createODRequest(data) {
             throw new Error("Your student profile was not found. Please contact your coordinator to add you to the system.");
         }
 
+        // Check OD count - block if student has exhausted their OD quota
+        const currentODCount = studentRecord.od_count !== undefined && studentRecord.od_count !== null ? studentRecord.od_count : 7;
+        if (currentODCount <= 0) {
+            throw new Error("You have exhausted all your OD requests (OD count is 0). Please contact your advisor to get more ODs allocated.");
+        }
+
         // AUTO-SYNC: If student record exists but doesn't have appwrite_user_id yet, update it
         if (!studentRecord.appwrite_user_id && data.student_id) {
             try {
@@ -404,6 +410,21 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
             odId,
             updateData
         );
+
+        // If HOD granted, decrement the student's od_count
+        if (role === "hod") {
+            try {
+                const studentRecord = await getStudentRecordForOD(odRequest.student_id, null);
+                if (studentRecord) {
+                    const currentCount = studentRecord.od_count !== undefined && studentRecord.od_count !== null ? studentRecord.od_count : 7;
+                    const newCount = Math.max(0, currentCount - 1);
+                    await updateStudent(studentRecord.$id, { od_count: newCount });
+                }
+            } catch (odCountErr) {
+                console.warn("Failed to decrement student OD count:", odCountErr);
+                // Non-critical: don't block the approval
+            }
+        }
 
         // Log the approval
         await logApproval(odId, fromStatus, toStatus, "approve", userId, role, remarks);

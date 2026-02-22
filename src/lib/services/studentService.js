@@ -151,6 +151,7 @@ export async function createStudent(data) {
         advisor_id: data.advisor_id || null,
         mentor_id: data.mentor_id || null,
         status: data.status || "active",
+        od_count: (data.od_count !== undefined && data.od_count !== "" && data.od_count !== null) ? parseInt(data.od_count) : 7,
     };
 
     try {
@@ -190,6 +191,9 @@ export async function updateStudent(studentId, data) {
     }
     if (updateData.phone !== undefined) {
         updateData.phone = updateData.phone ? parseInt(String(updateData.phone).replace(/\D/g, '')) : null;
+    }
+    if (updateData.od_count !== undefined && updateData.od_count !== "") {
+        updateData.od_count = parseInt(updateData.od_count);
     }
 
     try {
