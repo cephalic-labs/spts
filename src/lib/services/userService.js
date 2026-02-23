@@ -41,6 +41,16 @@ export async function syncUserToDatabase(appwriteUser) {
         const existingUser = await getUserByAppwriteId(appwriteUser.$id);
 
         if (existingUser) {
+            // If user's DB role is still 'unassigned' but Auth now has proper labels, sync it
+            const authRole = (appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : null;
+            if (existingUser.role === "unassigned" && authRole) {
+                try {
+                    const updatedUser = await updateUserRole(existingUser.$id, authRole);
+                    return updatedUser;
+                } catch (e) {
+                    console.error("Failed to sync role for existing user:", e);
+                }
+            }
             // User exists, return with merged data
             return existingUser;
         }

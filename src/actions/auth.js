@@ -4,7 +4,7 @@ import { databases, users } from "@/lib/server/appwrite";
 import { DB_CONFIG } from "@/lib/dbConfig";
 import { Query } from "node-appwrite";
 
-export async function assignUserRole(userId, email, name = "") {
+export async function assignUserRole(userId, email) {
     if (!email || !userId) return { success: false, error: "Invalid user data" };
 
     try {
@@ -132,16 +132,6 @@ export async function assignUserRole(userId, email, name = "") {
                     [Query.equal("email", email)]
                 );
             }
-
-            if (studentDocs.total === 0 && name && name.trim()) {
-                console.log("Email not found in students, checking name:", name);
-                const normalizedName = name.trim();
-                studentDocs = await databases.listDocuments(
-                    DB_CONFIG.DATABASE_ID,
-                    DB_CONFIG.COLLECTIONS.STUDENTS,
-                    [Query.equal("name", normalizedName)]
-                );
-            }
         } catch (e) {
             console.error("Error querying student table:", e);
         }
@@ -154,21 +144,11 @@ export async function assignUserRole(userId, email, name = "") {
                     DB_CONFIG.COLLECTIONS.STUDENTS,
                     [Query.limit(1000)]
                 );
-
-                const searchName = name ? name.trim().toLowerCase() : "";
-
-                const found = allStudents.documents.find(s => {
-                    const dbEmail = String(s.email || "").trim().toLowerCase();
-                    const dbName = String(s.name || "").trim().toLowerCase();
-
-                    const matchesEmail = dbEmail === normalizedEmail;
-                    const matchesName = searchName && dbName === searchName;
-
-                    return matchesEmail || matchesName;
-                });
-
+                const found = allStudents.documents.find(s =>
+                    String(s.email).trim().toLowerCase() === normalizedEmail
+                );
                 if (found) {
-                    console.log("Found in student table via manual scan:", found.email || found.name);
+                    console.log("Found in student table via manual scan:", found.email);
                     studentDocs = { total: 1, documents: [found] };
                 }
             } catch (scanErr) {

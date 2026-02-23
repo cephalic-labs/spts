@@ -25,12 +25,14 @@ export function AuthProvider({ children }) {
       if (!currentUser.labels || currentUser.labels.length === 0) {
         console.log("User has no labels, checking DB for role assignment...", currentUser.email);
         try {
-          const result = await assignUserRole(currentUser.$id, currentUser.email, currentUser.name);
+          const result = await assignUserRole(currentUser.$id, currentUser.email);
           console.log("Role assignment result:", result);
 
-          if (result.success) {
-            // Refresh user to get new labels
-            currentUser = await account.get();
+          if (result.success && result.labels) {
+            // Directly set the labels on currentUser from the server response
+            // instead of relying on account.get() which may return stale data
+            currentUser = { ...currentUser, labels: result.labels };
+            console.log("Labels set from server response:", result.labels);
           } else {
             console.warn("Role assignment returned error or no match:", result.error);
           }
