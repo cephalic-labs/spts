@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
       if (!currentUser.labels || currentUser.labels.length === 0) {
         console.log("User has no labels, checking DB for role assignment...", currentUser.email);
         try {
-          const result = await assignUserRole(currentUser.$id, currentUser.email);
+          const result = await assignUserRole(currentUser.$id, currentUser.email, currentUser.name);
           console.log("Role assignment result:", result);
 
           if (result.success) {
