@@ -406,7 +406,7 @@ export default function DefaultDashboardContent({ role }) {
                         <p className="text-sm text-slate-500 font-medium mt-1">Application trend over the current month</p>
                     </div>
                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-100 shadow-sm">
-                        <span>📈</span> +18% vs last month
+                        <span>📈</span> Live Feed
                     </div>
                 </div>
                 <div className="h-[280px] w-full">
