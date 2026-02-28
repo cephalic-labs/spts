@@ -12,6 +12,8 @@ import {
     PARTICIPATION_STATUS,
     setStudentParticipationStatus,
 } from "@/lib/services/eventParticipationService";
+import { getStudentByAppwriteUserId } from "@/lib/services/studentService";
+import { getStudentODRequests } from "@/lib/services/odRequestService";
 import { Icons } from "@/components/layout";
 import CreateEventModal from "./CreateEventModal";
 import Link from "next/link";
@@ -82,6 +84,8 @@ export default function EventsPageContent({ role }) {
     const [sortBy, setSortBy] = useState("date_desc");
     const [viewEventModalOpen, setViewEventModalOpen] = useState(false);
     const [viewingEvent, setViewingEvent] = useState(null);
+    const [pendingEventsRequest, setPendingEventsRequest] = useState(new Set());
+    const [studentProfile, setStudentProfile] = useState(null);
 
     useEffect(() => {
         loadEvents();
@@ -90,8 +94,38 @@ export default function EventsPageContent({ role }) {
     useEffect(() => {
         if (role === "student" && user?.$id) {
             loadStudentParticipations(user.$id);
+            loadStudentProfile(user.$id);
         }
     }, [role, user?.$id]);
+
+    useEffect(() => {
+        if (role === "student" && user?.$id) {
+            loadPendingODRequests(user.$id, studentProfile?.roll_no);
+        }
+    }, [role, user?.$id, studentProfile]);
+
+    async function loadStudentProfile(studentId) {
+        try {
+            const profile = await getStudentByAppwriteUserId(studentId);
+            setStudentProfile(profile);
+        } catch (err) {
+            console.error("Failed to load student profile:", err);
+        }
+    }
+
+    async function loadPendingODRequests(studentId, rollNo) {
+        try {
+            const response = await getStudentODRequests(studentId, 100, rollNo);
+            const pendingIds = new Set(
+                (response.documents || [])
+                    .filter((od) => od.current_status && od.current_status.startsWith("pending_"))
+                    .map((od) => od.event_id)
+            );
+            setPendingEventsRequest(pendingIds);
+        } catch (err) {
+            console.error("Failed to load student OD requests:", err);
+        }
+    }
 
     async function loadEvents() {
         try {
@@ -286,6 +320,13 @@ export default function EventsPageContent({ role }) {
             {(() => {
                 const filteredEvents = events
                     .filter(event => (event.event_name || "").toLowerCase().includes(searchQuery.toLowerCase()))
+                    .filter(event => {
+                        // Hide events that have a pending OD request
+                        if (role === "student" && pendingEventsRequest.has(event.$id)) {
+                            return false;
+                        }
+                        return true;
+                    })
                     .sort((a, b) => {
                         if (sortBy === "date_desc") {
                             return new Date(b.event_time) - new Date(a.event_time);

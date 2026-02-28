@@ -8,7 +8,7 @@ import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
-import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail } from "@/lib/services/studentService";
+import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail, getStudentByAppwriteUserId } from "@/lib/services/studentService";
 import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
@@ -51,6 +51,7 @@ export default function SubmissionsPageContent({ role }) {
     const [userDepartment, setUserDepartment] = useState(null);
     const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [studentMap, setStudentMap] = useState({});
+    const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
 
     const needsDeptLock = !["sudo", "admin", "student"].includes(role);
 
@@ -88,12 +89,30 @@ export default function SubmissionsPageContent({ role }) {
         resolveDepartment();
     }, [role, user?.$id, user?.email]);
 
+    // For student role: fetch their own student profile to resolve roll number for team requests
+    useEffect(() => {
+        if (role !== "student" || !user?.$id) return;
+
+        async function resolveStudentProfile() {
+            try {
+                const profile = await getStudentByAppwriteUserId(user.$id);
+                if (profile) {
+                    setCurrentStudentProfile(profile);
+                }
+            } catch (err) {
+                console.error("[Student Profile Resolution] Error:", err);
+            }
+        }
+
+        resolveStudentProfile();
+    }, [role, user?.$id]);
+
     useEffect(() => {
         if (!deptResolved) return; // wait for dept to be resolved before loading
         if (user || role !== 'student') {
             loadSubmissions();
         }
-    }, [role, user?.$id, filterDept, deptResolved]);
+    }, [role, user?.$id, filterDept, deptResolved, currentStudentProfile]);
 
     async function loadSubmissions() {
         try {
@@ -108,7 +127,8 @@ export default function SubmissionsPageContent({ role }) {
                     setSubmissions([]);
                     return;
                 }
-                response = await getStudentODRequests(studentId);
+                const rollNo = currentStudentProfile?.roll_no || null;
+                response = await getStudentODRequests(studentId, 200, rollNo);
             } else {
                 // For admins/sudo/faculty, fetch recent requests
                 // We fetch a larger batch to allow effective client-side filtering

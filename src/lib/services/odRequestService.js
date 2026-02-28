@@ -307,15 +307,16 @@ export async function getODRequestsByStatus(status, limit = 50, filters = {}) {
 }
 
 /**
- * Get OD requests for a specific student
+ * Get OD requests for a specific student (including those where student is a team member)
  */
-export async function getStudentODRequests(studentId, limit = 50) {
+export async function getStudentODRequests(studentId, limit = 100, rollNo = null) {
     if (!studentId) {
         return { documents: [], total: 0 };
     }
 
     try {
-        const response = await databases.listDocuments(
+        // Query for requests where the student is the creator
+        const responseData = await databases.listDocuments(
             DATABASE_ID,
             COLLECTIONS.OD_REQUESTS,
             [
@@ -324,7 +325,48 @@ export async function getStudentODRequests(studentId, limit = 50) {
                 Query.limit(limit),
             ]
         );
-        return response;
+
+        // If no roll number provided or not available, just return creator requests
+        if (!rollNo) {
+            return responseData;
+        }
+
+        // Also query for requests where the student is in the team array
+        try {
+            const teamResponse = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.OD_REQUESTS,
+                [
+                    Query.equal("team", rollNo),
+                    Query.orderDesc("$createdAt"),
+                    Query.limit(limit),
+                ]
+            );
+
+            if (teamResponse.documents.length > 0) {
+                // Combine and remove duplicates
+                const combinedDocs = [...responseData.documents];
+                const existingIds = new Set(combinedDocs.map(doc => doc.$id));
+
+                teamResponse.documents.forEach(doc => {
+                    if (!existingIds.has(doc.$id)) {
+                        combinedDocs.push(doc);
+                    }
+                });
+
+                // Sort by creation date descending
+                combinedDocs.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+
+                return {
+                    documents: combinedDocs.slice(0, limit),
+                    total: Math.max(responseData.total, teamResponse.total, combinedDocs.length)
+                };
+            }
+        } catch (teamError) {
+            console.warn("Failed to fetch team-based OD requests:", teamError);
+        }
+
+        return responseData;
     } catch (error) {
         console.error("Error getting student OD requests:", error);
         throw error;
@@ -675,13 +717,40 @@ export async function getODStats(filter = {}) {
             queries
         );
 
+        let documents = response.documents;
+
+        // If filtering for a specific student, also fetch where they are in the team
+        if (filter.student_id && filter.rollNo) {
+            try {
+                const teamResponse = await databases.listDocuments(
+                    DATABASE_ID,
+                    COLLECTIONS.OD_REQUESTS,
+                    [
+                        Query.equal("team", filter.rollNo),
+                        Query.limit(500)
+                    ]
+                );
+
+                if (teamResponse.documents.length > 0) {
+                    const existingIds = new Set(documents.map(d => d.$id));
+                    teamResponse.documents.forEach(doc => {
+                        if (!existingIds.has(doc.$id)) {
+                            documents.push(doc);
+                        }
+                    });
+                }
+            } catch (teamErr) {
+                console.warn("Failed to fetch team stats:", teamErr);
+            }
+        }
+
         const stats = {
-            total: response.total,
-            pending: response.documents.filter(d => d.current_status?.startsWith('pending')).length,
-            approved: response.documents.filter(
+            total: documents.length,
+            pending: documents.filter(d => d.current_status?.startsWith('pending')).length,
+            approved: documents.filter(
                 (d) => d.current_status === OD_STATUS.GRANTED || d.current_status === OD_STATUS.APPROVED
             ).length,
-            rejected: response.documents.filter(d => d.current_status === OD_STATUS.REJECTED).length,
+            rejected: documents.filter(d => d.current_status === OD_STATUS.REJECTED).length,
         };
 
         return stats;

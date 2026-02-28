@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getEvents } from "@/lib/services/eventService";
 import { getStudentEventParticipations, PARTICIPATION_STATUS } from "@/lib/services/eventParticipationService";
-import { createODRequest } from "@/lib/services/odRequestService";
+import { createODRequest, getStudentODRequests } from "@/lib/services/odRequestService";
 import { getStudentByAppwriteUserId, getStudentByEmail, searchStudentsByRollNo } from "@/lib/services/studentService";
 import { getFaculties } from "@/lib/services/facultyService";
 
@@ -39,6 +39,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     const [mentors, setMentors] = useState([]);
     const [fetchingMentors, setFetchingMentors] = useState(false);
     const [formError, setFormError] = useState("");
+    const [pendingEventsRequest, setPendingEventsRequest] = useState(new Set());
 
     // Team feature states
     const [isTeamRequest, setIsTeamRequest] = useState(false);
@@ -68,6 +69,12 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             loadParticipationInfo();
         }
     }, [isOpen]);
+
+    useEffect(() => {
+        if (isOpen && user?.$id) {
+            loadPendingODRequests(user?.$id, studentData?.roll_no);
+        }
+    }, [isOpen, user?.$id, studentData]);
 
     // Debounced team search
     useEffect(() => {
@@ -203,6 +210,22 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
         }
     }
 
+    async function loadPendingODRequests(studentId, rollNo) {
+        if (!studentId) return;
+
+        try {
+            const response = await getStudentODRequests(studentId, 100, rollNo);
+            const pendingIds = new Set(
+                (response.documents || [])
+                    .filter((od) => od.current_status && od.current_status.startsWith("pending_"))
+                    .map((od) => od.event_id)
+            );
+            setPendingEventsRequest(pendingIds);
+        } catch (error) {
+            console.error("Error loading pending OD requests:", error);
+        }
+    }
+
     function addTeamMember(student) {
         setTeamMembers(prev => [...prev, student]);
         setTeamSearchQuery("");
@@ -215,7 +238,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
 
     const selectedEvent = events.find((event) => event.$id === formData.event_id) || null;
     const selectedEventDate = normalizeDateOnly(selectedEvent?.event_time);
-    const participatedEvents = events.filter((event) => participatedEventIds.has(event.$id));
+    const participatedEvents = events.filter((event) =>
+        participatedEventIds.has(event.$id) && !pendingEventsRequest.has(event.$id)
+    );
     const isDataLoading = studentDataLoading || fetchingEvents || fetchingParticipation;
     const odCount = studentData?.od_count !== undefined && studentData?.od_count !== null ? studentData.od_count : 7;
     const hasODsLeft = odCount > 0;

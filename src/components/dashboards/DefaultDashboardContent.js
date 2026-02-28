@@ -62,7 +62,8 @@ export default function DefaultDashboardContent({ role }) {
             try {
                 setLoading(true);
                 const eventData = await getEventStats();
-                const odFilter = role === 'student' ? { student_id: user?.$id || user?.dbId } : {};
+                const student = role === 'student' ? await getStudentByAppwriteUserId(user?.$id) : null;
+                const odFilter = role === 'student' ? { student_id: user?.$id || user?.dbId, rollNo: student?.roll_no } : {};
                 const odData = await getODStats(odFilter);
 
                 // Fetch student OD count for student role
@@ -113,7 +114,8 @@ export default function DefaultDashboardContent({ role }) {
                     // Fetch real ODs for line & stacked chart
                     let odsRes;
                     if (role === 'student') {
-                        odsRes = await getStudentODRequests(user?.$id || user?.dbId, 200);
+                        const studentProf = await getStudentByAppwriteUserId(user?.$id);
+                        odsRes = await getStudentODRequests(user?.$id || user?.dbId, 200, studentProf?.roll_no);
                     } else {
                         odsRes = await getAllODRequests(200);
                     }
