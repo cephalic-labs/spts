@@ -7,6 +7,7 @@ import { getStudentEventParticipations, PARTICIPATION_STATUS } from "@/lib/servi
 import { createODRequest, getStudentODRequests } from "@/lib/services/odRequestService";
 import { getStudentByAppwriteUserId, getStudentByEmail, searchStudentsByRollNo } from "@/lib/services/studentService";
 import { getFaculties } from "@/lib/services/facultyService";
+import { OD_STATUS } from "@/lib/dbConfig";
 
 function normalizeDateOnly(value) {
     if (!value) return "";
@@ -217,7 +218,10 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             const response = await getStudentODRequests(studentId, 100, rollNo);
             const pendingIds = new Set(
                 (response.documents || [])
-                    .filter((od) => od.current_status && od.current_status.startsWith("pending_"))
+                    .filter((od) => {
+                        const s = od.current_status;
+                        return s && (s.startsWith("pending_") || s === OD_STATUS.GRANTED || s === OD_STATUS.APPROVED);
+                    })
                     .map((od) => od.event_id)
             );
             setPendingEventsRequest(pendingIds);

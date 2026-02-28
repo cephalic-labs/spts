@@ -14,6 +14,7 @@ import {
 } from "@/lib/services/eventParticipationService";
 import { getStudentByAppwriteUserId } from "@/lib/services/studentService";
 import { getStudentODRequests } from "@/lib/services/odRequestService";
+import { OD_STATUS } from "@/lib/dbConfig";
 import { Icons } from "@/components/layout";
 import CreateEventModal from "./CreateEventModal";
 import Link from "next/link";
@@ -118,7 +119,10 @@ export default function EventsPageContent({ role }) {
             const response = await getStudentODRequests(studentId, 100, rollNo);
             const pendingIds = new Set(
                 (response.documents || [])
-                    .filter((od) => od.current_status && od.current_status.startsWith("pending_"))
+                    .filter((od) => {
+                        const s = od.current_status;
+                        return s && (s.startsWith("pending_") || s === OD_STATUS.GRANTED || s === OD_STATUS.APPROVED);
+                    })
                     .map((od) => od.event_id)
             );
             setPendingEventsRequest(pendingIds);
