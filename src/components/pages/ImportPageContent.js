@@ -91,12 +91,12 @@ export default function ImportPageContent({ role }) {
         } else if (target === "Events") {
             sampleData = [
                 {
-                    EventName: "Tech Symposium 2026",
-                    Type: "Workshop",
-                    Date: "2026-03-15",
-                    Venue: "Main Auditorium",
-                    Description: "A national level technical symposium.",
-                    URL: "https://symposium.sece.ac.in"
+                    "Event Name": "Tech Symposium 2026",
+                    "Event Host": "Department of CSE",
+                    "Event Description": "A national level technical symposium.",
+                    "Event Date": "2026-03-15",
+                    "Registration Deadline": "2026-03-10",
+                    "Event URL": "https://symposium.sece.ac.in"
                 }
             ];
             fileName = "event_import_sample.xlsx";
@@ -109,6 +109,62 @@ export default function ImportPageContent({ role }) {
     };
 
     const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    const normalizeHeader = (value) => String(value || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+    const getCellValue = (row, aliases) => {
+        for (const alias of aliases) {
+            if (row[alias] !== undefined && row[alias] !== null && String(row[alias]).trim() !== "") {
+                return row[alias];
+            }
+        }
+
+        const normalizedAliases = aliases.map(normalizeHeader);
+        for (const key of Object.keys(row)) {
+            if (normalizedAliases.includes(normalizeHeader(key))) {
+                const value = row[key];
+                if (value !== undefined && value !== null && String(value).trim() !== "") {
+                    return value;
+                }
+            }
+        }
+
+        return "";
+    };
+
+    const toDateInputValue = (value) => {
+        if (value === undefined || value === null || String(value).trim() === "") {
+            return "";
+        }
+
+        if (typeof value === "number") {
+            const parsed = XLSX.SSF.parse_date_code(value);
+            if (parsed) {
+                const year = parsed.y;
+                const month = String(parsed.m).padStart(2, "0");
+                const day = String(parsed.d).padStart(2, "0");
+                return `${year}-${month}-${day}`;
+            }
+        }
+
+        const dateString = String(value).trim();
+        const directMatch = dateString.match(/^(\d{4}-\d{2}-\d{2})/);
+        if (directMatch) {
+            return directMatch[1];
+        }
+
+        const parsedDate = new Date(dateString);
+        if (Number.isNaN(parsedDate.getTime())) {
+            return "";
+        }
+
+        const year = parsedDate.getFullYear();
+        const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+        const day = String(parsedDate.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+    };
 
     const processImport = async () => {
         if (!file) return;
@@ -193,20 +249,43 @@ export default function ImportPageContent({ role }) {
                                 assigned_years: year
                             });
                         } else if (target === "Events") {
+                            const eventName = getCellValue(item, ["Event Name", "EventName", "Name", "event_name", "name"]);
+                            const eventHost = getCellValue(item, ["Event Host", "EventHost", "Host", "Organizer", "Organisation", "Organization", "event_host"]);
+                            const eventDescription = getCellValue(item, ["Event Description", "Description", "event_description", "description"]);
+                            const eventTime = toDateInputValue(getCellValue(item, ["Event Date", "Date", "Event Time", "event_time"]));
+                            const eventRegDeadline = toDateInputValue(getCellValue(item, ["Registration Deadline", "Reg Deadline", "Deadline", "event_reg_deadline"]));
+                            const eventUrl = String(getCellValue(item, ["Event URL", "URL", "Registration URL", "event_url"])).trim();
+
+                            const missingFields = [];
+                            if (!eventName) missingFields.push("Event Name");
+                            if (!eventHost) missingFields.push("Event Host");
+                            if (!eventDescription) missingFields.push("Event Description");
+                            if (!eventTime) missingFields.push("Event Date");
+                            if (!eventRegDeadline) missingFields.push("Registration Deadline");
+                            if (!eventUrl) missingFields.push("Event URL");
+
+                            if (missingFields.length > 0) {
+                                throw new Error(`Missing required event fields: ${missingFields.join(", ")}`);
+                            }
+
+                            if (eventRegDeadline > eventTime) {
+                                throw new Error("Registration Deadline must be on or before Event Date");
+                            }
+
                             await createEvent({
-                                event_name: item.EventName || item.name,
-                                event_type: item.Type || item.event_type || "Workshop",
-                                event_date: item.Date || item.event_date,
-                                venue: item.Venue || item.venue || "Campus",
-                                description: item.Description || item.description || "",
-                                event_url: item.URL || item.event_url || ""
+                                event_name: String(eventName).trim(),
+                                event_host: String(eventHost).trim(),
+                                event_description: String(eventDescription).trim(),
+                                event_time: eventTime,
+                                event_reg_deadline: eventRegDeadline,
+                                event_url: eventUrl
                             });
                         }
                         success++;
                         // Add a small delay to avoid rate limiting
                         await sleep(200);
                     } catch (err) {
-                        console.error("Row failed:", err);
+                        console.error(`Row ${i + 2} failed:`, err);
                         failed++;
                     }
                     setProgress(Math.round(((i + 1) / total) * 100));
@@ -346,8 +425,8 @@ export default function ImportPageContent({ role }) {
                             )}
                             {target === "Events" && (role === "sudo" || role === "admin" || role === "hod" || role === "coordinator") && (
                                 <>
-                                    <li className="flex gap-3">EventName, Type, Date, Venue</li>
-                                    <li className="flex gap-3">Description, URL</li>
+                                    <li className="flex gap-3">Event Name, Event Host, Event Description</li>
+                                    <li className="flex gap-3">Event Date, Registration Deadline, Event URL</li>
                                 </>
                             )}
                         </ul>

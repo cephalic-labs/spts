@@ -87,17 +87,27 @@ export async function getEventById(eventId) {
  */
 export async function createEvent(data) {
     try {
+        const requiredFields = ["event_name", "event_host", "event_description", "event_reg_deadline", "event_time", "event_url"];
+        const missingFields = requiredFields.filter((field) => {
+            const value = data?.[field];
+            return value === undefined || value === null || String(value).trim() === "";
+        });
+
+        if (missingFields.length > 0) {
+            throw new Error(`Missing required event fields: ${missingFields.join(", ")}`);
+        }
+
         const event = await databases.createDocument(
             DATABASE_ID,
             COLLECTIONS.EVENTS,
             ID.unique(),
             {
-                event_name: data.event_name,
-                event_host: data.event_host || null,
-                event_description: data.event_description,
+                event_name: String(data.event_name).trim(),
+                event_host: String(data.event_host).trim(),
+                event_description: String(data.event_description).trim(),
                 event_reg_deadline: data.event_reg_deadline,
                 event_time: data.event_time,
-                event_url: data.event_url || null,
+                event_url: String(data.event_url).trim(),
                 participation_count: 0,
                 view_count: 0,
             }
