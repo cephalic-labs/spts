@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import jsPDF from "jspdf";
+
 import { getODRequestById, getApprovalLogsByODId } from "@/lib/services/odRequestService";
 import { getEventById } from "@/lib/services/eventService";
 import { getStudentByAppwriteUserId, getStudentByEmail, getStudentByRollNo } from "@/lib/services/studentService";
@@ -97,6 +99,8 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
     const [logUsers, setLogUsers] = useState({});
     const [teamMembersData, setTeamMembersData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isDownloading, setIsDownloading] = useState(false);
+    const printRef = useRef(null);
 
     useEffect(() => {
         if (isOpen && odId) {
@@ -208,6 +212,247 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
             setLoading(false);
         }
     }
+
+    const handleDownloadPDF = async () => {
+        try {
+            setIsDownloading(true);
+
+            const pdf = new jsPDF({
+                orientation: 'portrait',
+                unit: 'mm',
+                format: 'a4'
+            });
+
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 15;
+            const contentWidth = pageWidth - margin * 2;
+            let y = margin;
+
+            // Helper functions
+            const drawLine = (x1, y1, x2, y2, width = 0.3, color = [0, 0, 0]) => {
+                pdf.setDrawColor(...color);
+                pdf.setLineWidth(width);
+                pdf.line(x1, y1, x2, y2);
+            };
+
+            const addText = (text, x, yPos, options = {}) => {
+                const { fontSize = 10, fontStyle = 'normal', maxWidth, color = [0, 0, 0], align = 'left' } = options;
+                pdf.setFontSize(fontSize);
+                pdf.setFont('helvetica', fontStyle);
+                pdf.setTextColor(...color);
+                
+                const textStr = String(text || '');
+                if (maxWidth) {
+                    pdf.text(textStr, x, yPos, { maxWidth, align });
+                } else {
+                    pdf.text(textStr, x, yPos, { align });
+                }
+            };
+
+            const checkPageBreak = (requiredHeight) => {
+                if (y + requiredHeight > pageHeight - margin) {
+                    pdf.addPage();
+                    y = margin;
+                    return true;
+                }
+                return false;
+            };
+
+            // === HEADER ===
+            addText('Sri Eshwar College of Engineering', pageWidth / 2, y, {
+                fontSize: 16, fontStyle: 'bold', align: 'center'
+            });
+            y += 6;
+
+            addText('Outward Duty (OD) Approval Form', pageWidth / 2, y, {
+                fontSize: 12, fontStyle: 'bold', align: 'center'
+            });
+            y += 4;
+
+            // Header line
+            drawLine(margin, y, pageWidth - margin, y, 0.5);
+            y += 10;
+
+            // === STUDENT INFORMATION & EVENT INFORMATION SIDE BY SIDE ===
+            const colWidth = (contentWidth - 6) / 2;
+            const infoBoxHeight = 45;
+            const boxStartY = y;
+
+            // Student Info Box
+            pdf.setDrawColor(0);
+            pdf.setLineWidth(0.3);
+            pdf.rect(margin, boxStartY, colWidth, infoBoxHeight);
+
+            addText('STUDENT INFORMATION', margin + 3, boxStartY + 6, { fontSize: 9, fontStyle: 'bold' });
+            drawLine(margin + 3, boxStartY + 8, margin + colWidth - 3, boxStartY + 8, 0.2);
+
+            let sy = boxStartY + 14;
+            const labelX = margin + 3;
+            const valueX = margin + 28;
+            
+            addText('Name:', labelX, sy, { fontSize: 8, fontStyle: 'bold' });
+            addText(studentDetails?.name, valueX, sy, { fontSize: 8 });
+            sy += 6;
+            addText('Roll No:', labelX, sy, { fontSize: 8, fontStyle: 'bold' });
+            addText(studentDetails?.roll_no || studentDetails?.student_register_no, valueX, sy, { fontSize: 8 });
+            sy += 6;
+            addText('Department:', labelX, sy, { fontSize: 8, fontStyle: 'bold' });
+            addText(studentDetails?.department, valueX, sy, { fontSize: 8 });
+            sy += 6;
+            addText('Year / Sec:', labelX, sy, { fontSize: 8, fontStyle: 'bold' });
+            addText(`${studentDetails?.year || 'N/A'} / ${studentDetails?.section || 'N/A'}`, valueX, sy, { fontSize: 8 });
+            sy += 6;
+            addText('Advisor:', labelX, sy, { fontSize: 8, fontStyle: 'bold' });
+            addText(advisorName, valueX, sy, { fontSize: 8, maxWidth: colWidth - 30 });
+
+            // Event Info Box
+            const eventX = margin + colWidth + 6;
+            pdf.rect(eventX, boxStartY, colWidth, infoBoxHeight);
+
+            addText('EVENT INFORMATION', eventX + 3, boxStartY + 6, { fontSize: 9, fontStyle: 'bold' });
+            drawLine(eventX + 3, boxStartY + 8, eventX + colWidth - 3, boxStartY + 8, 0.2);
+
+            let ey = boxStartY + 14;
+            const eLabelX = eventX + 3;
+            const eValueX = eventX + 28;
+
+            addText('Event:', eLabelX, ey, { fontSize: 8, fontStyle: 'bold' });
+            addText(eventDetails?.event_name || odRequest?.event_id, eValueX, ey, { fontSize: 8, maxWidth: colWidth - 30 });
+            ey += 10;
+            addText('Start Date:', eLabelX, ey, { fontSize: 8, fontStyle: 'bold' });
+            addText(odRequest?.od_start_date ? new Date(odRequest.od_start_date).toLocaleDateString('en-IN') : 'N/A', eValueX, ey, { fontSize: 8 });
+            ey += 6;
+            addText('End Date:', eLabelX, ey, { fontSize: 8, fontStyle: 'bold' });
+            addText(odRequest?.od_end_date ? new Date(odRequest.od_end_date).toLocaleDateString('en-IN') : 'N/A', eValueX, ey, { fontSize: 8 });
+            ey += 6;
+            const days = (() => {
+                if (!odRequest?.od_start_date || !odRequest?.od_end_date) return 0;
+                const s = new Date(odRequest.od_start_date); s.setHours(0,0,0,0);
+                const e = new Date(odRequest.od_end_date); e.setHours(0,0,0,0);
+                return Math.round((e - s) / (1000*60*60*24)) + 1;
+            })();
+            addText('Duration:', eLabelX, ey, { fontSize: 8, fontStyle: 'bold' });
+            addText(`${days} Day${days === 1 ? '' : 's'}`, eValueX, ey, { fontSize: 8 });
+
+            y = boxStartY + infoBoxHeight + 8;
+
+            // === REASON ===
+            const reasonText = odRequest?.reason || 'N/A';
+            const reasonLines = pdf.splitTextToSize(reasonText, contentWidth - 8);
+            const reasonBoxHeight = Math.max(25, 12 + reasonLines.length * 4);
+            
+            checkPageBreak(reasonBoxHeight);
+            pdf.rect(margin, y, contentWidth, reasonBoxHeight);
+            addText('REASON FOR OUTWARD DUTY', margin + 3, y + 6, { fontSize: 9, fontStyle: 'bold' });
+            drawLine(margin + 3, y + 8, margin + contentWidth - 3, y + 8, 0.2);
+            
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(0, 0, 0);
+            pdf.text(reasonLines, margin + 3, y + 14);
+            y += reasonBoxHeight + 8;
+
+            // === TEAM MEMBERS ===
+            if (teamMembersData.length > 0) {
+                const teamBoxHeight = 12 + Math.ceil(teamMembersData.length / 2) * 5;
+                checkPageBreak(teamBoxHeight);
+                pdf.rect(margin, y, contentWidth, teamBoxHeight);
+                addText(`TEAM MEMBERS (${teamMembersData.length})`, margin + 3, y + 6, { fontSize: 9, fontStyle: 'bold' });
+                drawLine(margin + 3, y + 8, margin + contentWidth - 3, y + 8, 0.2);
+
+                let ty = y + 13;
+                teamMembersData.forEach((member, idx) => {
+                    const col = idx % 2 === 0 ? margin + 3 : margin + colWidth + 6;
+                    if (idx > 0 && idx % 2 === 0) ty += 5;
+                    const memberText = `${idx + 1}. ${member.name || member.roll_no}${member.roll_no ? ` (${member.roll_no})` : ''}`;
+                    addText(memberText, col, ty, { fontSize: 7, maxWidth: colWidth - 5 });
+                });
+                y += teamBoxHeight + 8;
+            }
+
+            // === AUTHORIZATION / DIGITAL SIGNATURES ===
+            checkPageBreak(50);
+            addText('AUTHORIZATION / DIGITAL SIGNATURES', margin, y, { fontSize: 10, fontStyle: 'bold' });
+            y += 6;
+
+            const sigColWidth = (contentWidth - 9) / 4;
+            APPROVAL_STEPS.forEach((step, idx) => {
+                const state = getStepState(odRequest, step);
+                const actionAt = odRequest[step.actionAtField];
+                const logForStep = logs.find(l => l.action_by_role === step.key && l.action === "approve");
+                const facName = logForStep && logUsers[logForStep.action_by_user_id]
+                    ? `${logUsers[logForStep.action_by_user_id].name}${logUsers[logForStep.action_by_user_id].department ? ` (${logUsers[logForStep.action_by_user_id].department.toUpperCase()})` : ''}`
+                    : null;
+
+                const sx = margin + idx * (sigColWidth + 3);
+                pdf.setDrawColor(0);
+                pdf.setLineWidth(0.3);
+                pdf.rect(sx, y, sigColWidth, 35);
+
+                // Step label (matching print-container style)
+                addText(step.label.toUpperCase(), sx + sigColWidth / 2, y + 5, { 
+                    fontSize: 7, 
+                    fontStyle: 'bold', 
+                    color: [30, 39, 97],
+                    align: 'center'
+                });
+                drawLine(sx + 2, y + 7, sx + sigColWidth - 2, y + 7, 0.1, [200, 200, 200]);
+
+                if (state === "approved") {
+                    addText('APPROVED', sx + sigColWidth / 2, y + 14, { 
+                        fontSize: 7, 
+                        fontStyle: 'bold', 
+                        color: [21, 128, 61],
+                        align: 'center'
+                    });
+                    if (facName) {
+                        const nameLines = pdf.splitTextToSize(facName, sigColWidth - 4);
+                        addText(nameLines, sx + sigColWidth / 2, y + 20, {
+                            fontSize: 6,
+                            fontStyle: 'bold',
+                            color: [50, 50, 50],
+                            align: 'center'
+                        });
+                    }
+                    if (actionAt) {
+                        addText(new Date(actionAt).toLocaleString('en-IN'), sx + sigColWidth / 2, y + 31, { 
+                            fontSize: 5, 
+                            color: [120, 120, 120],
+                            align: 'center'
+                        });
+                    }
+                } else {
+                    addText('Awaiting', sx + sigColWidth / 2, y + 20, { 
+                        fontSize: 8, 
+                        fontStyle: 'italic', 
+                        color: [180, 180, 180],
+                        align: 'center'
+                    });
+                }
+            });
+
+            y += 45;
+
+            // === FOOTER ===
+            checkPageBreak(15);
+            drawLine(margin, y, pageWidth - margin, y, 0.2, [200, 200, 200]);
+            y += 5;
+            const footerText = 'This is a digitally generated document via Sri Eshwar Student Participation Tracking System (SPTS).';
+            const footerText2 = 'No physical signature is required.';
+            addText(footerText, pageWidth / 2, y, { fontSize: 6, color: [150, 150, 150], align: 'center' });
+            y += 3;
+            addText(footerText2, pageWidth / 2, y, { fontSize: 6, color: [150, 150, 150], align: 'center' });
+
+            // Save
+            pdf.save(`OD_Form_${odRequest?.student_roll_no || studentDetails?.roll_no || 'Request'}_${odId?.slice(0, 8)}.pdf`);
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            alert("Failed to download PDF. Please try again or use the Print option.");
+        } finally {
+            setIsDownloading(false);
+        }
+    };
 
     if (!isOpen) return null;
 
@@ -504,15 +749,31 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
 
                     <div className="p-4 sm:p-8 border-t border-gray-100 flex justify-end shrink-0 gap-4">
                         {isGranted && (
-                            <button
-                                onClick={() => window.print()}
-                                className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all active:scale-95 flex items-center gap-2"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                </svg>
-                                Print Form
-                            </button>
+                            <>
+                                <button
+                                    onClick={handleDownloadPDF}
+                                    disabled={isDownloading}
+                                    className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-all active:scale-95 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {isDownloading ? (
+                                        <div className="animate-spin w-5 h-5 border-2 border-white border-t-transparent rounded-full"></div>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    )}
+                                    {isDownloading ? "Generating..." : "Download PDF"}
+                                </button>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="px-6 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-all active:scale-95 flex items-center gap-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                    Print Form
+                                </button>
+                            </>
                         )}
                         <button
                             onClick={onClose}
@@ -526,7 +787,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
 
             {/* Printable Version */}
             {isGranted && odRequest && (
-                <div className="hidden print:block print-container fixed inset-0 w-full h-full bg-white text-black p-12 z-[999999]">
+                <div ref={printRef} className="hidden print:block print-container fixed inset-0 w-full h-full bg-white text-black p-12 z-[999999]">
                     <style dangerouslySetInnerHTML={{
                         __html: `
                         @media print {
