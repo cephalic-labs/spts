@@ -19,7 +19,7 @@ export async function getFaculties(filters = {}, limit = 100, offset = 0) {
             queries.push(Query.equal("department", filters.department));
         }
         if (filters.role) {
-            queries.push(Query.equal("role", filters.role));
+            queries.push(Query.contains("role", filters.role));
         }
         if (filters.search) {
             queries.push(Query.contains("name", filters.search));

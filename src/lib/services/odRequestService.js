@@ -109,7 +109,7 @@ async function getDepartmentApprover(department, role) {
                 COLLECTIONS.FACULTIES,
                 [
                     Query.equal("department", normalizedDept),
-                    Query.equal("role", tryRole),
+                    Query.contains("role", tryRole),
                     Query.limit(1),
                 ]
             );
@@ -337,7 +337,7 @@ export async function getStudentODRequests(studentId, limit = 100, rollNo = null
                 DATABASE_ID,
                 COLLECTIONS.OD_REQUESTS,
                 [
-                    Query.equal("team", rollNo),
+                    Query.contains("team", rollNo),
                     Query.orderDesc("$createdAt"),
                     Query.limit(limit),
                 ]
@@ -726,7 +726,7 @@ export async function getODStats(filter = {}) {
                     DATABASE_ID,
                     COLLECTIONS.OD_REQUESTS,
                     [
-                        Query.equal("team", filter.rollNo),
+                        Query.contains("team", filter.rollNo),
                         Query.limit(500)
                     ]
                 );
