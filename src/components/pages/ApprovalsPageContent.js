@@ -89,8 +89,10 @@ export default function ApprovalsPageContent({ role }) {
                                 try {
                                     student = await getStudentById(viewRequest.student_id);
                                 } catch (innerErr) {
-                                    // Quietly fail if not found by ID either
-                                }
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.warn("Could not find student by ID:", innerErr);
+                    }
+                }
                             }
 
                             // LAST RESORT: Try fetching from Users collection to at least get the name
@@ -114,7 +116,9 @@ export default function ApprovalsPageContent({ role }) {
 
                             setStudentDetails(student);
                         } catch (err) {
-                            console.error("Error fetching student details:", err);
+                            if (process.env.NODE_ENV !== 'production') {
+                                console.error("Error fetching student details:", err);
+                            }
                         }
                     } else if (viewRequest.student) {
                         setStudentDetails(viewRequest.student);
@@ -144,11 +148,15 @@ export default function ApprovalsPageContent({ role }) {
                             const event = await getEventById(viewRequest.event_id);
                             setEventDetails(event);
                         } catch (err) {
-                            console.error("Error fetching event details:", err);
+                            if (process.env.NODE_ENV !== 'production') {
+                                console.error("Error fetching event details:", err);
+                            }
                         }
                     }
                 } catch (error) {
-                    console.error("Error fetching details:", error);
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.error("Error fetching details:", error);
+                    }
                 } finally {
                     setDetailsLoading(false);
                 }
@@ -182,7 +190,9 @@ export default function ApprovalsPageContent({ role }) {
                 try {
                     faculty = await getFacultyByAppwriteId(user.$id);
                 } catch (e) {
-                    console.warn("Could not find faculty by Appwrite ID:", e);
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.warn("Could not find faculty by Appwrite ID:", e);
+                    }
                 }
 
                 // Method 2: Try by email if method 1 failed
@@ -193,7 +203,9 @@ export default function ApprovalsPageContent({ role }) {
                         try {
                             faculty = await getFacultyByEmail(approverEmail);
                         } catch (e) {
-                            console.warn("Could not find faculty by email:", e);
+                            if (process.env.NODE_ENV !== 'production') {
+                                console.warn("Could not find faculty by email:", e);
+                            }
                         }
                     }
                 }
@@ -254,11 +266,15 @@ export default function ApprovalsPageContent({ role }) {
                     });
                     setEventsMap(newEventsMap);
                 } catch (e) {
-                    console.error("Error fetching events for map:", e);
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.error("Error fetching events for map:", e);
+                    }
                 }
             }
         } catch (err) {
-            console.error("Error loading pending requests:", err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error("Error loading pending requests:", err);
+            }
         } finally {
             setLoading(false);
         }
@@ -269,7 +285,7 @@ export default function ApprovalsPageContent({ role }) {
     async function handleApprove(odId) {
         try {
             setActionLoading(odId);
-            const result = await approveODRequestSecure(odId, role, user?.$id || user?.dbId, "Approved");
+            const result = await approveODRequestSecure(odId, user?.$id || user?.dbId, "Approved");
             if (!result.success) {
                 throw new Error(result.error);
             }
@@ -278,7 +294,9 @@ export default function ApprovalsPageContent({ role }) {
                 setViewRequest(null);
             }
         } catch (err) {
-            console.error("Error approving request:", err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error("Error approving request:", err);
+            }
             setErrorModalMessage(err?.message || "Failed to approve request");
         } finally {
             setActionLoading(null);
@@ -310,7 +328,7 @@ export default function ApprovalsPageContent({ role }) {
 
         try {
             setActionLoading(rejectDialog.odId);
-            const result = await rejectODRequestSecure(rejectDialog.odId, role, user?.$id || user?.dbId, remarks);
+            const result = await rejectODRequestSecure(rejectDialog.odId, user?.$id || user?.dbId, remarks);
             if (!result.success) {
                 throw new Error(result.error);
             }
@@ -320,7 +338,9 @@ export default function ApprovalsPageContent({ role }) {
                 setViewRequest(null);
             }
         } catch (err) {
-            console.error("Error rejecting request:", err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error("Error rejecting request:", err);
+            }
             setErrorModalMessage(err?.message || "Failed to reject request");
         } finally {
             setActionLoading(null);
