@@ -50,6 +50,7 @@ export default function SettingsPageContent({ role }) {
   const [promoMessage, setPromoMessage] = useState(null);
 
   const [nirfColleges, setNirfColleges] = useState([]);
+  const [nirfSearch, setNirfSearch] = useState("");
   const [nirfLoading, setNirfLoading] = useState(false);
   const [nirfMessage, setNirfMessage] = useState(null);
   const [nirfModalOpen, setNirfModalOpen] = useState(false);
@@ -569,39 +570,72 @@ export default function SettingsPageContent({ role }) {
               No colleges in the NIRF list yet.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-gray-100">
-              <table className="w-full min-w-[640px]">
-                <thead className="bg-gray-50 text-xs tracking-widest text-gray-400 uppercase">
-                  <tr>
-                    <th className="px-4 py-3 text-left">College</th>
-                    <th className="px-4 py-3 text-left">Rank</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {nirfColleges.map((college) => (
-                    <tr key={college.$id} className="border-t border-gray-50">
-                      <td className="px-4 py-3 text-sm font-semibold text-gray-700">
-                        {college.college_name}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        #{college.rank}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <ActionButtons
-                          onEdit={() => {
-                            setEditingNirfCollege(college);
-                            setNirfModalOpen(true);
-                          }}
-                          onDelete={() => handleDeleteNIRFCollege(college.$id)}
-                          editTitle="Edit College"
-                          deleteTitle="Delete College"
-                        />
-                      </td>
+            <div className="rounded-2xl border border-gray-100">
+              <div className="mb-3 flex items-center gap-3">
+                <input
+                  type="text"
+                  placeholder="Search NIRF colleges..."
+                  value={nirfSearch}
+                  onChange={(e) => setNirfSearch(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    setNirfSearch("");
+                  }}
+                  className="rounded-xl bg-[#1E2761] px-4 py-2 text-sm font-bold text-white"
+                >
+                  Clear
+                </button>
+              </div>
+
+              <div className="max-h-56 overflow-y-auto">
+                <table className="w-full min-w-[640px]">
+                  <thead className="sticky top-0 bg-gray-50 text-xs tracking-widest text-gray-400 uppercase">
+                    <tr>
+                      <th className="px-4 py-3 text-left">College</th>
+                      <th className="px-4 py-3 text-left">Rank</th>
+                      <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {nirfColleges
+                      .filter(
+                        (c) =>
+                          !nirfSearch ||
+                          String(c.college_name || "")
+                            .toLowerCase()
+                            .includes(nirfSearch.toLowerCase()),
+                      )
+                      .map((college) => (
+                        <tr
+                          key={college.$id}
+                          className="border-t border-gray-50"
+                        >
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-700">
+                            {college.college_name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-500">
+                            #{college.rank}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <ActionButtons
+                              onEdit={() => {
+                                setEditingNirfCollege(college);
+                                setNirfModalOpen(true);
+                              }}
+                              onDelete={() =>
+                                handleDeleteNIRFCollege(college.$id)
+                              }
+                              editTitle="Edit College"
+                              deleteTitle="Delete College"
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

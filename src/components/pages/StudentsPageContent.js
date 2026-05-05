@@ -152,7 +152,9 @@ export default function StudentsPageContent({ role }) {
         <select
           className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
           value={filter.searchType}
-          onChange={(e) => setFilter({ ...filter, searchType: e.target.value, search: "" })}
+          onChange={(e) =>
+            setFilter({ ...filter, searchType: e.target.value, search: "" })
+          }
         >
           <option value="name">Name</option>
           <option value="roll_no">Roll Number</option>
@@ -241,7 +243,7 @@ export default function StudentsPageContent({ role }) {
                   {OD_CATEGORY_FIELDS.map((field) => (
                     <th
                       key={field}
-                      className="px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase"
+                      className="hidden px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase lg:table-cell"
                     >
                       {field.replace("_", " ")}
                     </th>
@@ -287,7 +289,10 @@ export default function StudentsPageContent({ role }) {
                       {student.phone || "--"}
                     </td>
                     {OD_CATEGORY_FIELDS.map((field) => (
-                      <td key={field} className="px-6 py-4">
+                      <td
+                        key={field}
+                        className="hidden px-6 py-4 lg:table-cell"
+                      >
                         <span
                           className={`rounded-full px-2 py-1 text-[10px] font-bold ${
                             getStudentODValue(student, field) > 0
@@ -321,7 +326,11 @@ export default function StudentsPageContent({ role }) {
                       <td className="px-6 py-4 text-right">
                         <ActionButtons
                           onEdit={() => handleEdit(student)}
-                          onDelete={ADMIN_HOD_ADVISOR_ROLES.includes(role) ? () => handleDelete(student.$id) : null}
+                          onDelete={
+                            ADMIN_HOD_ADVISOR_ROLES.includes(role)
+                              ? () => handleDelete(student.$id)
+                              : null
+                          }
                           editTitle="Edit Student"
                           deleteTitle="Delete Student"
                         />

@@ -166,7 +166,7 @@ export async function createStudent(data) {
       data.od_count !== "" &&
       data.od_count !== null
         ? parseInt(data.od_count)
-        : 7,
+        : 0,
   };
 
   for (const field of OD_CATEGORY_FIELDS) {
