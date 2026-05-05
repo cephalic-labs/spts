@@ -77,8 +77,10 @@ It provides a robust platform for students to request **On Duty (OD)** permissio
    ```env
    NEXT_PUBLIC_APPWRITE_PROJECT_ID=your_project_id
    NEXT_PUBLIC_APPWRITE_ENDPOINT=your_endpoint
-   NEXT_PUBLIC_APPWRITE_API_KEY=your_api_key
+   APPWRITE_API_KEY=your_api_key
    ```
+   
+   ⚠️ **Security Note**: `APPWRITE_API_KEY` is server-only and will NOT be exposed to the client.
 
 4. **Run the development server**:
    ```bash
