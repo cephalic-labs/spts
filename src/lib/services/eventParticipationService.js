@@ -2,6 +2,7 @@ import { ID, Query } from "appwrite";
 import { databases } from "../appwrite";
 import { DB_CONFIG } from "../dbConfig";
 import { decrementParticipationCount, incrementParticipationCount } from "./eventService";
+import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -58,7 +59,7 @@ export async function getStudentEventParticipations(studentId, limit = 100) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting student event participations:", error);
+        secureLog.error("Error getting student event participations:", error);
         throw error;
     }
 }
@@ -114,7 +115,7 @@ export async function setStudentParticipationStatus(eventId, studentId, status) 
             countDelta,
         };
     } catch (error) {
-        console.error("Error setting student participation status:", error);
+        secureLog.error("Error setting student participation status:", error);
         throw error;
     }
 }

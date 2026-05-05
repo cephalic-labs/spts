@@ -1,6 +1,7 @@
 import { databases } from "../appwrite";
 import { DB_CONFIG } from "../dbConfig";
 import { ID, Query } from "appwrite";
+import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -41,7 +42,7 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting students:", error);
+        secureLog.error("Error getting students:", error);
         throw error;
     }
 }
@@ -61,7 +62,7 @@ export async function getStudentById(studentId) {
         if (error.code === 404 || error.message?.includes("could not be found")) {
             return null;
         }
-        console.error("Error getting student:", error);
+        secureLog.error("Error getting student:", error);
         throw error;
     }
 }
@@ -78,7 +79,7 @@ export async function getStudentByRegNo(regNo) {
         );
         return response.documents.length > 0 ? response.documents[0] : null;
     } catch (error) {
-        console.error("Error getting student by reg no:", error);
+        secureLog.error("Error getting student by reg no:", error);
         throw error;
     }
 }
@@ -98,7 +99,7 @@ export async function getStudentByAppwriteUserId(appwriteUserId) {
         if (String(error?.message || "").includes("Attribute not found in schema")) {
             return null;
         }
-        console.error("Error getting student by Appwrite user ID:", error);
+        secureLog.error("Error getting student by Appwrite user ID:", error);
         throw error;
     }
 }
@@ -128,7 +129,7 @@ export async function getStudentByEmail(email) {
 
         return null;
     } catch (error) {
-        console.error("Error getting student by email:", error);
+        secureLog.error("Error getting student by email:", error);
         throw error;
     }
 }
@@ -165,7 +166,7 @@ export async function createStudent(data) {
         if (error.message?.includes("Unknown attribute")) {
             const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
             if (missingAttr && payload[missingAttr] !== undefined) {
-                console.warn(`Retrying create without missing attribute: ${missingAttr}`);
+                secureLog.warn("Retrying create without missing attribute");
                 const { [missingAttr]: _, ...retryPayload } = payload;
                 // Note: We need to handle the recursive case differently for create because ID.unique() should only be called once or we use a fixed ID
                 return await databases.createDocument(
@@ -176,7 +177,7 @@ export async function createStudent(data) {
                 );
             }
         }
-        console.error("Error creating student:", error);
+        secureLog.error("Error creating student:", error);
         throw error;
     }
 }
@@ -207,12 +208,12 @@ export async function updateStudent(studentId, data) {
         if (error.message?.includes("Unknown attribute")) {
             const missingAttr = error.message.match(/"([^"]+)"/)?.[1];
             if (missingAttr && updateData[missingAttr] !== undefined) {
-                console.warn(`Retrying update without missing attribute: ${missingAttr}`);
+                secureLog.warn("Retrying update without missing attribute");
                 const { [missingAttr]: _, ...retryData } = updateData;
                 return await updateStudent(studentId, retryData); // Recursive call with one less attribute
             }
         }
-        console.error("Error updating student:", error);
+        secureLog.error("Error updating student:", error);
         throw error;
     }
 }
@@ -231,7 +232,7 @@ export async function getStudentStats() {
             total: response.total,
         };
     } catch (error) {
-        console.error("Error getting student stats:", error);
+        secureLog.error("Error getting student stats:", error);
         return { total: 0 };
     }
 }
@@ -247,7 +248,7 @@ export async function deleteStudent(studentId) {
             studentId
         );
     } catch (error) {
-        console.error("Error deleting student:", error);
+        secureLog.error("Error deleting student:", error);
         throw error;
     }
 }
@@ -265,7 +266,7 @@ export async function getStudentsByIds(ids) {
         );
         return response.documents;
     } catch (error) {
-        console.error("Error getting students by IDs:", error);
+        secureLog.error("Error getting students by IDs:", error);
         return [];
     }
 }
@@ -283,7 +284,7 @@ export async function getStudentsByAppwriteUserIds(ids, limit = 100) {
         );
         return response.documents;
     } catch (error) {
-        console.error("Error getting students by Appwrite User IDs:", error);
+        secureLog.error("Error getting students by Appwrite User IDs:", error);
         return [];
     }
 }
@@ -301,7 +302,7 @@ export async function getStudentByRollNo(rollNo) {
         );
         return response.documents.length > 0 ? response.documents[0] : null;
     } catch (error) {
-        console.error("Error getting student by roll no:", error);
+        secureLog.error("Error getting student by roll no:", error);
         return null;
     }
 }
@@ -319,7 +320,7 @@ export async function searchStudentsByRollNo(query, limit = 10) {
         );
         return response.documents || [];
     } catch (error) {
-        console.error("Error searching students by roll no:", error);
+        secureLog.error("Error searching students by roll no:", error);
         return [];
     }
 }

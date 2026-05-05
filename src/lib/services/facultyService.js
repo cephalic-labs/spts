@@ -1,6 +1,7 @@
 import { databases } from "../appwrite";
 import { DB_CONFIG } from "../dbConfig";
 import { ID, Query } from "appwrite";
+import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -32,7 +33,7 @@ export async function getFaculties(filters = {}, limit = 100, offset = 0) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting faculties:", error);
+        secureLog.error("Error getting faculties:", error);
         throw error;
     }
 }
@@ -49,7 +50,7 @@ export async function getFacultyById(facultyId) {
         );
         return faculty;
     } catch (error) {
-        console.error("Error getting faculty:", error);
+        secureLog.error("Error getting faculty:", error);
         throw error;
     }
 }
@@ -66,7 +67,7 @@ export async function getFacultyByAppwriteId(appwriteUserId) {
         );
         return response.documents.length > 0 ? response.documents[0] : null;
     } catch (error) {
-        console.error("Error getting faculty by Appwrite ID:", error);
+        secureLog.error("Error getting faculty by Appwrite ID:", error);
         throw error;
     }
 }
@@ -96,7 +97,7 @@ export async function getFacultyByEmail(email) {
 
         return null;
     } catch (error) {
-        console.error("Error getting faculty by email:", error);
+        secureLog.error("Error getting faculty by email:", error);
         throw error;
     }
 }
@@ -113,7 +114,7 @@ export async function getFacultyByFacultyId(facultyId) {
         );
         return response.documents.length > 0 ? response.documents[0] : null;
     } catch (error) {
-        console.error("Error getting faculty by faculty ID:", error);
+        secureLog.error("Error getting faculty by faculty ID:", error);
         throw error;
     }
 }
@@ -144,7 +145,7 @@ export async function createFaculty(data) {
             payload
         );
     } catch (error) {
-        console.error("Error creating faculty:", error);
+        secureLog.error("Error creating faculty:", error);
         throw error;
     }
 }
@@ -166,7 +167,7 @@ export async function updateFaculty(facultyId, data) {
             updateData
         );
     } catch (error) {
-        console.error("Error updating faculty:", error);
+        secureLog.error("Error updating faculty:", error);
         throw error;
     }
 }
@@ -182,7 +183,7 @@ export async function deleteFaculty(facultyId) {
             facultyId
         );
     } catch (error) {
-        console.error("Error deleting faculty:", error);
+        secureLog.error("Error deleting faculty:", error);
         throw error;
     }
 }

@@ -1,6 +1,7 @@
 import { databases } from "../appwrite";
 import { DB_CONFIG } from "../dbConfig";
 import { ID, Query } from "appwrite";
+import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -20,7 +21,7 @@ export async function getEvents(limit = 50, offset = 0) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting events:", error);
+        secureLog.error("Error getting events:", error);
         throw error;
     }
 }
@@ -49,7 +50,7 @@ export async function getEventsByIds(eventIds) {
         );
         return response.documents;
     } catch (error) {
-        console.error("Error getting events by IDs:", error);
+        secureLog.error("Error getting events by IDs:", error);
         // Fallback: fetch individually
         try {
             const events = await Promise.all(
@@ -59,7 +60,7 @@ export async function getEventsByIds(eventIds) {
             );
             return events.filter(e => e !== null);
         } catch (fallbackError) {
-             console.error("Fallback error getting events by IDs:", fallbackError);
+             secureLog.error("Fallback error getting events by IDs:", fallbackError);
              return [];
         }
     }
@@ -77,7 +78,7 @@ export async function getEventById(eventId) {
         );
         return event;
     } catch (error) {
-        console.error("Error getting event:", error);
+        secureLog.error("Error getting event:", error);
         throw error;
     }
 }
@@ -114,7 +115,7 @@ export async function createEvent(data) {
         );
         return event;
     } catch (error) {
-        console.error("Error creating event:", error);
+        secureLog.error("Error creating event:", error);
         throw error;
     }
 }
@@ -132,7 +133,7 @@ export async function updateEvent(eventId, data) {
         );
         return event;
     } catch (error) {
-        console.error("Error updating event:", error);
+        secureLog.error("Error updating event:", error);
         throw error;
     }
 }
@@ -150,7 +151,7 @@ export async function incrementViewCount(eventId) {
             { view_count: (event.view_count || 0) + 1 }
         );
     } catch (error) {
-        console.error("Error incrementing view count:", error);
+        secureLog.error("Error incrementing view count:", error);
     }
 }
 
@@ -167,7 +168,7 @@ export async function incrementParticipationCount(eventId) {
             { participation_count: (event.participation_count || 0) + 1 }
         );
     } catch (error) {
-        console.error("Error incrementing participation count:", error);
+        secureLog.error("Error incrementing participation count:", error);
     }
 }
 
@@ -184,7 +185,7 @@ export async function decrementParticipationCount(eventId) {
             { participation_count: Math.max((event.participation_count || 0) - 1, 0) }
         );
     } catch (error) {
-        console.error("Error decrementing participation count:", error);
+        secureLog.error("Error decrementing participation count:", error);
     }
 }
 
@@ -199,7 +200,7 @@ export async function deleteEvent(eventId) {
             eventId
         );
     } catch (error) {
-        console.error("Error deleting event:", error);
+        secureLog.error("Error deleting event:", error);
         throw error;
     }
 }
@@ -218,7 +219,7 @@ export async function getEventStats() {
             total: response.total,
         };
     } catch (error) {
-        console.error("Error getting event stats:", error);
+        secureLog.error("Error getting event stats:", error);
         return { total: 0 };
     }
 }

@@ -1,6 +1,7 @@
 import { databases } from "../appwrite";
 import { DB_CONFIG } from "../dbConfig";
 import { ID, Query } from "appwrite";
+import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -48,7 +49,7 @@ export async function syncUserToDatabase(appwriteUser) {
                     const updatedUser = await updateUserRole(existingUser.$id, authRole);
                     return updatedUser;
                 } catch (e) {
-                    console.error("Failed to sync role for existing user:", e);
+                    secureLog.error("Failed to sync role for existing user:", e);
                 }
             }
             // User exists, return with merged data
@@ -80,7 +81,7 @@ export async function syncUserToDatabase(appwriteUser) {
             throw createError;
         }
     } catch (error) {
-        console.error("Error syncing user to database:", error);
+        secureLog.error("Error syncing user to database:", error);
         throw error;
     }
 }
@@ -105,7 +106,7 @@ export async function getUserByAppwriteId(appwriteUserId) {
         }
         return null;
     } catch (error) {
-        console.error("Error getting user by Appwrite ID:", error);
+        secureLog.error("Error getting user by Appwrite ID:", error);
         return null;
     }
 }
@@ -126,7 +127,7 @@ export async function updateUserRole(documentId, role) {
             role: fromDbRole(updatedUser.role)
         };
     } catch (error) {
-        console.error("Error updating user role:", error);
+        secureLog.error("Error updating user role:", error);
         throw error;
     }
 }
@@ -147,7 +148,7 @@ export async function updateUserProfile(documentId, data) {
             role: fromDbRole(updatedUser.role)
         };
     } catch (error) {
-        console.error("Error updating user profile:", error);
+        secureLog.error("Error updating user profile:", error);
         throw error;
     }
 }
@@ -170,7 +171,7 @@ export async function getAllUsers(limit = 100, offset = 0) {
             }))
         };
     } catch (error) {
-        console.error("Error getting all users:", error);
+        secureLog.error("Error getting all users:", error);
         throw error;
     }
 }
