@@ -2,7 +2,7 @@
 // All collection IDs are centralized here for easy management
 
 export const DB_CONFIG = {
-    DATABASE_ID: "sece-spts-db",
+    DATABASE_ID: process.env.APPWRITE_DATABASE_ID,
 
     COLLECTIONS: {
         USERS: "users",
