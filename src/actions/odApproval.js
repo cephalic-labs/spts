@@ -4,6 +4,7 @@ import { databases } from "@/lib/server/appwrite";
 import { DB_CONFIG, canRoleApprove, getNextStatus, OD_STATUS } from "@/lib/dbConfig";
 import { Query } from "node-appwrite";
 import { cookies } from "next/headers";
+import { secureLog } from "@/lib/secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -28,7 +29,7 @@ async function getFacultyByAppwriteUserId(userId) {
         );
         return response.documents[0] || null;
     } catch (error) {
-        console.error("Error fetching faculty by user ID:", error);
+        secureLog.error("Error fetching faculty by user ID:", error);
         return null;
     }
 }
@@ -56,7 +57,7 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
             }
         );
     } catch (error) {
-        console.error("Error logging approval:", error);
+        secureLog.error("Error logging approval:", error);
     }
 }
 
@@ -81,7 +82,7 @@ async function decrementODCount(studentId) {
             );
         }
     } catch (error) {
-        console.warn("Failed to decrement OD count:", error);
+        secureLog.warn("Failed to decrement OD count:", error);
     }
 }
 
@@ -109,7 +110,7 @@ async function decrementTeamODCounts(teamRollNumbers) {
                 );
             }
         } catch (error) {
-            console.warn(`Failed to decrement OD count for team member ${rollNo}:`, error);
+            secureLog.warn(`Failed to decrement OD count for team member:`, error);
         }
     }));
 }
@@ -171,7 +172,7 @@ export async function approveODRequestSecure(odId, role, userId, remarks = "") {
         
         return { success: true, data: updatedOD };
     } catch (error) {
-        console.error("Error approving OD request:", error);
+        secureLog.error("Error approving OD request:", error);
         return { success: false, error: error.message };
     }
 }
@@ -222,7 +223,7 @@ export async function rejectODRequestSecure(odId, role, userId, remarks = "") {
         
         return { success: true, data: updatedOD };
     } catch (error) {
-        console.error("Error rejecting OD request:", error);
+        secureLog.error("Error rejecting OD request:", error);
         return { success: false, error: error.message };
     }
 }

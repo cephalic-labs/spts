@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getODRequestsByStatus, approveODRequest, rejectODRequest } from "@/lib/services/odRequestService";
+import { getODRequestsByStatus } from "@/lib/services/odRequestService";
+import { approveODRequestSecure, rejectODRequestSecure } from "@/actions/odApproval";
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
@@ -299,7 +300,10 @@ export default function ApprovalsPageContent({ role }) {
     async function handleApprove(odId) {
         try {
             setActionLoading(odId);
-            await approveODRequest(odId, role, user?.$id || user?.dbId, "Approved", approverFacultyId);
+            const result = await approveODRequestSecure(odId, role, user?.$id || user?.dbId, "Approved");
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             await loadPendingRequests();
             if (viewRequest && viewRequest.$id === odId) {
                 setViewRequest(null);
@@ -337,7 +341,10 @@ export default function ApprovalsPageContent({ role }) {
 
         try {
             setActionLoading(rejectDialog.odId);
-            await rejectODRequest(rejectDialog.odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
+            const result = await rejectODRequestSecure(rejectDialog.odId, role, user?.$id || user?.dbId, remarks);
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             await loadPendingRequests();
             closeRejectDialog();
             if (viewRequest && viewRequest.$id === rejectDialog.odId) {
