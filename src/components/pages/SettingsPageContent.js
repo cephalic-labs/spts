@@ -388,31 +388,87 @@ export default function SettingsPageContent({ role }) {
               Manual OD Reset
             </h3>
             <p className="mt-1 text-sm text-gray-500">
-              Reset a student’s OD counts to the current policy values.
+              Reset OD counts to policy values or custom total.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto]">
+          <div className="space-y-4">
             <div className="space-y-2">
               <label className="block text-xs font-black tracking-widest text-gray-400 uppercase">
-                Student Roll Number
+                Custom Total OD Count (Optional)
               </label>
               <input
-                type="text"
-                value={resetRollNo}
-                onChange={(e) => setResetRollNo(e.target.value)}
+                type="number"
+                min="0"
+                value={resetCustomTotal}
+                onChange={(e) => setResetCustomTotal(e.target.value)}
                 className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 font-medium focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
-                placeholder="Enter exact roll number"
+                placeholder="Leave empty to use policy total"
               />
+              <p className="pl-1 text-[10px] leading-tight text-gray-400">
+                If set, this overrides the policy total ({quotaTotal}).
+              </p>
             </div>
-            <button
-              type="button"
-              onClick={handleResetStudent}
-              disabled={resetLoading || !resetRollNo.trim()}
-              className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
-            >
-              {resetLoading ? "Resetting..." : "Reset OD"}
-            </button>
+
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <h4 className="mb-3 text-sm font-bold text-[#1E2761]">
+                Reset by Roll Number
+              </h4>
+              <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-2">
+                  <label className="block text-xs font-black tracking-widest text-gray-400 uppercase">
+                    Student Roll Number
+                  </label>
+                  <input
+                    type="text"
+                    value={resetRollNo}
+                    onChange={(e) => setResetRollNo(e.target.value)}
+                    className="w-full rounded-xl border border-gray-100 bg-white px-4 py-3 font-medium focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
+                    placeholder="Enter exact roll number"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResetStudent}
+                  disabled={resetLoading || !resetRollNo.trim()}
+                  className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {resetLoading ? "Resetting..." : "Reset Student"}
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+              <h4 className="mb-3 text-sm font-bold text-[#1E2761]">
+                Reset by Year of Study
+              </h4>
+              <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto]">
+                <div className="space-y-2">
+                  <label className="block text-xs font-black tracking-widest text-gray-400 uppercase">
+                    Year of Study
+                  </label>
+                  <select
+                    value={resetYear}
+                    onChange={(e) => setResetYear(e.target.value)}
+                    className="w-full rounded-xl border border-gray-100 bg-white px-4 py-3 font-medium focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
+                  >
+                    <option value="">Select Year</option>
+                    <option value="1">Year 1</option>
+                    <option value="2">Year 2</option>
+                    <option value="3">Year 3</option>
+                    <option value="4">Year 4</option>
+                  </select>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleResetByYear}
+                  disabled={resetLoading || !resetYear}
+                  className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+                >
+                  {resetLoading ? "Resetting..." : "Reset Year"}
+                </button>
+              </div>
+            </div>
           </div>
 
           {resetStudent && (

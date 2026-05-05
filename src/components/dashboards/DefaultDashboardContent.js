@@ -66,16 +66,11 @@ function getODValue(student, field) {
 }
 
 function getStudentTotalOD(student) {
-  const categoryTotal = OD_CATEGORY_FIELDS.reduce(
-    (total, field) => total + getODValue(student, field),
-    0,
-  );
-  if (categoryTotal > 0) return categoryTotal;
-  const legacyCount =
-    student?.od_count !== undefined && student?.od_count !== null
-      ? parseInt(student.od_count, 10)
-      : 7;
-  return Number.isNaN(legacyCount) ? 7 : legacyCount;
+  if (student?.od_count !== undefined && student?.od_count !== null) {
+    const count = parseInt(student.od_count, 10);
+    return Number.isNaN(count) ? 7 : count;
+  }
+  return 7;
 }
 
 export default function DefaultDashboardContent({ role }) {

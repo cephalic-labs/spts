@@ -9,7 +9,6 @@ import {
 import { Query } from "node-appwrite";
 import { secureLog } from "@/lib/secureLogger";
 import { getODQuotaPolicy } from "@/lib/services/odQuotaService";
-import { updateStudent } from "@/lib/services/studentService";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -21,6 +20,33 @@ function sumPolicyCounts(policy) {
       (typeof value === "number" ? value : parseInt(value || 0, 10) || 0)
     );
   }, 0);
+}
+
+async function updateStudentServer(studentId, data) {
+  const updateData = { ...data };
+
+  if (updateData.year) updateData.year = parseInt(updateData.year);
+  if (updateData.od_count !== undefined && updateData.od_count !== "") {
+    updateData.od_count = parseInt(updateData.od_count);
+  }
+
+  for (const field of OD_CATEGORY_FIELDS) {
+    if (updateData[field] !== undefined && updateData[field] !== "") {
+      updateData[field] = parseInt(updateData[field]);
+    }
+  }
+
+  try {
+    return await databases.updateDocument(
+      DATABASE_ID,
+      COLLECTIONS.STUDENTS,
+      studentId,
+      updateData,
+    );
+  } catch (error) {
+    secureLog.error("Error updating student:", error);
+    throw error;
+  }
 }
 
 async function decrementStudentODCount(studentDocId) {
@@ -103,7 +129,7 @@ export async function decrementODCountAtomic(studentId, categoryField = null) {
       const student = response.documents[0];
       if (categoryField) {
         const payload = buildDecrementPayload(student, categoryField);
-        await updateStudent(student.$id, payload);
+        await updateStudentServer(student.$id, payload);
       } else {
         await decrementStudentODCount(student.$id);
       }
@@ -132,7 +158,7 @@ export async function decrementTeamODCountsAtomic(
           const student = response.documents[0];
           if (categoryField) {
             const payload = buildDecrementPayload(student, categoryField);
-            await updateStudent(student.$id, payload);
+            await updateStudentServer(student.$id, payload);
           } else {
             await decrementStudentODCount(student.$id);
           }
@@ -168,7 +194,7 @@ export async function resetStudentODCountsAtomic(studentDocId, role, customTotal
   }
   updateData.od_count = customTotal !== null ? parseInt(customTotal, 10) : sumPolicyCounts(policy);
 
-  await updateStudent(studentDocId, updateData);
+  await updateStudentServer(studentDocId, updateData);
 }
 
 export async function resetStudentsByYearAtomic(year, role, customTotal = null) {
@@ -206,7 +232,7 @@ export async function resetStudentsByYearAtomic(year, role, customTotal = null) 
     }
 
     await Promise.all(
-      response.documents.map((student) => updateStudent(student.$id, updateData))
+      response.documents.map((student) => updateStudentServer(student.$id, updateData))
     );
 
     totalUpdated += response.documents.length;
