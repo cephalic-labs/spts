@@ -5,6 +5,7 @@ import { DB_CONFIG, canRoleApprove, getNextStatus, OD_STATUS } from "@/lib/dbCon
 import { Query } from "node-appwrite";
 import { cookies } from "next/headers";
 import { secureLog } from "@/lib/secureLogger";
+import { decrementODCountAtomic, decrementTeamODCountsAtomic } from "./odCountManager";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -61,59 +62,7 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
     }
 }
 
-async function decrementODCount(studentId) {
-    try {
-        const studentResponse = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.STUDENTS,
-            [Query.equal("appwrite_user_id", studentId), Query.limit(1)]
-        );
-        
-        if (studentResponse.documents.length > 0) {
-            const student = studentResponse.documents[0];
-            const currentCount = student.od_count !== undefined && student.od_count !== null ? student.od_count : 7;
-            const newCount = Math.max(0, currentCount - 1);
-            
-            await databases.updateDocument(
-                DATABASE_ID,
-                COLLECTIONS.STUDENTS,
-                student.$id,
-                { od_count: newCount }
-            );
-        }
-    } catch (error) {
-        secureLog.warn("Failed to decrement OD count:", error);
-    }
-}
 
-async function decrementTeamODCounts(teamRollNumbers) {
-    if (!teamRollNumbers || teamRollNumbers.length === 0) return;
-    
-    await Promise.all(teamRollNumbers.map(async (rollNo) => {
-        try {
-            const response = await databases.listDocuments(
-                DATABASE_ID,
-                COLLECTIONS.STUDENTS,
-                [Query.equal("roll_no", rollNo), Query.limit(1)]
-            );
-            
-            if (response.documents.length > 0) {
-                const member = response.documents[0];
-                const memberCount = member.od_count !== undefined && member.od_count !== null ? member.od_count : 7;
-                const newMemberCount = Math.max(0, memberCount - 1);
-                
-                await databases.updateDocument(
-                    DATABASE_ID,
-                    COLLECTIONS.STUDENTS,
-                    member.$id,
-                    { od_count: newMemberCount }
-                );
-            }
-        } catch (error) {
-            secureLog.warn(`Failed to decrement OD count for team member:`, error);
-        }
-    }));
-}
 
 export async function approveODRequestSecure(odId, role, userId, remarks = "") {
     try {
@@ -163,8 +112,8 @@ export async function approveODRequestSecure(odId, role, userId, remarks = "") {
         
         // If HOD granted, decrement OD counts
         if (role === "hod") {
-            await decrementODCount(odRequest.student_id);
-            await decrementTeamODCounts(odRequest.team || []);
+            await decrementODCountAtomic(odRequest.student_id);
+            await decrementTeamODCountsAtomic(odRequest.team || []);
         }
         
         // Log the approval
