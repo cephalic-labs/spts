@@ -683,23 +683,48 @@ export async function getRecentApprovalLogs(limit = 20) {
 /**
  * Get all OD requests (for admin/sudo)
  */
-export async function getAllODRequests(limit = 100, studentIds = []) {
+export async function getAllODRequests(limit = null, studentIds = []) {
     try {
-        const queries = [
-            Query.orderDesc("$createdAt"),
-            Query.limit(limit),
-        ];
+        const baseQueries = [Query.orderDesc("$createdAt")];
 
         if (studentIds && Array.isArray(studentIds) && studentIds.length > 0) {
-            queries.push(Query.equal("student_id", studentIds));
+            baseQueries.push(Query.equal("student_id", studentIds));
         }
 
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.OD_REQUESTS,
-            queries
-        );
-        return response;
+        // If limit is specified, use it directly
+        if (limit) {
+            const response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.OD_REQUESTS,
+                [...baseQueries, Query.limit(limit)]
+            );
+            return response;
+        }
+
+        // Otherwise, fetch all records using pagination
+        let allDocuments = [];
+        let lastId = null;
+        const pageSize = 100;
+
+        while (true) {
+            const queries = [...baseQueries, Query.limit(pageSize)];
+            if (lastId) {
+                queries.push(Query.cursorAfter(lastId));
+            }
+
+            const response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.OD_REQUESTS,
+                queries
+            );
+
+            allDocuments.push(...response.documents);
+
+            if (response.documents.length < pageSize) break;
+            lastId = response.documents[response.documents.length - 1].$id;
+        }
+
+        return { documents: allDocuments, total: allDocuments.length };
     } catch (error) {
         secureLog.error("Error getting all OD requests:", error);
         throw error;
@@ -711,34 +736,64 @@ export async function getAllODRequests(limit = 100, studentIds = []) {
  */
 export async function getODStats(filter = {}) {
     try {
-        const queries = [Query.limit(500)];
+        const queries = [];
         if (filter.student_id) {
             queries.push(Query.equal("student_id", filter.student_id));
         }
 
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.OD_REQUESTS,
-            queries
-        );
+        // Fetch all documents using pagination
+        let documents = [];
+        let lastId = null;
+        const pageSize = 100;
 
-        let documents = response.documents;
+        while (true) {
+            const pageQueries = [...queries, Query.limit(pageSize)];
+            if (lastId) {
+                pageQueries.push(Query.cursorAfter(lastId));
+            }
+
+            const response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.OD_REQUESTS,
+                pageQueries
+            );
+
+            documents.push(...response.documents);
+
+            if (response.documents.length < pageSize) break;
+            lastId = response.documents[response.documents.length - 1].$id;
+        }
 
         // If filtering for a specific student, also fetch where they are in the team
         if (filter.student_id && filter.rollNo) {
             try {
-                const teamResponse = await databases.listDocuments(
-                    DATABASE_ID,
-                    COLLECTIONS.OD_REQUESTS,
-                    [
-                        Query.contains("team", filter.rollNo),
-                        Query.limit(500)
-                    ]
-                );
+                let teamDocs = [];
+                let teamLastId = null;
 
-                if (teamResponse.documents.length > 0) {
+                while (true) {
+                    const teamQueries = [
+                        Query.contains("team", filter.rollNo),
+                        Query.limit(pageSize)
+                    ];
+                    if (teamLastId) {
+                        teamQueries.push(Query.cursorAfter(teamLastId));
+                    }
+
+                    const teamResponse = await databases.listDocuments(
+                        DATABASE_ID,
+                        COLLECTIONS.OD_REQUESTS,
+                        teamQueries
+                    );
+
+                    teamDocs.push(...teamResponse.documents);
+
+                    if (teamResponse.documents.length < pageSize) break;
+                    teamLastId = teamResponse.documents[teamResponse.documents.length - 1].$id;
+                }
+
+                if (teamDocs.length > 0) {
                     const existingIds = new Set(documents.map(d => d.$id));
-                    teamResponse.documents.forEach(doc => {
+                    teamDocs.forEach(doc => {
                         if (!existingIds.has(doc.$id)) {
                             documents.push(doc);
                         }

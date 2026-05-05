@@ -156,36 +156,62 @@ export async function incrementViewCount(eventId) {
 }
 
 /**
- * Increment participation count
+ * Increment participation count with retry logic
  */
-export async function incrementParticipationCount(eventId) {
-    try {
-        const event = await getEventById(eventId);
-        await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTIONS.EVENTS,
-            eventId,
-            { participation_count: (event.participation_count || 0) + 1 }
-        );
-    } catch (error) {
-        secureLog.error("Error incrementing participation count:", error);
+export async function incrementParticipationCount(eventId, maxRetries = 3) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const event = await getEventById(eventId);
+            const currentCount = event.participation_count || 0;
+            const updatedAt = event.$updatedAt;
+            
+            const updated = await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTIONS.EVENTS,
+                eventId,
+                { participation_count: currentCount + 1 }
+            );
+            
+            if (updated.$updatedAt !== updatedAt) {
+                return;
+            }
+        } catch (error) {
+            if (attempt === maxRetries - 1) {
+                secureLog.error("Error incrementing participation count:", error);
+                throw error;
+            }
+            await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
+        }
     }
 }
 
 /**
- * Decrement participation count
+ * Decrement participation count with retry logic
  */
-export async function decrementParticipationCount(eventId) {
-    try {
-        const event = await getEventById(eventId);
-        await databases.updateDocument(
-            DATABASE_ID,
-            COLLECTIONS.EVENTS,
-            eventId,
-            { participation_count: Math.max((event.participation_count || 0) - 1, 0) }
-        );
-    } catch (error) {
-        secureLog.error("Error decrementing participation count:", error);
+export async function decrementParticipationCount(eventId, maxRetries = 3) {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            const event = await getEventById(eventId);
+            const currentCount = event.participation_count || 0;
+            const updatedAt = event.$updatedAt;
+            
+            const updated = await databases.updateDocument(
+                DATABASE_ID,
+                COLLECTIONS.EVENTS,
+                eventId,
+                { participation_count: Math.max(currentCount - 1, 0) }
+            );
+            
+            if (updated.$updatedAt !== updatedAt) {
+                return;
+            }
+        } catch (error) {
+            if (attempt === maxRetries - 1) {
+                secureLog.error("Error decrementing participation count:", error);
+                throw error;
+            }
+            await new Promise(resolve => setTimeout(resolve, 50 * (attempt + 1)));
+        }
     }
 }
 
