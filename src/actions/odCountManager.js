@@ -109,14 +109,28 @@ function buildDecrementPayload(student, categoryField = null) {
 
 export async function decrementODCountAtomic(studentId, categoryField = null) {
   try {
-    const response = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTIONS.STUDENTS,
-      [Query.equal("appwrite_user_id", studentId), Query.limit(1)],
-    );
+    let student = null;
 
-    if (response.documents.length > 0) {
-      const student = response.documents[0];
+    // Try to get by Document ID first
+    try {
+      student = await databases.getDocument(
+        DATABASE_ID,
+        COLLECTIONS.STUDENTS,
+        studentId
+      );
+    } catch (err) {
+      // Fallback: Try searching by appwrite_user_id
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.STUDENTS,
+        [Query.equal("appwrite_user_id", studentId), Query.limit(1)],
+      );
+      if (response.documents.length > 0) {
+        student = response.documents[0];
+      }
+    }
+
+    if (student) {
       const payload = buildDecrementPayload(student, categoryField);
       await updateStudentServer(student.$id, payload);
     }

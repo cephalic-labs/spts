@@ -601,38 +601,24 @@ export async function approveODRequest(
     // If HOD granted, decrement the student's od_count AND all team members
     if (role === "hod") {
       try {
-        // Decrement requesting student's od_count
-        const studentRecord = await getStudentRecordForOD(
-          odRequest.student_id,
-          null,
-        );
-        if (studentRecord) {
-          const currentCount = getStudentTotalOD(studentRecord);
-          const newCount = Math.max(0, currentCount - 1);
-          await updateStudent(studentRecord.$id, { od_count: newCount });
+        let categoryField = odRequest.event_category || null;
+        if (!categoryField && odRequest.event_id) {
+          try {
+            const event = await databases.getDocument(DATABASE_ID, COLLECTIONS.EVENTS, odRequest.event_id);
+            const hostType = event?.host_type ? String(event.host_type).trim().toLowerCase() : "university";
+            if (["iit_nit", "nirf", "industry", "others"].includes(hostType)) {
+              categoryField = hostType;
+            } else {
+              categoryField = "university";
+            }
+          } catch (err) {
+            secureLog.warn("Failed to fetch event to determine OD category", err);
+          }
         }
 
-        // Decrement team members' od_count
-        const teamRollNumbers = odRequest.team || [];
-        if (teamRollNumbers.length > 0) {
-          const { getStudentByRollNo } = await import("./studentService");
-          await Promise.all(
-            teamRollNumbers.map(async (rollNo) => {
-              try {
-                const teamMember = await getStudentByRollNo(rollNo);
-                if (teamMember) {
-                  const memberCount = getStudentTotalOD(teamMember);
-                  const newMemberCount = Math.max(0, memberCount - 1);
-                  await updateStudent(teamMember.$id, {
-                    od_count: newMemberCount,
-                  });
-                }
-              } catch (teamErr) {
-                secureLog.warn("Failed to decrement OD count for team member");
-              }
-            }),
-          );
-        }
+        const { decrementODCountAtomic, decrementTeamODCountsAtomic } = await import("../../actions/odCountManager");
+        await decrementODCountAtomic(odRequest.student_id, categoryField);
+        await decrementTeamODCountsAtomic(odRequest.team || [], categoryField);
       } catch (odCountErr) {
         secureLog.warn("Failed to decrement student OD count");
         // Non-critical: don't block the approval

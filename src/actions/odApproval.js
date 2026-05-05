@@ -164,7 +164,22 @@ export async function approveODRequestSecure(odId, userId, remarks = "", userEma
     if (actingRole === "hod") {
       // event_category contains the normalized category field name (e.g., "university", "nirf", etc.)
       // This will decrement both the category-specific count and the total od_count
-      const categoryField = odRequest.event_category || null;
+      let categoryField = odRequest.event_category || null;
+      
+      if (!categoryField && odRequest.event_id) {
+        try {
+          const event = await databases.getDocument(DATABASE_ID, COLLECTIONS.EVENTS, odRequest.event_id);
+          const hostType = event?.host_type ? String(event.host_type).trim().toLowerCase() : "university";
+          if (["iit_nit", "nirf", "industry", "others"].includes(hostType)) {
+            categoryField = hostType;
+          } else {
+            categoryField = "university";
+          }
+        } catch (err) {
+          secureLog.warn("Failed to fetch event to determine OD category", err);
+        }
+      }
+      
       await decrementODCountAtomic(odRequest.student_id, categoryField);
       await decrementTeamODCountsAtomic(odRequest.team || [], categoryField);
     }
