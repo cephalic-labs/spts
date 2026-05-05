@@ -37,52 +37,52 @@ function fromDbRole(role) {
  * Creates new user if doesn't exist, returns existing user if found
  */
 export async function syncUserToDatabase(appwriteUser) {
-    try {
-        // Check if user already exists
-        const existingUser = await getUserByAppwriteId(appwriteUser.$id);
+    const MAX_RETRIES = 5;
+    const BASE_DELAY = 100;
 
-        if (existingUser) {
-            // If user's DB role is still 'unassigned' but Auth now has proper labels, sync it
-            const authRole = (appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : null;
-            if (existingUser.role === "unassigned" && authRole) {
-                try {
-                    const updatedUser = await updateUserRole(existingUser.$id, authRole);
-                    return updatedUser;
-                } catch (e) {
-                    secureLog.error("Failed to sync role for existing user:", e);
-                }
-            }
-            // User exists, return with merged data
-            return existingUser;
-        }
-
-        // Create new user document
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
         try {
-            const newUser = await databases.createDocument(
-                DATABASE_ID,
-                COLLECTIONS.USERS,
-                ID.unique(),
-                {
-                    user_id: appwriteUser.$id,
-                    user_name: appwriteUser.name || "User",
-                    user_email: appwriteUser.email,
-                    profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
-                    role: toDbRole((appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : "unassigned"),
+            const existingUser = await getUserByAppwriteId(appwriteUser.$id);
+
+            if (existingUser) {
+                const authRole = (appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : null;
+                if (existingUser.role === "unassigned" && authRole) {
+                    try {
+                        return await updateUserRole(existingUser.$id, authRole);
+                    } catch (e) {
+                        secureLog.error("Failed to sync role for existing user:", e);
+                    }
                 }
-            );
-            return newUser;
-        } catch (createError) {
-            // Handle race condition: if another request already created the user
-            if (String(createError?.message || "").includes("Document with the requested ID already exists") ||
-                String(createError?.code) === "409") {
-                const existingUser2 = await getUserByAppwriteId(appwriteUser.$id);
-                if (existingUser2) return existingUser2;
+                return existingUser;
             }
-            throw createError;
+
+            try {
+                return await databases.createDocument(
+                    DATABASE_ID,
+                    COLLECTIONS.USERS,
+                    ID.unique(),
+                    {
+                        user_id: appwriteUser.$id,
+                        user_name: appwriteUser.name || "User",
+                        user_email: appwriteUser.email,
+                        profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
+                        role: toDbRole((appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : "unassigned"),
+                    }
+                );
+            } catch (createError) {
+                if (String(createError?.message || "").includes("Document with the requested ID already exists") ||
+                    String(createError?.code) === "409") {
+                    await new Promise(resolve => setTimeout(resolve, BASE_DELAY * Math.pow(2, attempt)));
+                    continue;
+                }
+                throw createError;
+            }
+        } catch (error) {
+            if (attempt === MAX_RETRIES - 1) {
+                secureLog.error("Error syncing user to database after retries:", error);
+                throw error;
+            }
         }
-    } catch (error) {
-        secureLog.error("Error syncing user to database:", error);
-        throw error;
     }
 }
 
