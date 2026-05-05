@@ -11,30 +11,16 @@ import {
   DEPARTMENTS_LIST,
   ADMIN_ADVISOR_ROLES,
   ADMIN_HOD_ADVISOR_ROLES,
-  OD_CATEGORY_FIELDS,
 } from "@/lib/dbConfig";
 import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 import { usePaginatedData } from "@/lib/hooks/usePaginatedData";
 
-function getStudentODValue(student, field) {
-  const value = student?.[field];
-  if (value === undefined || value === null || value === "") return 0;
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
 function getStudentTotalOD(student) {
-  const categoryTotal = OD_CATEGORY_FIELDS.reduce(
-    (total, field) => total + getStudentODValue(student, field),
-    0,
-  );
-  if (categoryTotal > 0) return categoryTotal;
-
-  const legacyCount =
+  const totalCount =
     student?.od_count !== undefined && student?.od_count !== null
       ? parseInt(student.od_count, 10)
       : 7;
-  return Number.isNaN(legacyCount) ? 7 : legacyCount;
+  return Number.isNaN(totalCount) ? 7 : totalCount;
 }
 
 export default function StudentsPageContent({ role }) {

@@ -1263,16 +1263,12 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                   {eventDetails?.event_name || odRequest.event_id}
                 </p>
                 <p>
-                  <span className="font-bold">Event Category:</span>{" "}
-                  {eventDetails?.event_category ||
-                    eventDetails?.event_host_type ||
-                    "N/A"}
+                  <span className="font-bold">Host Type:</span>{" "}
+                  {eventDetails?.host_type || "N/A"}
                 </p>
                 <p>
-                  <span className="font-bold">Event Category:</span>{" "}
-                  {eventDetails?.event_category ||
-                    eventDetails?.event_host_type ||
-                    "N/A"}
+                  <span className="font-bold">Host Type:</span>{" "}
+                  {eventDetails?.host_type || "N/A"}
                 </p>
                 <p>
                   <span className="font-bold">Start Date:</span>{" "}

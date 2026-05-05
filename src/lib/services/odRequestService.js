@@ -56,24 +56,11 @@ function getStudentODValue(studentRecord, field) {
 }
 
 function getStudentTotalOD(studentRecord) {
-  const categoryTotal = OD_CATEGORY_FIELDS.reduce(
-    (total, field) => total + getStudentODValue(studentRecord, field),
-    0,
-  );
-  if (categoryTotal > 0) return categoryTotal;
-
-  const legacyCount =
+  const totalCount =
     studentRecord?.od_count !== undefined && studentRecord?.od_count !== null
       ? parseInt(studentRecord.od_count, 10)
       : 7;
-  return Number.isNaN(legacyCount) ? 7 : legacyCount;
-}
-
-function hasCategoryQuotaFields(studentRecord) {
-  return OD_CATEGORY_FIELDS.some(
-    (field) =>
-      studentRecord?.[field] !== undefined && studentRecord?.[field] !== null,
-  );
+  return Number.isNaN(totalCount) ? 7 : totalCount;
 }
 
 async function getStudentRecordForOD(studentAppwriteId, studentEmail) {
@@ -226,7 +213,8 @@ export async function createODRequest(data) {
     }
 
     const eventDate = normalizeDateOnly(event?.event_time);
-    const eventCategory = normalizeCategoryField(event?.host_type);
+    const eventHostType = normalizeHostType(event?.host_type);
+    const eventCategory = normalizeCategoryField(eventHostType);
     const odStartDate = normalizeDateOnly(data.od_start_date);
     const odEndDate = normalizeDateOnly(data.od_end_date);
 
@@ -269,16 +257,7 @@ export async function createODRequest(data) {
     const currentODCount = getStudentTotalOD(studentRecord);
     if (currentODCount <= 0) {
       throw new Error(
-        "You have exhausted all your OD requests (OD count is 0). Please contact your advisor to get more ODs allocated.",
-      );
-    }
-
-    const currentCategoryCount = hasCategoryQuotaFields(studentRecord)
-      ? getStudentODValue(studentRecord, eventCategory)
-      : currentODCount;
-    if (currentCategoryCount <= 0) {
-      throw new Error(
-        `You have exhausted your ${eventCategory.replace("_", " ")} OD requests for this semester. Please contact your advisor to get more ODs allocated.`,
+        "You have exhausted all your OD requests for this semester. Please contact your advisor to get more ODs allocated.",
       );
     }
 
@@ -347,8 +326,8 @@ export async function createODRequest(data) {
         od_end_date: odEndDate,
         reason: data.reason,
         attachments: data.attachments || [],
+        host_type: eventHostType,
         event_category: eventCategory,
-        event_host_type: event?.host_type || eventCategory,
         current_status: OD_STATUS.PENDING_MENTOR,
         mentor_id: data.mentor_id || studentRecord.mentor_id,
         advisor_id: advisor ? advisor.$id : advisorId || null,
@@ -580,10 +559,6 @@ export async function approveODRequest(
     // If HOD granted, decrement the student's od_count AND all team members
     if (role === "hod") {
       try {
-        const categoryField = normalizeCategoryField(
-          odRequest.event_category || odRequest.event_host_type,
-        );
-
         // Decrement requesting student's od_count
         const studentRecord = await getStudentRecordForOD(
           odRequest.student_id,
@@ -592,14 +567,7 @@ export async function approveODRequest(
         if (studentRecord) {
           const currentCount = getStudentTotalOD(studentRecord);
           const newCount = Math.max(0, currentCount - 1);
-          const updateData = { od_count: newCount };
-          if (OD_CATEGORY_FIELDS.includes(categoryField)) {
-            updateData[categoryField] = Math.max(
-              getStudentODValue(studentRecord, categoryField) - 1,
-              0,
-            );
-          }
-          await updateStudent(studentRecord.$id, updateData);
+          await updateStudent(studentRecord.$id, { od_count: newCount });
         }
 
         // Decrement team members' od_count
@@ -613,14 +581,9 @@ export async function approveODRequest(
                 if (teamMember) {
                   const memberCount = getStudentTotalOD(teamMember);
                   const newMemberCount = Math.max(0, memberCount - 1);
-                  const updateData = { od_count: newMemberCount };
-                  if (OD_CATEGORY_FIELDS.includes(categoryField)) {
-                    updateData[categoryField] = Math.max(
-                      getStudentODValue(teamMember, categoryField) - 1,
-                      0,
-                    );
-                  }
-                  await updateStudent(teamMember.$id, updateData);
+                  await updateStudent(teamMember.$id, {
+                    od_count: newMemberCount,
+                  });
                 }
               } catch (teamErr) {
                 secureLog.warn("Failed to decrement OD count for team member");

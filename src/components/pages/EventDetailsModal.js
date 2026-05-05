@@ -38,6 +38,32 @@ function getParticipationButtonClass(currentStatus, buttonStatus) {
     : "bg-rose-100 text-rose-800 hover:bg-rose-200";
 }
 
+function getHostTypeLabel(event) {
+  const hostType = String(event?.host_type || "")
+    .trim()
+    .toLowerCase();
+
+  if (hostType === "iit_nit") return "IIT/NIT";
+  if (hostType === "nirf") return "NIRF";
+  if (hostType === "industry") return "Industry";
+  if (hostType === "others") return "Others";
+  return "University";
+}
+
+function getHostTypeBadgeClass(event) {
+  const hostType = String(event?.host_type || "")
+    .trim()
+    .toLowerCase();
+
+  if (hostType === "nirf")
+    return "bg-amber-100 text-amber-800 border-amber-200";
+  if (hostType === "iit_nit") return "bg-sky-100 text-sky-800 border-sky-200";
+  if (hostType === "industry")
+    return "bg-violet-100 text-violet-800 border-violet-200";
+  if (hostType === "others") return "bg-gray-100 text-gray-700 border-gray-200";
+  return "bg-emerald-100 text-emerald-800 border-emerald-200";
+}
+
 export default function EventDetailsModal({
   isOpen,
   onClose,
@@ -64,9 +90,16 @@ export default function EventDetailsModal({
               <Icons.Events />
             </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
-                {event.event_name}
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                  {event.event_name}
+                </h2>
+                <span
+                  className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-black tracking-widest uppercase ${getHostTypeBadgeClass(event)}`}
+                >
+                  {getHostTypeLabel(event)}
+                </span>
+              </div>
               {event.event_host && (
                 <p className="font-medium text-blue-200">
                   Hosted by {event.event_host}
@@ -117,8 +150,8 @@ export default function EventDetailsModal({
                 </div>
               </div>
             </div>
-            <div className="text-red-500 text-[15px]">
-                *Click Mark participated Button to get Event Url*
+            <div className="text-[15px] text-red-500">
+              *Click Mark participated Button to get Event Url*
             </div>
 
             {canSelfReportParticipation && (

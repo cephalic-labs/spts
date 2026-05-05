@@ -46,17 +46,11 @@ function getODValue(student, field) {
 }
 
 function getStudentTotalOD(student) {
-  const categoryTotal = OD_CATEGORY_FIELDS.reduce(
-    (total, field) => total + getODValue(student, field),
-    0,
-  );
-  if (categoryTotal > 0) return categoryTotal;
-
-  const legacyCount =
+  const totalCount =
     student?.od_count !== undefined && student?.od_count !== null
       ? parseInt(student.od_count, 10)
       : 7;
-  return Number.isNaN(legacyCount) ? 7 : legacyCount;
+  return Number.isNaN(totalCount) ? 7 : totalCount;
 }
 
 function hasCategoryBreakdown(student) {
@@ -66,9 +60,9 @@ function hasCategoryBreakdown(student) {
 }
 
 function getEventODField(event) {
-  const category = String(
-    event?.event_category || event?.event_host_type || "university",
-  ).toLowerCase();
+  if (!event?.host_type) return null;
+
+  const category = String(event.host_type).toLowerCase();
   if (category === "iit_nit") return "iit_nit";
   if (category === "nirf") return "nirf";
   if (category === "industry") return "industry";
@@ -106,59 +100,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     mentor_id: "",
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormError("");
-      setIsTeamRequest(false);
-      setTeamMembers([]);
-      setTeamSearchQuery("");
-      setTeamSearchResults([]);
-      loadEvents();
-      loadStudentInfo();
-      loadParticipationInfo();
-    }
-  }, [isOpen]);
-
-  useEffect(() => {
-    if (isOpen && user?.$id) {
-      loadPendingODRequests(user?.$id, studentData?.roll_no);
-    }
-  }, [isOpen, user?.$id, studentData]);
-
-  // Debounced team search
-  useEffect(() => {
-    if (!teamSearchQuery || teamSearchQuery.trim().length < 2) {
-      setTeamSearchResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setTeamSearching(true);
-      try {
-        const results = await searchStudentsByRollNo(teamSearchQuery.trim(), 8);
-        // Filter out the current student and already-added team members
-        const existingIds = new Set(teamMembers.map((m) => m.$id));
-        const filtered = results.filter((s) => {
-          if (studentData && s.$id === studentData.$id) return false;
-          if (existingIds.has(s.$id)) return false;
-          // Only show students with available OD count
-          const mCount = getStudentTotalOD(s);
-          if (mCount <= 0) return false;
-          return true;
-        });
-        setTeamSearchResults(filtered);
-      } catch (err) {
-        console.error("Team search error:", err);
-        setTeamSearchResults([]);
-      } finally {
-        setTeamSearching(false);
-      }
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [teamSearchQuery, teamMembers, studentData]);
-
-  async function loadEvents() {
+  const loadEvents = useCallback(async () => {
     try {
       setFetchingEvents(true);
       const response = await getEvents(100);
@@ -168,9 +110,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     } finally {
       setFetchingEvents(false);
     }
-  }
+  }, []);
 
-  async function loadStudentInfo() {
+  const loadStudentInfo = useCallback(async () => {
     try {
       if (!user) return;
 
@@ -247,9 +189,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     } finally {
       setStudentDataLoading(false);
     }
-  }
+  }, [user]);
 
-  async function loadParticipationInfo() {
+  const loadParticipationInfo = useCallback(async () => {
     if (!user?.$id) return;
 
     try {
@@ -266,9 +208,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     } finally {
       setFetchingParticipation(false);
     }
-  }
+  }, [user?.$id]);
 
-  async function loadPendingODRequests(studentId, rollNo) {
+  const loadPendingODRequests = useCallback(async (studentId, rollNo) => {
     if (!studentId) return;
 
     try {
@@ -290,7 +232,58 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     } catch (error) {
       console.error("Error loading pending OD requests:", error);
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormError("");
+      setIsTeamRequest(false);
+      setTeamMembers([]);
+      setTeamSearchQuery("");
+      setTeamSearchResults([]);
+      loadEvents();
+      loadStudentInfo();
+      loadParticipationInfo();
+    }
+  }, [isOpen, loadEvents, loadStudentInfo, loadParticipationInfo]);
+
+  useEffect(() => {
+    if (isOpen && user?.$id) {
+      loadPendingODRequests(user?.$id, studentData?.roll_no);
+    }
+  }, [isOpen, user?.$id, studentData, loadPendingODRequests]);
+  // Debounced team search
+  useEffect(() => {
+    if (!teamSearchQuery || teamSearchQuery.trim().length < 2) {
+      setTeamSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setTeamSearching(true);
+      try {
+        const results = await searchStudentsByRollNo(teamSearchQuery.trim(), 8);
+        // Filter out the current student and already-added team members
+        const existingIds = new Set(teamMembers.map((m) => m.$id));
+        const filtered = results.filter((s) => {
+          if (studentData && s.$id === studentData.$id) return false;
+          if (existingIds.has(s.$id)) return false;
+          // Only show students with available OD count
+          const mCount = getStudentTotalOD(s);
+          if (mCount <= 0) return false;
+          return true;
+        });
+        setTeamSearchResults(filtered);
+      } catch (err) {
+        console.error("Team search error:", err);
+        setTeamSearchResults([]);
+      } finally {
+        setTeamSearching(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [teamSearchQuery, teamMembers, studentData]);
 
   function addTeamMember(student) {
     setTeamMembers((prev) => [...prev, student]);
@@ -319,17 +312,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       }, {})
     : {};
   const odCount = studentData ? getStudentTotalOD(studentData) : 7;
-  const usesLegacyCount = studentData
-    ? !hasCategoryBreakdown(studentData)
-    : false;
   const hasODsLeft = odCount > 0;
   const selectedEventCategoryField = getEventODField(selectedEvent);
-  const selectedEventCategoryCount = studentData
-    ? getODValue(studentData, selectedEventCategoryField)
-    : 0;
-  const effectiveSelectedEventCategoryCount = usesLegacyCount
-    ? odCount
-    : selectedEventCategoryCount;
   const canSubmit =
     Boolean(studentData) &&
     participatedEvents.length > 0 &&
@@ -378,10 +362,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       );
       return;
     }
-    if (selectedEvent && effectiveSelectedEventCategoryCount <= 0) {
-      setFormError(
-        `You do not have any ${selectedEventCategoryField.replace("_", " ")} OD left for this semester.`,
-      );
+    if (!hasODsLeft) {
+      setFormError("You do not have any OD left for this semester.");
       return;
     }
 
@@ -427,7 +409,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
-      <div className="animate-in fade-in zoom-in max-h-[90vh] w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl duration-200">
+      <div className="animate-in fade-in zoom-in max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl duration-200">
         <div className="flex items-center justify-between border-b border-gray-100 p-4 sm:p-8">
           <div>
             <h2 className="text-xl font-black text-[#1E2761] sm:text-2xl">
@@ -482,7 +464,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 ⚠️ No Advisor Assigned
               </p>
               <p className="text-xs text-orange-700">
-                Your profile doesn't have a class advisor assigned. OD
+                Your profile does not have a class advisor assigned. OD
                 submission will fail. Contact your coordinator.
               </p>
             </div>
@@ -521,7 +503,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {studentData && !usesLegacyCount && (
+          {studentData && (
             <div className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-gray-700">
@@ -529,7 +511,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 </p>
                 {selectedEvent && (
                   <p className="text-xs text-gray-500">
-                    Selected event category:{" "}
+                    Selected event host type:{" "}
                     <span className="font-bold text-[#1E2761]">
                       {selectedEventCategoryField.replace("_", " ")}
                     </span>
@@ -554,7 +536,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {studentData && usesLegacyCount && (
+          {studentData && !hasCategoryBreakdown(studentData) && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-sm font-semibold text-amber-800">
                 Legacy OD balance

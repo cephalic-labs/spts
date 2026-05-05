@@ -554,7 +554,8 @@ export default function ImportPageContent({ role }) {
                       Event Name, Event Host, Event Description
                     </li>
                     <li className="flex gap-3">
-                      Event Category, Event Date, Registration Deadline, Event URL
+                      Event Category, Event Date, Registration Deadline, Event
+                      URL
                     </li>
                   </>
                 )}
