@@ -19,8 +19,7 @@ export default function ImportPageContent({ role }) {
     useEffect(() => {
         const fetchAdvisors = async () => {
             try {
-                // Fetch all faculty members who could be advisors/mentors
-                const response = await getFaculties({}, 100);
+                const response = await getFaculties({}, 500);
                 setAdvisors(response.documents || []);
             } catch (error) {
                 console.error("Failed to fetch advisors:", error);

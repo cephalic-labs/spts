@@ -21,10 +21,7 @@ export default function AssignAdminModal({ isOpen, onClose, onSuccess }) {
     async function loadFaculty() {
         try {
             setLoading(true);
-            // Fetch all faculty. Filtering for non-admins is done client-side for simplicity
-            // or we could add a "role not equal" query if supported/needed.
-            const response = await getFaculties({}, 1000);
-            // Filter out existing admins
+            const response = await getFaculties({}, 500);
             const nonAdmins = (response.documents || []).filter(f => {
                 const roles = Array.isArray(f.role) ? f.role : [f.role];
                 return !roles.includes("admin") && !roles.includes("sudo");

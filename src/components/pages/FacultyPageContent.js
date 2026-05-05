@@ -6,6 +6,7 @@ import { getFaculties, deleteFaculty, getFacultyByAppwriteId, getFacultyByEmail 
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
+import Pagination from "@/components/ui/Pagination";
 import { getAdminFacultyFromLabels } from "@/actions/auth";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
@@ -20,6 +21,9 @@ export default function FacultyPageContent({ role, filterRole }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedFaculty, setSelectedFaculty] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalFaculty, setTotalFaculty] = useState(0);
+    const itemsPerPage = 50;
 
     const needsDeptLock = !["sudo", "admin"].includes(role);
 
@@ -50,8 +54,14 @@ export default function FacultyPageContent({ role, filterRole }) {
 
     useEffect(() => {
         if (!deptResolved) return;
+        setCurrentPage(1);
         loadFaculty();
     }, [filter, deptResolved]);
+
+    useEffect(() => {
+        if (!deptResolved) return;
+        loadFaculty();
+    }, [currentPage]);
 
     async function loadFaculty() {
         try {
@@ -59,9 +69,12 @@ export default function FacultyPageContent({ role, filterRole }) {
             if (filterRole === "admin") {
                 const adminList = await getAdminFacultyFromLabels();
                 setFaculty(adminList || []);
+                setTotalFaculty(adminList?.length || 0);
             } else {
-                const response = await getFaculties(filter, 100);
+                const offset = (currentPage - 1) * itemsPerPage;
+                const response = await getFaculties(filter, itemsPerPage, offset);
                 setFaculty(response.documents || []);
+                setTotalFaculty(response.total || 0);
             }
         } catch (err) {
             setError("Failed to load faculty");
@@ -271,6 +284,14 @@ export default function FacultyPageContent({ role, filterRole }) {
                             </tbody>
                         </table>
                     </div>
+                )}
+                {faculty.length > 0 && filterRole !== "admin" && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={totalFaculty}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                    />
                 )}
             </div>
         </div>

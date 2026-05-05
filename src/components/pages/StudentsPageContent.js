@@ -6,6 +6,7 @@ import { getStudents, deleteStudent } from "@/lib/services/studentService";
 import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
+import Pagination from "@/components/ui/Pagination";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 
 export default function StudentsPageContent({ role }) {
@@ -18,6 +19,9 @@ export default function StudentsPageContent({ role }) {
     const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalStudents, setTotalStudents] = useState(0);
+    const itemsPerPage = 50;
 
     const needsDeptLock = !["sudo", "admin", "student"].includes(role);
 
@@ -48,14 +52,22 @@ export default function StudentsPageContent({ role }) {
 
     useEffect(() => {
         if (!deptResolved) return;
+        setCurrentPage(1);
         loadStudents();
     }, [filter, deptResolved]);
+
+    useEffect(() => {
+        if (!deptResolved) return;
+        loadStudents();
+    }, [currentPage]);
 
     async function loadStudents() {
         try {
             setLoading(true);
-            const response = await getStudents(filter, 100);
+            const offset = (currentPage - 1) * itemsPerPage;
+            const response = await getStudents(filter, itemsPerPage, offset);
             setStudents(response.documents || []);
+            setTotalStudents(response.total || 0);
         } catch (err) {
             setError("Failed to load students");
             console.error(err);
@@ -264,6 +276,14 @@ export default function StudentsPageContent({ role }) {
                             </tbody>
                         </table>
                     </div>
+                )}
+                {students.length > 0 && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={totalStudents}
+                        itemsPerPage={itemsPerPage}
+                        onPageChange={setCurrentPage}
+                    />
                 )}
             </div>
         </div>
