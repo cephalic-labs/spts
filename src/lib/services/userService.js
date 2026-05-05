@@ -140,7 +140,7 @@ export async function updateUserProfile(documentId, data) {
             DATABASE_ID,
             COLLECTIONS.USERS,
             documentId,
-            updateData
+            data
         );
         return {
             ...updatedUser,

@@ -2,6 +2,7 @@ import { databases } from "../appwrite";
 import { DB_CONFIG, OD_STATUS, canRoleApprove, getNextStatus } from "../dbConfig";
 import { ID, Query } from "appwrite";
 import { updateStudent } from "./studentService";
+import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
@@ -68,7 +69,7 @@ async function getStudentRecordForOD(studentAppwriteId, studentEmail) {
                 return byEmailOriginal.documents[0];
             }
         } catch (error) {
-            console.error("Error finding student by email:", error);
+            secureLog.error("Error finding student by email:", error);
         }
     }
 
@@ -146,7 +147,7 @@ async function getFacultyByFacultyId(facultyId) {
             );
             return response.documents?.[0] || null;
         } catch (searchError) {
-            console.error("Error searching faculty:", searchError);
+            secureLog.error("Error searching faculty:", searchError);
             return null;
         }
     }
@@ -214,7 +215,7 @@ export async function createODRequest(data) {
                 await updateStudent(studentRecord.$id, { appwrite_user_id: data.student_id });
                 studentRecord.appwrite_user_id = data.student_id; // Update local copy
             } catch (syncErr) {
-                console.warn("Failed to auto-sync appwrite_user_id to student profile:", syncErr);
+                secureLog.warn("Failed to auto-sync appwrite_user_id to student profile");
                 // Continue anyway, this is non-critical for request creation
             }
         }
@@ -269,7 +270,7 @@ export async function createODRequest(data) {
         );
         return odRequest;
     } catch (error) {
-        console.error("Error creating OD request:", error);
+        secureLog.error("Error creating OD request:", error);
         throw error;
     }
 }
@@ -301,7 +302,7 @@ export async function getODRequestsByStatus(status, limit = 50, filters = {}) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting OD requests by status:", error);
+        secureLog.error("Error getting OD requests by status:", error);
         throw error;
     }
 }
@@ -363,12 +364,12 @@ export async function getStudentODRequests(studentId, limit = 100, rollNo = null
                 };
             }
         } catch (teamError) {
-            console.warn("Failed to fetch team-based OD requests:", teamError);
+            secureLog.warn("Failed to fetch team-based OD requests");
         }
 
         return responseData;
     } catch (error) {
-        console.error("Error getting student OD requests:", error);
+        secureLog.error("Error getting student OD requests:", error);
         throw error;
     }
 }
@@ -385,13 +386,15 @@ export async function getODRequestById(odId) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting OD request:", error);
+        secureLog.error("Error getting OD request:", error);
         throw error;
     }
 }
 
 /**
  * Approve OD request - moves to next status
+ * @deprecated Use approveODRequestSecure from @/actions/odApproval instead for client-side calls
+ * This function should only be called from server-side code where approver identity is already validated
  */
 export async function approveODRequest(odId, role, userId, remarks = "", approverId = null) {
     try {
@@ -478,12 +481,12 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
                                 await updateStudent(teamMember.$id, { od_count: newMemberCount });
                             }
                         } catch (teamErr) {
-                            console.warn(`Failed to decrement OD count for team member ${rollNo}:`, teamErr);
+                            secureLog.warn("Failed to decrement OD count for team member");
                         }
                     }));
                 }
             } catch (odCountErr) {
-                console.warn("Failed to decrement student OD count:", odCountErr);
+                secureLog.warn("Failed to decrement student OD count");
                 // Non-critical: don't block the approval
             }
         }
@@ -493,13 +496,15 @@ export async function approveODRequest(odId, role, userId, remarks = "", approve
 
         return updatedOD;
     } catch (error) {
-        console.error("Error approving OD request:", error);
+        secureLog.error("Error approving OD request:", error);
         throw error;
     }
 }
 
 /**
  * Reject OD request
+ * @deprecated Use rejectODRequestSecure from @/actions/odApproval instead for client-side calls
+ * This function should only be called from server-side code where approver identity is already validated
  */
 export async function rejectODRequest(odId, role, userId, remarks = "", approverId = null) {
     try {
@@ -558,7 +563,7 @@ export async function rejectODRequest(odId, role, userId, remarks = "", approver
 
         return updatedOD;
     } catch (error) {
-        console.error("Error rejecting OD request:", error);
+        secureLog.error("Error rejecting OD request:", error);
         throw error;
     }
 }
@@ -605,7 +610,7 @@ export async function cancelODRequest(odId, studentUserId, remarks = "Cancelled 
 
         return updatedOD;
     } catch (error) {
-        console.error("Error cancelling OD request:", error);
+        secureLog.error("Error cancelling OD request:", error);
         throw error;
     }
 }
@@ -631,7 +636,7 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
             }
         );
     } catch (error) {
-        console.error("Error logging approval:", error);
+        secureLog.error("Error logging approval:", error);
     }
 }
 
@@ -650,7 +655,7 @@ export async function getApprovalLogsByODId(odId) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting approval logs:", error);
+        secureLog.error("Error getting approval logs:", error);
         throw error;
     }
 }
@@ -670,7 +675,7 @@ export async function getRecentApprovalLogs(limit = 20) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting recent approval logs:", error);
+        secureLog.error("Error getting recent approval logs:", error);
         throw error;
     }
 }
@@ -696,7 +701,7 @@ export async function getAllODRequests(limit = 100, studentIds = []) {
         );
         return response;
     } catch (error) {
-        console.error("Error getting all OD requests:", error);
+        secureLog.error("Error getting all OD requests:", error);
         throw error;
     }
 }
@@ -740,7 +745,7 @@ export async function getODStats(filter = {}) {
                     });
                 }
             } catch (teamErr) {
-                console.warn("Failed to fetch team stats:", teamErr);
+                secureLog.warn("Failed to fetch team stats");
             }
         }
 
@@ -755,7 +760,7 @@ export async function getODStats(filter = {}) {
 
         return stats;
     } catch (error) {
-        console.error("Error getting OD stats:", error);
+        secureLog.error("Error getting OD stats:", error);
         return { total: 0, pending: 0, approved: 0, rejected: 0 };
     }
 }
