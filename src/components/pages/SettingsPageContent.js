@@ -1,132 +1,497 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { updateUserProfile } from "@/lib/services/userService";
 import { account } from "@/lib/appwrite";
+import {
+  ADMIN_ROLES,
+  ADMIN_SUDO_COORDINATOR_ROLES,
+  OD_CATEGORY_FIELDS,
+} from "@/lib/dbConfig";
+import {
+  getODQuotaPolicy,
+  saveODQuotaPolicy,
+} from "@/lib/services/odQuotaService";
+import {
+  deleteNIRFCollege,
+  getNIRFColleges,
+} from "@/lib/services/nirfCollegeService";
+import { getStudentByRollNo } from "@/lib/services/studentService";
+import { resetStudentODCountsAtomic } from "@/actions/odCountManager";
+import NIRFCollegeModal from "./NIRFCollegeModal";
+
+const emptyQuotaForm = OD_CATEGORY_FIELDS.reduce((accumulator, field) => {
+  accumulator[field] = "";
+  return accumulator;
+}, {});
 
 export default function SettingsPageContent({ role }) {
-    const { user, refreshUser } = useAuth();
-    const [name, setName] = useState(user?.name || "");
-    const [saving, setSaving] = useState(false);
-    const [message, setMessage] = useState(null);
+  const { user, refreshUser } = useAuth();
+  const [name, setName] = useState(user?.name || "");
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState(null);
 
-    const handleUpdate = async () => {
-        try {
-            setSaving(true);
-            setMessage(null);
+  const [quotaForm, setQuotaForm] = useState(emptyQuotaForm);
+  const [quotaLoading, setQuotaLoading] = useState(false);
+  const [quotaSaving, setQuotaSaving] = useState(false);
+  const [quotaMessage, setQuotaMessage] = useState(null);
 
-            // Update Appwrite Auth name
-            await account.updateName(name);
+  const [resetRollNo, setResetRollNo] = useState("");
+  const [resetStudent, setResetStudent] = useState(null);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState(null);
 
-            // Update database record
-            await updateUserProfile(user.dbId, {
-                user_name: name
-            });
+  const [nirfColleges, setNirfColleges] = useState([]);
+  const [nirfLoading, setNirfLoading] = useState(false);
+  const [nirfMessage, setNirfMessage] = useState(null);
+  const [nirfModalOpen, setNirfModalOpen] = useState(false);
+  const [editingNirfCollege, setEditingNirfCollege] = useState(null);
 
-            await refreshUser();
-            setMessage({ type: 'success', text: 'Profile updated successfully!' });
-        } catch (error) {
-            console.error("Error updating profile:", error);
-            setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
-        } finally {
-            setSaving(false);
-        }
-    };
+  const canEditQuota = ADMIN_ROLES.includes(role);
+  const canManageNirf = ADMIN_SUDO_COORDINATOR_ROLES.includes(role);
 
-    return (
-        <div className="w-full max-w-xl mx-auto">
-            <div className="bg-white rounded-[32px] p-6 md:p-10 shadow-sm border border-gray-100 flex flex-col items-center gap-8 transition-all hover:shadow-md">
-
-                {/* Profile Section */}
-                <div className="flex flex-col items-center gap-4 w-full border-b border-gray-50 pb-8">
-                    <div className="relative group">
-                        <div className="w-28 h-28 rounded-full overflow-hidden border-[6px] border-white shadow-xl shadow-black/5">
-                            <img
-                                src={user?.profile_url || "https://randomuser.me/api/portraits/thumb/men/93.jpg"}
-                                alt="Profile"
-                                className="w-full h-full object-cover transform transition-transform group-hover:scale-110 duration-700 ease-out"
-                            />
-                        </div>
-                        <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 cursor-pointer backdrop-blur-[2px]">
-                            <svg className="w-8 h-8 text-white translate-y-2 group-hover:translate-y-0 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col items-center gap-2 text-center">
-                        <h2 className="text-2xl font-black text-[#1E2761] uppercase tracking-tight leading-none">{user?.name}</h2>
-                        <div className="flex items-center gap-2 justify-center">
-                            <span className="bg-[#1E2761] text-white text-[10px] font-bold px-2.5 py-1 rounded-[6px] w-fit uppercase tracking-wider shadow-sm shadow-[#1E2761]/20">
-                                {role}
-                            </span>
-                            <span className="text-gray-400 text-xs font-medium tracking-wide break-all text-center">{user?.email}</span>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Form Inputs & Action */}
-                <div className="w-full flex flex-col gap-6">
-
-                    {/* Display Name Input */}
-                    <div className="space-y-2 w-full">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Display Name</label>
-                        <div className="relative group">
-                            <input
-                                type="text"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 text-sm font-bold text-[#1E2761] focus:outline-none focus:ring-4 focus:ring-[#1E2761]/5 focus:border-[#1E2761] transition-all placeholder:font-normal placeholder:text-gray-300 shadow-sm group-hover:border-gray-300"
-                                placeholder="Enter display name"
-                            />
-                        </div>
-                        <p className="text-[10px] text-gray-400 leading-tight pl-1">This name will be displayed across your profile and in the system.</p>
-                    </div>
-
-                    {/* Email Input */}
-                    <div className="space-y-2 w-full">
-                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Email Address</label>
-                        <div className="bg-gray-50/80 border border-gray-100 rounded-2xl px-5 py-4 text-sm font-medium text-gray-400 cursor-not-allowed truncate select-none">
-                            {user?.email}
-                        </div>
-                        <p className="text-[10px] text-gray-400 leading-tight pl-1">Email address cannot be changed.</p>
-                    </div>
-
-                    {/* Save Button */}
-                    {name !== user?.name && (
-                        <div className="pt-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <button
-                                onClick={handleUpdate}
-                                disabled={saving || !name}
-                                className="w-full h-[56px] bg-[#1E2761] text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-[#1E2761]/20 hover:bg-[#2d3a7d] hover:shadow-xl hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {saving ? (
-                                    <span className="flex items-center justify-center gap-2">
-                                        <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                        Saving...
-                                    </span>
-                                ) : "Save Changes"}
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </div>
-            {message && (
-                <div className={`mt-6 p-4 rounded-2xl text-center text-sm font-bold flex items-center justify-center gap-3 shadow-sm border ${message.type === 'success' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-500 border-red-100'
-                    } animate-in fade-in slide-in-from-top-4 duration-500`}>
-                    {message.type === 'success' && (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                    )}
-                    {message.text}
-                </div>
-            )}
-        </div>
+  const quotaTotal = useMemo(() => {
+    return OD_CATEGORY_FIELDS.reduce(
+      (total, field) => total + (parseInt(quotaForm[field] || 0, 10) || 0),
+      0,
     );
+  }, [quotaForm]);
+
+  useEffect(() => {
+    async function loadAdminData() {
+      if (canEditQuota) {
+        try {
+          setQuotaLoading(true);
+          const policy = await getODQuotaPolicy();
+          if (policy) {
+            const nextForm = {};
+            for (const field of OD_CATEGORY_FIELDS) {
+              nextForm[field] =
+                policy[field] !== undefined && policy[field] !== null
+                  ? String(policy[field])
+                  : "";
+            }
+            setQuotaForm(nextForm);
+          }
+        } catch (error) {
+          setQuotaMessage({
+            type: "error",
+            text: "Failed to load OD quota policy.",
+          });
+        } finally {
+          setQuotaLoading(false);
+        }
+      }
+
+      if (canManageNirf) {
+        try {
+          setNirfLoading(true);
+          const response = await getNIRFColleges(100, 0);
+          setNirfColleges(response.documents || []);
+        } catch (error) {
+          setNirfMessage({
+            type: "error",
+            text: "Failed to load NIRF college list.",
+          });
+        } finally {
+          setNirfLoading(false);
+        }
+      }
+    }
+
+    loadAdminData();
+  }, [canEditQuota, canManageNirf]);
+
+  const handleUpdate = async () => {
+    try {
+      setSaving(true);
+      setMessage(null);
+
+      await account.updateName(name);
+      await updateUserProfile(user.dbId, { user_name: name });
+      await refreshUser();
+      setMessage({ type: "success", text: "Profile updated successfully!" });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setMessage({
+        type: "error",
+        text: "Failed to update profile. Please try again.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleQuotaSave = async () => {
+    try {
+      setQuotaSaving(true);
+      setQuotaMessage(null);
+      await saveODQuotaPolicy(quotaForm);
+      setQuotaMessage({ type: "success", text: "OD quota policy saved." });
+    } catch (error) {
+      setQuotaMessage({
+        type: "error",
+        text: error?.message || "Failed to save OD quota policy.",
+      });
+    } finally {
+      setQuotaSaving(false);
+    }
+  };
+
+  const refreshNIRFColleges = async () => {
+    const response = await getNIRFColleges(100, 0);
+    setNirfColleges(response.documents || []);
+  };
+
+  const handleResetStudent = async () => {
+    try {
+      setResetLoading(true);
+      setResetMessage(null);
+      setResetStudent(null);
+
+      const student = await getStudentByRollNo(resetRollNo);
+      if (!student) {
+        setResetMessage({
+          type: "error",
+          text: "Student not found for that roll number.",
+        });
+        return;
+      }
+
+      await resetStudentODCountsAtomic(student.$id, role);
+      setResetStudent(student);
+      setResetMessage({
+        type: "success",
+        text: `OD counts reset for ${student.name}.`,
+      });
+    } catch (error) {
+      setResetMessage({
+        type: "error",
+        text: error?.message || "Failed to reset OD counts.",
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleDeleteNIRFCollege = async (collegeId) => {
+    if (!window.confirm("Remove this college from the NIRF list?")) return;
+
+    try {
+      setNirfMessage(null);
+      await deleteNIRFCollege(collegeId);
+      await refreshNIRFColleges();
+      setNirfMessage({ type: "success", text: "NIRF college removed." });
+    } catch (error) {
+      setNirfMessage({
+        type: "error",
+        text: error?.message || "Failed to remove NIRF college.",
+      });
+    }
+  };
+
+  const handleCloseCollegeModal = () => {
+    setNirfModalOpen(false);
+    setEditingNirfCollege(null);
+  };
+
+  const handleCollegeSaved = async () => {
+    await refreshNIRFColleges();
+    setNirfMessage({ type: "success", text: "NIRF college saved." });
+    handleCloseCollegeModal();
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-6">
+      <div className="flex flex-col items-center gap-8 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md md:p-10">
+        <div className="flex w-full flex-col items-center gap-4 border-b border-gray-50 pb-8">
+          <div className="group relative">
+            <div className="h-28 w-28 overflow-hidden rounded-full border-[6px] border-white shadow-xl shadow-black/5">
+              <img
+                src={
+                  user?.profile_url ||
+                  "https://randomuser.me/api/portraits/thumb/men/93.jpg"
+                }
+                alt="Profile"
+                className="h-full w-full transform object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-2 text-center">
+            <h2 className="text-2xl leading-none font-black tracking-tight text-[#1E2761] uppercase">
+              {user?.name}
+            </h2>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <span className="w-fit rounded-[6px] bg-[#1E2761] px-2.5 py-1 text-[10px] font-bold tracking-wider text-white uppercase shadow-sm shadow-[#1E2761]/20">
+                {role}
+              </span>
+              <span className="text-center text-xs font-medium tracking-wide break-all text-gray-400">
+                {user?.email}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-6">
+          <div className="w-full space-y-2">
+            <label className="block pl-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+              Display Name
+            </label>
+            <div className="group relative">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full rounded-2xl border border-gray-200 bg-white px-5 py-4 text-sm font-bold text-[#1E2761] shadow-sm transition-all group-hover:border-gray-300 placeholder:font-normal placeholder:text-gray-300 focus:border-[#1E2761] focus:ring-4 focus:ring-[#1E2761]/5 focus:outline-none"
+                placeholder="Enter display name"
+              />
+            </div>
+            <p className="pl-1 text-[10px] leading-tight text-gray-400">
+              This name will be displayed across your profile and in the system.
+            </p>
+          </div>
+
+          <div className="w-full space-y-2">
+            <label className="block pl-1 text-[10px] font-black tracking-widest text-gray-400 uppercase">
+              Email Address
+            </label>
+            <div className="cursor-not-allowed truncate rounded-2xl border border-gray-100 bg-gray-50/80 px-5 py-4 text-sm font-medium text-gray-400 select-none">
+              {user?.email}
+            </div>
+            <p className="pl-1 text-[10px] leading-tight text-gray-400">
+              Email address cannot be changed.
+            </p>
+          </div>
+
+          {name !== user?.name && (
+            <div className="animate-in fade-in slide-in-from-bottom-2 pt-2 duration-300">
+              <button
+                onClick={handleUpdate}
+                disabled={saving || !name}
+                className="h-[56px] w-full rounded-xl bg-[#1E2761] text-xs font-black tracking-widest text-white uppercase shadow-lg shadow-[#1E2761]/20 transition-all duration-300 hover:-translate-y-0.5 hover:scale-[1.01] hover:bg-[#2d3a7d] hover:shadow-xl active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {message && (
+        <div
+          className={`flex items-center justify-center gap-3 rounded-2xl border p-4 text-center text-sm font-bold shadow-sm ${message.type === "success" ? "border-emerald-100 bg-emerald-50 text-emerald-600" : "border-red-100 bg-red-50 text-red-500"}`}
+        >
+          {message.text}
+        </div>
+      )}
+
+      {canEditQuota && (
+        <div className="space-y-6 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm md:p-8">
+          <div>
+            <h3 className="text-xl font-black text-[#1E2761]">
+              OD Quota Policy
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Edit the live OD quota values stored in{" "}
+              <span className="font-semibold">od_quota</span>.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {OD_CATEGORY_FIELDS.map((field) => (
+              <div key={field} className="space-y-2">
+                <label className="block text-xs font-black tracking-widest text-gray-400 uppercase">
+                  {field.replace("_", " ")}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 font-medium focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
+                  value={quotaForm[field]}
+                  onChange={(e) =>
+                    setQuotaForm({ ...quotaForm, [field]: e.target.value })
+                  }
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="text-sm text-gray-500">
+                Total default OD balance:{" "}
+                <span className="font-bold text-[#1E2761]">{quotaTotal}</span>
+              </p>
+              <p className="text-xs text-gray-400">
+                This total is applied manually when resetting a student.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleQuotaSave}
+              disabled={quotaSaving || quotaLoading}
+              className="rounded-xl bg-[#1E2761] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2d3a7d] disabled:opacity-50"
+            >
+              {quotaSaving ? "Saving..." : "Save Quota Policy"}
+            </button>
+          </div>
+
+          {quotaMessage && (
+            <div
+              className={`rounded-xl p-3 text-sm font-semibold ${quotaMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+            >
+              {quotaMessage.text}
+            </div>
+          )}
+        </div>
+      )}
+
+      {ADMIN_ROLES.includes(role) && (
+        <div className="space-y-6 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm md:p-8">
+          <div>
+            <h3 className="text-xl font-black text-[#1E2761]">
+              Manual OD Reset
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Reset a student’s OD counts to the current policy values.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 items-end gap-4 sm:grid-cols-[1fr_auto]">
+            <div className="space-y-2">
+              <label className="block text-xs font-black tracking-widest text-gray-400 uppercase">
+                Student Roll Number
+              </label>
+              <input
+                type="text"
+                value={resetRollNo}
+                onChange={(e) => setResetRollNo(e.target.value)}
+                className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 font-medium focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
+                placeholder="Enter exact roll number"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleResetStudent}
+              disabled={resetLoading || !resetRollNo.trim()}
+              className="rounded-xl bg-amber-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
+            >
+              {resetLoading ? "Resetting..." : "Reset OD"}
+            </button>
+          </div>
+
+          {resetStudent && (
+            <div className="rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              Reset applied to{" "}
+              <span className="font-bold text-[#1E2761]">
+                {resetStudent.name}
+              </span>{" "}
+              ({resetStudent.roll_no}).
+            </div>
+          )}
+
+          {resetMessage && (
+            <div
+              className={`rounded-xl p-3 text-sm font-semibold ${resetMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+            >
+              {resetMessage.text}
+            </div>
+          )}
+        </div>
+      )}
+
+      {canManageNirf && (
+        <div className="space-y-6 rounded-[32px] border border-gray-100 bg-white p-6 shadow-sm md:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-black text-[#1E2761]">
+                NIRF College List
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Manage the searchable colleges used for the NIRF host type.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditingNirfCollege(null);
+                setNirfModalOpen(true);
+              }}
+              className="rounded-xl bg-[#1E2761] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2d3a7d]"
+            >
+              Add College
+            </button>
+          </div>
+
+          {nirfMessage && (
+            <div
+              className={`rounded-xl p-3 text-sm font-semibold ${nirfMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+            >
+              {nirfMessage.text}
+            </div>
+          )}
+
+          {nirfLoading ? (
+            <div className="text-sm text-gray-500">Loading colleges...</div>
+          ) : nirfColleges.length === 0 ? (
+            <div className="text-sm text-gray-500">
+              No colleges in the NIRF list yet.
+            </div>
+          ) : (
+            <div className="overflow-x-auto rounded-2xl border border-gray-100">
+              <table className="w-full min-w-[640px]">
+                <thead className="bg-gray-50 text-xs tracking-widest text-gray-400 uppercase">
+                  <tr>
+                    <th className="px-4 py-3 text-left">College</th>
+                    <th className="px-4 py-3 text-left">Rank</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {nirfColleges.map((college) => (
+                    <tr key={college.$id} className="border-t border-gray-50">
+                      <td className="px-4 py-3 text-sm font-semibold text-gray-700">
+                        {college.college_name}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-500">
+                        #{college.rank}
+                      </td>
+                      <td className="space-x-3 px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingNirfCollege(college);
+                            setNirfModalOpen(true);
+                          }}
+                          className="text-xs font-black tracking-widest text-[#1E2761] uppercase"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteNIRFCollege(college.$id)}
+                          className="text-xs font-black tracking-widest text-red-600 uppercase"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      <NIRFCollegeModal
+        isOpen={nirfModalOpen}
+        onClose={handleCloseCollegeModal}
+        onSuccess={handleCollegeSaved}
+        initialData={editingNirfCollege}
+      />
+    </div>
+  );
 }

@@ -23,6 +23,7 @@ import {
   getStudentByAppwriteUserId,
   getStudentByEmail,
 } from "@/lib/services/studentService";
+import { OD_CATEGORY_FIELDS } from "@/lib/dbConfig";
 import { format, subDays, parseISO, startOfDay } from "date-fns";
 import EventDetailsModal from "@/components/pages/EventDetailsModal";
 import StudentDeadlineLists from "@/components/dashboards/StudentDeadlineLists";
@@ -57,6 +58,26 @@ ChartJS.register(
   Filler,
 );
 
+function getODValue(student, field) {
+  const value = student?.[field];
+  if (value === undefined || value === null || value === "") return 0;
+  const parsed = parseInt(value, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function getStudentTotalOD(student) {
+  const categoryTotal = OD_CATEGORY_FIELDS.reduce(
+    (total, field) => total + getODValue(student, field),
+    0,
+  );
+  if (categoryTotal > 0) return categoryTotal;
+  const legacyCount =
+    student?.od_count !== undefined && student?.od_count !== null
+      ? parseInt(student.od_count, 10)
+      : 7;
+  return Number.isNaN(legacyCount) ? 7 : legacyCount;
+}
+
 export default function DefaultDashboardContent({ role }) {
   const { user } = useAuth();
   const displayName = getRoleDisplayName(role);
@@ -74,6 +95,7 @@ export default function DefaultDashboardContent({ role }) {
     stacked: { labels: [], accepted: [], rejected: [], pending: [] },
   });
   const [odCount, setOdCount] = useState(role === "student" ? 7 : null);
+  const [odBreakdown, setOdBreakdown] = useState({});
   const [studentEvents, setStudentEvents] = useState([]);
   const [participationByEvent, setParticipationByEvent] = useState({});
   const [savingParticipationFor, setSavingParticipationFor] = useState(null);
@@ -107,11 +129,16 @@ export default function DefaultDashboardContent({ role }) {
               student = await getStudentByAppwriteUserId(user.$id);
             }
             if (student) {
-              const count =
-                student.od_count !== undefined && student.od_count !== null
-                  ? student.od_count
-                  : 7;
+              const count = getStudentTotalOD(student);
               setOdCount(count);
+              const breakdown = OD_CATEGORY_FIELDS.reduce(
+                (accumulator, field) => {
+                  accumulator[field] = getODValue(student, field);
+                  return accumulator;
+                },
+                {},
+              );
+              setOdBreakdown(breakdown);
 
               const studentEventsResponse = await getEvents(50);
               setStudentEvents(studentEventsResponse.documents || []);
@@ -422,6 +449,21 @@ export default function DefaultDashboardContent({ role }) {
                 <div className="text-2xl font-black">
                   {odCount !== null ? odCount : "—"}
                 </div>
+                <div className="mt-3 grid grid-cols-2 gap-1 text-[10px] text-white/80 sm:grid-cols-5">
+                  {OD_CATEGORY_FIELDS.map((field) => (
+                    <div
+                      key={field}
+                      className="rounded-lg bg-white/10 px-2 py-1 text-center"
+                    >
+                      <div className="font-semibold tracking-widest uppercase">
+                        {field.replace("_", " ")}
+                      </div>
+                      <div className="text-sm font-black">
+                        {odBreakdown[field] ?? 0}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div className="rounded-xl border border-white/20 bg-white/10 p-4 text-white backdrop-blur-md">
                 <div className="mb-1 text-xs font-semibold uppercase opacity-70">
@@ -682,6 +724,21 @@ export default function DefaultDashboardContent({ role }) {
                 </div>
                 <div className="text-2xl font-black">
                   {odCount !== null ? odCount : "—"}
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-1 text-[10px] text-white/80 sm:grid-cols-5">
+                  {OD_CATEGORY_FIELDS.map((field) => (
+                    <div
+                      key={field}
+                      className="rounded-lg bg-white/10 px-2 py-1 text-center"
+                    >
+                      <div className="font-semibold tracking-widest uppercase">
+                        {field.replace("_", " ")}
+                      </div>
+                      <div className="text-sm font-black">
+                        {odBreakdown[field] ?? 0}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
