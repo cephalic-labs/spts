@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { getFacultyByAppwriteId, getFacultyByEmail } from "../services/facultyService";
+import { DEPT_FREE_ROLES } from "../dbConfig";
 
-export function useDepartmentResolver(role, user, lockedRoles = ["sudo", "admin", "student"]) {
+export function useDepartmentResolver(role, user, lockedRoles = DEPT_FREE_ROLES) {
   const [userDepartment, setUserDepartment] = useState(null);
   const [deptResolved, setDeptResolved] = useState(lockedRoles.includes(role));
   const needsDeptLock = !lockedRoles.includes(role);

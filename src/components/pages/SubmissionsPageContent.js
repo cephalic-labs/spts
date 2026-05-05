@@ -5,12 +5,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { getStudentODRequests, getAllODRequests, cancelODRequest } from "@/lib/services/odRequestService";
 import { getEventsByIds } from "@/lib/services/eventService";
 import { Icons } from "@/components/layout";
-import { OD_STATUS } from "@/lib/dbConfig";
+import { OD_STATUS, DEPARTMENTS_LIST, ADMIN_ROLES } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
 import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail, getStudentByAppwriteUserId } from "@/lib/services/studentService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
-import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
 import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 
 const statusColors = {
@@ -287,7 +286,7 @@ export default function SubmissionsPageContent({ role }) {
 
             {/* Filter Section */}
             {/* sudo/admin: full interactive department filter */}
-            {["sudo", "admin"].includes(role) && (
+            {ADMIN_ROLES.includes(role) && (
                 <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
                     <div className="relative w-full sm:w-64">
                         <select

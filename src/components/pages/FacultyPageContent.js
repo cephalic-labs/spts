@@ -8,7 +8,7 @@ import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
 import Pagination from "@/components/ui/Pagination";
 import { getAdminFacultyFromLabels } from "@/actions/auth";
-import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { DEPARTMENTS_LIST, ADMIN_HOD_ROLES } from "@/lib/dbConfig";
 import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 import { usePaginatedData } from "@/lib/hooks/usePaginatedData";
 
@@ -66,7 +66,7 @@ export default function FacultyPageContent({ role, filterRole }) {
         }
     };
 
-    const canManageFaculty = ["sudo", "admin", "hod"].includes(role);
+    const canManageFaculty = ADMIN_HOD_ROLES.includes(role);
 
     if (loading && faculty.length === 0) {
         return (

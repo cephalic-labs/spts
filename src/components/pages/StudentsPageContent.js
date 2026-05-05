@@ -6,7 +6,7 @@ import { getStudents, deleteStudent } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
 import Pagination from "@/components/ui/Pagination";
-import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { DEPARTMENTS_LIST, ADMIN_ADVISOR_ROLES, ADMIN_HOD_ADVISOR_ROLES } from "@/lib/dbConfig";
 import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 import { usePaginatedData } from "@/lib/hooks/usePaginatedData";
 
@@ -60,7 +60,7 @@ export default function StudentsPageContent({ role }) {
         }
     };
 
-    const canManageStudents = ["sudo", "admin", "advisor"].includes(role);
+    const canManageStudents = ADMIN_ADVISOR_ROLES.includes(role);
 
     if (loading && students.length === 0) {
         return (
@@ -216,7 +216,7 @@ export default function StudentsPageContent({ role }) {
                                                     >
                                                         Edit
                                                     </button>
-                                                    {["sudo", "admin", "hod", "advisor"].includes(role) && (
+                                                    {ADMIN_HOD_ADVISOR_ROLES.includes(role) && (
                                                         <button
                                                             onClick={() => handleDelete(student.$id)}
                                                             className="text-red-500 hover:underline text-xs font-black uppercase tracking-widest"

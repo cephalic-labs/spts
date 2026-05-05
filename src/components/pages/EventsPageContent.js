@@ -14,7 +14,7 @@ import {
 } from "@/lib/services/eventParticipationService";
 import { getStudentByAppwriteUserId } from "@/lib/services/studentService";
 import { getStudentODRequests } from "@/lib/services/odRequestService";
-import { OD_STATUS } from "@/lib/dbConfig";
+import { OD_STATUS, ADMIN_ROLES, ADMIN_COORDINATOR_ROLES } from "@/lib/dbConfig";
 import { Icons } from "@/components/layout";
 import CreateEventModal from "./CreateEventModal";
 import Link from "next/link";
@@ -239,8 +239,8 @@ export default function EventsPageContent({ role }) {
         }
     };
 
-    const canCreateEvent = ["sudo", "admin", "coordinator"].includes(role);
-    const canManageEvents = ["sudo", "admin"].includes(role);
+    const canCreateEvent = ADMIN_COORDINATOR_ROLES.includes(role);
+    const canManageEvents = ADMIN_ROLES.includes(role);
     const canSelfReportParticipation = role === "student" && Boolean(user?.$id);
 
     if (loading) {

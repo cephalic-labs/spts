@@ -36,6 +36,14 @@ export const APPROVAL_ROLES = ["mentor", "advisor", "coordinator", "hod"];
 // Valid roles for the entire system
 export const VALID_ROLES = ["sudo", "admin", "student", "mentor", "advisor", "coordinator", "hod", "principal"];
 
+// Role groups for common permission checks
+export const ADMIN_ROLES = ["sudo", "admin"];
+export const DEPT_FREE_ROLES = ["sudo", "admin", "student"];
+export const ADMIN_HOD_ROLES = ["sudo", "admin", "hod"];
+export const ADMIN_ADVISOR_ROLES = ["sudo", "admin", "advisor"];
+export const ADMIN_HOD_ADVISOR_ROLES = ["sudo", "admin", "hod", "advisor"];
+export const ADMIN_COORDINATOR_ROLES = ["sudo", "admin", "coordinator"];
+
 // Get next status after approval
 export function getNextStatus(currentStatus) {
     const statusFlow = {

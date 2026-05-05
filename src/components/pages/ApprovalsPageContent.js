@@ -9,7 +9,7 @@ import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo, getStudentsByAppwriteUserIds } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
-import { OD_STATUS } from "@/lib/dbConfig";
+import { OD_STATUS, APPROVAL_ROLES } from "@/lib/dbConfig";
 import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 
 const roleToStatus = {
@@ -367,7 +367,7 @@ export default function ApprovalsPageContent({ role }) {
         );
     }
 
-    const canApprove = ["mentor", "advisor", "coordinator", "hod"].includes(role);
+    const canApprove = APPROVAL_ROLES.includes(role);
 
     return (
         <div>
