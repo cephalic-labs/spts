@@ -319,7 +319,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       }, {})
     : {};
   const odCount = studentData ? getStudentTotalOD(studentData) : 7;
-  const usesLegacyCount = studentData ? !hasCategoryBreakdown(studentData) : false;
+  const usesLegacyCount = studentData
+    ? !hasCategoryBreakdown(studentData)
+    : false;
   const hasODsLeft = odCount > 0;
   const selectedEventCategoryField = getEventODField(selectedEvent);
   const selectedEventCategoryCount = studentData
@@ -558,7 +560,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 Legacy OD balance
               </p>
               <p className="mt-1 text-xs text-amber-700">
-                This student record still uses the old single OD count. Current available OD: <span className="font-bold">{odCount}</span>.
+                This student record still uses the old single OD count. Current
+                available OD: <span className="font-bold">{odCount}</span>.
               </p>
             </div>
           )}

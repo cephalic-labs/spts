@@ -71,7 +71,8 @@ function getStudentTotalOD(studentRecord) {
 
 function hasCategoryQuotaFields(studentRecord) {
   return OD_CATEGORY_FIELDS.some(
-    (field) => studentRecord?.[field] !== undefined && studentRecord?.[field] !== null,
+    (field) =>
+      studentRecord?.[field] !== undefined && studentRecord?.[field] !== null,
   );
 }
 
