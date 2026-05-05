@@ -49,6 +49,7 @@ export default function SubmissionsPageContent({ role }) {
     const [filterSection, setFilterSection] = useState("");
     const [studentMap, setStudentMap] = useState({});
     const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const { userDepartment, deptResolved, needsDeptLock } = useDepartmentResolver(role, user);
 
@@ -245,6 +246,12 @@ export default function SubmissionsPageContent({ role }) {
     }
 
     const filteredSubmissions = submissions.filter(sub => {
+        // Event Name Search
+        if (searchQuery) {
+            const eventName = getEventName(sub).toLowerCase();
+            if (!eventName.includes(searchQuery.toLowerCase())) return false;
+        }
+
         if (role === 'student') return true;
         const student = studentMap[sub.student_id];
         // Exclude submissions where student profile is missing or unresolved
@@ -290,89 +297,139 @@ export default function SubmissionsPageContent({ role }) {
                 )}
             </div>
 
-            {/* Filter Section */}
-            {/* sudo/admin: full interactive department filter */}
-            {ADMIN_ROLES.includes(role) && (
-                <div className="mb-6 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="relative w-full sm:w-64">
-                        <select
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
-                            value={filterDept}
-                            onChange={(e) => setFilterDept(e.target.value)}
-                        >
-                            <option value="">All Departments</option>
-                            {DEPARTMENTS_LIST.map(dept => (
-                                <option key={dept} value={dept}>{dept}</option>
-                            ))}
-                        </select>
+            {/* Filter & Search Section */}
+            <div className="mb-6 space-y-4">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    {/* Search Bar - Visible to everyone */}
+                    <div className="relative w-full sm:flex-1">
+                        <input
+                            type="text"
+                            placeholder="Search by event name..."
+                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 transition-all shadow-sm"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
                         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </div>
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
                     </div>
 
-                    <div className="relative w-full sm:w-48">
-                        <select
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
-                            value={filterSection}
-                            onChange={(e) => setFilterSection(e.target.value)}
-                        >
-                            <option value="">All Sections</option>
-                            <option value="A">Section A</option>
-                            <option value="B">Section B</option>
-                            <option value="C">Section C</option>
-                            <option value="D">Section D</option>
-                        </select>
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
+                    {/* sudo/admin: full interactive department filter */}
+                    {ADMIN_ROLES.includes(role) && (
+                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                            <div className="relative w-full sm:w-64">
+                                <select
+                                    className="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none shadow-sm"
+                                    value={filterDept}
+                                    onChange={(e) => setFilterDept(e.target.value)}
+                                >
+                                    <option value="">All Departments</option>
+                                    {DEPARTMENTS_LIST.map(dept => (
+                                        <option key={dept} value={dept}>{dept}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                    </svg>
+                                </div>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div className="relative w-full sm:w-48">
+                                <select
+                                    className="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none shadow-sm"
+                                    value={filterSection}
+                                    onChange={(e) => setFilterSection(e.target.value)}
+                                >
+                                    <option value="">All Sections</option>
+                                    <option value="A">Section A</option>
+                                    <option value="B">Section B</option>
+                                    <option value="C">Section C</option>
+                                    <option value="D">Section D</option>
+                                </select>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    )}
 
-                    {(filterDept || filterSection) && (
+                    {/* Non-sudo/admin faculty roles: show a read-only department badge + section filter */}
+                    {needsDeptLock && (
+                        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+                            {userDepartment && (
+                                <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-xl text-sm font-bold">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                    </svg>
+                                    {userDepartment}
+                                </span>
+                            )}
+
+                            <div className="relative w-full sm:w-48">
+                                <select
+                                    className="w-full pl-10 pr-10 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none shadow-sm"
+                                    value={filterSection}
+                                    onChange={(e) => setFilterSection(e.target.value)}
+                                >
+                                    <option value="">All Sections</option>
+                                    <option value="A">Section A</option>
+                                    <option value="B">Section B</option>
+                                    <option value="C">Section C</option>
+                                    <option value="D">Section D</option>
+                                </select>
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                    </svg>
+                                </div>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {(searchQuery || filterDept || filterSection) && (
                         <button
-                            onClick={() => { setFilterDept(""); setFilterSection(""); }}
-                            className="text-xs font-bold text-[#1E2761] hover:underline"
+                            onClick={() => {
+                                setSearchQuery("");
+                                if (ADMIN_ROLES.includes(role)) setFilterDept("");
+                                setFilterSection("");
+                            }}
+                            className="text-xs font-bold text-[#1E2761] hover:underline whitespace-nowrap"
                         >
-                            Clear Filters
+                            Clear All
                         </button>
                     )}
                 </div>
-            )}
-            {/* Non-sudo/admin faculty roles: show a read-only department badge + section filter */}
-            {needsDeptLock && (
-                <div className="mb-6 flex flex-wrap items-center gap-4">
-                    {userDepartment && (
-                        <span className="inline-flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-xl text-sm font-bold">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                            </svg>
-                            {userDepartment} Department
-                        </span>
-                    )}
-
-                    <div className="relative w-full sm:w-48">
-                        <select
-                            className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20 appearance-none"
-                            value={filterSection}
-                            onChange={(e) => setFilterSection(e.target.value)}
-                        >
-                            <option value="">All Sections</option>
-                            <option value="A">Section A</option>
-                            <option value="B">Section B</option>
-                            <option value="C">Section C</option>
-                            <option value="D">Section D</option>
-                        </select>
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                            </svg>
-                        </div>
-                    </div>
-                </div>
-            )}
+            </div>
 
             <CreateODModal
                 isOpen={isCreateModalOpen}
