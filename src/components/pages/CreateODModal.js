@@ -84,6 +84,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
   const [fetchingMentors, setFetchingMentors] = useState(false);
   const [formError, setFormError] = useState("");
   const [pendingEventsRequest, setPendingEventsRequest] = useState(new Set());
+  const [fetchingPendingODs, setFetchingPendingODs] = useState(false);
 
   // Team feature states
   const [isTeamRequest, setIsTeamRequest] = useState(false);
@@ -207,7 +208,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       const participatedIds = new Set(
         (response.documents || [])
           .filter((item) => item.status === PARTICIPATION_STATUS.PARTICIPATED)
-          .map((item) => item.event_id),
+          .map((item) =>
+            typeof item.event_id === "object" ? item.event_id.$id : item.event_id,
+          ),
       );
       setParticipatedEventIds(participatedIds);
     } catch (error) {
@@ -221,6 +224,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     if (!studentId) return;
 
     try {
+      setFetchingPendingODs(true);
       const response = await getStudentODRequests(studentId, 100, rollNo);
       const pendingIds = new Set(
         (response.documents || [])
@@ -233,11 +237,19 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 s === OD_STATUS.APPROVED)
             );
           })
-          .map((od) => od.event_id),
+          .map((od) => {
+            if (!od.event_id) return null;
+            return typeof od.event_id === "object"
+              ? od.event_id.$id
+              : od.event_id;
+          })
+          .filter(Boolean),
       );
       setPendingEventsRequest(pendingIds);
     } catch (error) {
       console.error("Error loading pending OD requests:", error);
+    } finally {
+      setFetchingPendingODs(false);
     }
   }, []);
 
@@ -256,7 +268,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
 
   useEffect(() => {
     if (isOpen && user?.$id) {
-      loadPendingODRequests(user?.$id, studentData?.roll_no);
+      // Use the student record ID as primary if available, fallback to user ID
+      const studentIdToSearch = studentData?.$id || user.$id;
+      loadPendingODRequests(studentIdToSearch, studentData?.roll_no);
     }
   }, [isOpen, user?.$id, studentData, loadPendingODRequests]);
   // Debounced team search
@@ -311,7 +325,10 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       !pendingEventsRequest.has(event.$id),
   );
   const isDataLoading =
-    studentDataLoading || fetchingEvents || fetchingParticipation;
+    studentDataLoading ||
+    fetchingEvents ||
+    fetchingParticipation ||
+    fetchingPendingODs;
   const odBreakdown = studentData
     ? OD_CATEGORY_FIELDS.reduce((accumulator, field) => {
         accumulator[field] = getODValue(studentData, field);
@@ -333,6 +350,12 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
 
     if (!formData.event_id) {
       setFormError("Please select an event.");
+      return;
+    }
+    if (pendingEventsRequest.has(formData.event_id)) {
+      setFormError(
+        "You already have a pending or granted OD request for this event.",
+      );
       return;
     }
     if (!participatedEventIds.has(formData.event_id)) {
@@ -587,14 +610,18 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
               }}
             >
               <option value="">
-                {fetchingParticipation || fetchingEvents
+                {fetchingParticipation || fetchingEvents || fetchingPendingODs
                   ? "Loading events..."
                   : "Choose a participated event..."}
               </option>
               {fetchingEvents ? (
                 <option disabled>Loading events...</option>
               ) : participatedEvents.length === 0 ? (
-                <option disabled>No participated events available</option>
+                <option disabled>
+                  {participatedEventIds.size > 0
+                    ? "You have already requested OD for all participated events"
+                    : "No participated events available"}
+                </option>
               ) : (
                 participatedEvents.map((event) => (
                   <option key={event.$id} value={event.$id}>

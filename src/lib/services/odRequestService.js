@@ -266,6 +266,17 @@ export async function createODRequest(data) {
       throw new Error("OD dates must be on or before the event date.");
     }
 
+    // Get student record
+    const studentRecord = await getStudentRecordForOD(
+      data.student_id,
+      data.student_email || null,
+    );
+    if (!studentRecord) {
+      throw new Error(
+        "Your student profile was not found. Please contact your coordinator to add you to the system.",
+      );
+    }
+
     // Validate participation — search by student_id AND appwrite_user_id
     const participation = await getEventParticipation(
       data.event_id,
@@ -278,15 +289,57 @@ export async function createODRequest(data) {
       );
     }
 
-    // Get student record
-    const studentRecord = await getStudentRecordForOD(
+    // Check if OD already exists for this event and student (prevent duplicates)
+    const existingRequests = await getStudentODRequests(
       data.student_id,
-      data.student_email || null,
+      100,
+      studentRecord.roll_no,
     );
-    if (!studentRecord) {
-      throw new Error(
-        "Your student profile was not found. Please contact your coordinator to add you to the system.",
+    const alreadyExists = existingRequests.documents.some((od) => {
+      const eid =
+        typeof od.event_id === "object" ? od.event_id.$id : od.event_id;
+      if (eid !== data.event_id) return false;
+
+      const s = od.current_status;
+      return (
+        s &&
+        (s.startsWith("pending_") ||
+          s === OD_STATUS.GRANTED ||
+          s === OD_STATUS.APPROVED)
       );
+    });
+
+    if (alreadyExists) {
+      throw new Error(
+        "An OD request for this event is already pending or has been granted for you.",
+      );
+    }
+
+    // Check team members for existing requests for the same event
+    if (data.team && Array.isArray(data.team) && data.team.length > 0) {
+      for (const teamRollNo of data.team) {
+        // Query requests for this roll number
+        const teamRequests = await getStudentODRequests(null, 50, teamRollNo);
+        const teamMemberAlreadyExists = teamRequests.documents.some((od) => {
+          const eid =
+            typeof od.event_id === "object" ? od.event_id.$id : od.event_id;
+          if (eid !== data.event_id) return false;
+
+          const s = od.current_status;
+          return (
+            s &&
+            (s.startsWith("pending_") ||
+              s === OD_STATUS.GRANTED ||
+              s === OD_STATUS.APPROVED)
+          );
+        });
+
+        if (teamMemberAlreadyExists) {
+          throw new Error(
+            `Team member with roll number ${teamRollNo} already has a pending or granted OD request for this event.`,
+          );
+        }
+      }
     }
 
     // Check OD count - block if student has exhausted their OD quota
@@ -431,20 +484,29 @@ export async function getStudentODRequests(
   }
 
   try {
-    let searchStudentIds = [studentId];
+    let searchStudentIds = [studentId].filter(Boolean);
     try {
       const studentRecord = await getStudentRecordForOD(studentId, null);
-      if (studentRecord) {
+      if (studentRecord && !searchStudentIds.includes(studentRecord.$id)) {
         searchStudentIds.push(studentRecord.$id);
+      }
+      if (
+        studentRecord?.appwrite_user_id &&
+        !searchStudentIds.includes(studentRecord.appwrite_user_id)
+      ) {
+        searchStudentIds.push(studentRecord.appwrite_user_id);
       }
     } catch (err) {}
 
-    // Query for requests where the student is the creator
+    const uniqueIds = [...new Set(searchStudentIds)].filter(Boolean);
+    if (uniqueIds.length === 0) {
+      return { documents: [], total: 0 };
+    }
     const responseData = await databases.listDocuments(
       DATABASE_ID,
       COLLECTIONS.OD_REQUESTS,
       [
-        Query.equal("student_id", searchStudentIds),
+        Query.equal("student_id", uniqueIds),
         Query.orderDesc("$createdAt"),
         Query.limit(limit),
       ],
