@@ -3,6 +3,24 @@ import { DB_CONFIG } from "../dbConfig";
 import { ID, Query } from "appwrite";
 import { secureLog } from "../secureLogger";
 
+/**
+ * Generate a default profile URL using UI Avatars (reliable, free service)
+ * Falls back to a data URI if name is not available
+ */
+function generateDefaultProfileUrl(name, email) {
+    if (name && name !== "User") {
+        const encodedName = encodeURIComponent(name);
+        return `https://ui-avatars.com/api/?name=${encodedName}&background=random&size=128`;
+    }
+    // Fallback: use first letter of email
+    if (email) {
+        const initial = email.charAt(0).toUpperCase();
+        return `https://ui-avatars.com/api/?name=${initial}&background=random&size=128`;
+    }
+    // Last resort: generic user icon
+    return `https://ui-avatars.com/api/?name=U&background=cccccc&color=666&size=128`;
+}
+
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
 // Mapping between frontend roles/labels and database Enum values
@@ -65,7 +83,7 @@ export async function syncUserToDatabase(appwriteUser) {
                         user_id: appwriteUser.$id,
                         user_name: appwriteUser.name || "User",
                         user_email: appwriteUser.email,
-                        profile_url: "https://randomuser.me/api/portraits/thumb/men/93.jpg",
+                        profile_url: generateDefaultProfileUrl(appwriteUser.name, appwriteUser.email),
                         role: toDbRole((appwriteUser.labels && appwriteUser.labels.length > 0) ? appwriteUser.labels[0] : "unassigned"),
                     }
                 );
