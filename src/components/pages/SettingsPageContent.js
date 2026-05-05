@@ -7,6 +7,7 @@ import { account } from "@/lib/appwrite";
 import {
   ADMIN_ROLES,
   ADMIN_SUDO_COORDINATOR_ROLES,
+  ADMIN_SUDO_ROLES,
   OD_CATEGORY_FIELDS,
 } from "@/lib/dbConfig";
 import {
@@ -15,8 +16,12 @@ import {
 } from "@/lib/services/odQuotaService";
 import { deleteNIRFCollege } from "@/lib/services/nirfCollegeService";
 import { getStudentByRollNo } from "@/lib/services/studentService";
-import { resetStudentODCountsAtomic, resetStudentsByYearAtomic } from "@/actions/odCountManager";
+import {
+  resetStudentODCountsAtomic,
+  resetStudentsByYearAtomic,
+} from "@/actions/odCountManager";
 import NIRFCollegeModal from "./NIRFCollegeModal";
+import PromoteStudentsModal from "./PromoteStudentsModal";
 import ActionButtons from "@/components/ui/ActionButtons";
 
 const emptyQuotaForm = OD_CATEGORY_FIELDS.reduce((accumulator, field) => {
@@ -41,6 +46,8 @@ export default function SettingsPageContent({ role }) {
   const [resetStudent, setResetStudent] = useState(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState(null);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoMessage, setPromoMessage] = useState(null);
 
   const [nirfColleges, setNirfColleges] = useState([]);
   const [nirfLoading, setNirfLoading] = useState(false);
@@ -161,7 +168,9 @@ export default function SettingsPageContent({ role }) {
         return;
       }
 
-      const customTotal = resetCustomTotal.trim() ? parseInt(resetCustomTotal, 10) : null;
+      const customTotal = resetCustomTotal.trim()
+        ? parseInt(resetCustomTotal, 10)
+        : null;
       await resetStudentODCountsAtomic(student.$id, role, customTotal);
       setResetStudent(student);
       setResetMessage({
@@ -192,8 +201,14 @@ export default function SettingsPageContent({ role }) {
         return;
       }
 
-      const customTotal = resetCustomTotal.trim() ? parseInt(resetCustomTotal, 10) : null;
-      const totalUpdated = await resetStudentsByYearAtomic(resetYear, role, customTotal);
+      const customTotal = resetCustomTotal.trim()
+        ? parseInt(resetCustomTotal, 10)
+        : null;
+      const totalUpdated = await resetStudentsByYearAtomic(
+        resetYear,
+        role,
+        customTotal,
+      );
       setResetMessage({
         type: "success",
         text: `OD counts reset for ${totalUpdated} student(s) in Year ${resetYear}.`,
@@ -469,6 +484,31 @@ export default function SettingsPageContent({ role }) {
                 </button>
               </div>
             </div>
+            {/** Promote students (admin + sudo) */}
+            <div className="mt-4">
+              {ADMIN_SUDO_ROLES.includes(role) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPromoOpen(true);
+                      setPromoMessage(null);
+                    }}
+                    className="mt-3 rounded-xl bg-[#1E2761] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-[#2d3a7d]"
+                  >
+                    Promote Students by Year
+                  </button>
+
+                  {promoMessage && (
+                    <div
+                      className={`mt-3 rounded-xl p-3 text-sm font-semibold ${promoMessage.type === "success" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"}`}
+                    >
+                      {promoMessage.text}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {resetStudent && (
@@ -572,6 +612,18 @@ export default function SettingsPageContent({ role }) {
         onClose={handleCloseCollegeModal}
         onSuccess={handleCollegeSaved}
         initialData={editingNirfCollege}
+      />
+      <PromoteStudentsModal
+        isOpen={promoOpen}
+        onClose={() => setPromoOpen(false)}
+        onSuccess={() => {
+          setPromoOpen(false);
+          setPromoMessage({
+            type: "success",
+            text: "Students promoted successfully.",
+          });
+        }}
+        role={role}
       />
     </div>
   );
