@@ -15,7 +15,7 @@ import {
 } from "@/lib/services/odQuotaService";
 import { deleteNIRFCollege } from "@/lib/services/nirfCollegeService";
 import { getStudentByRollNo } from "@/lib/services/studentService";
-import { resetStudentODCountsAtomic } from "@/actions/odCountManager";
+import { resetStudentODCountsAtomic, resetStudentsByYearAtomic } from "@/actions/odCountManager";
 import NIRFCollegeModal from "./NIRFCollegeModal";
 import ActionButtons from "@/components/ui/ActionButtons";
 
@@ -36,6 +36,8 @@ export default function SettingsPageContent({ role }) {
   const [quotaMessage, setQuotaMessage] = useState(null);
 
   const [resetRollNo, setResetRollNo] = useState("");
+  const [resetYear, setResetYear] = useState("");
+  const [resetCustomTotal, setResetCustomTotal] = useState("");
   const [resetStudent, setResetStudent] = useState(null);
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState(null);
@@ -159,11 +161,42 @@ export default function SettingsPageContent({ role }) {
         return;
       }
 
-      await resetStudentODCountsAtomic(student.$id, role);
+      const customTotal = resetCustomTotal.trim() ? parseInt(resetCustomTotal, 10) : null;
+      await resetStudentODCountsAtomic(student.$id, role, customTotal);
       setResetStudent(student);
       setResetMessage({
         type: "success",
         text: `OD counts reset for ${student.name}.`,
+      });
+    } catch (error) {
+      setResetMessage({
+        type: "error",
+        text: error?.message || "Failed to reset OD counts.",
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const handleResetByYear = async () => {
+    try {
+      setResetLoading(true);
+      setResetMessage(null);
+      setResetStudent(null);
+
+      if (!resetYear) {
+        setResetMessage({
+          type: "error",
+          text: "Please select a year.",
+        });
+        return;
+      }
+
+      const customTotal = resetCustomTotal.trim() ? parseInt(resetCustomTotal, 10) : null;
+      const totalUpdated = await resetStudentsByYearAtomic(resetYear, role, customTotal);
+      setResetMessage({
+        type: "success",
+        text: `OD counts reset for ${totalUpdated} student(s) in Year ${resetYear}.`,
       });
     } catch (error) {
       setResetMessage({

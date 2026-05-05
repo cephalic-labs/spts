@@ -152,7 +152,7 @@ export async function decrementTeamODCountsAtomic(
   }
 }
 
-export async function resetStudentODCountsAtomic(studentDocId, role) {
+export async function resetStudentODCountsAtomic(studentDocId, role, customTotal = null) {
   if (!ADMIN_SUDO_ROLES.includes(role)) {
     throw new Error("Only admin and sudo can reset OD counts.");
   }
@@ -166,7 +166,56 @@ export async function resetStudentODCountsAtomic(studentDocId, role) {
   for (const field of OD_CATEGORY_FIELDS) {
     updateData[field] = parseInt(policy[field] || 0, 10) || 0;
   }
-  updateData.od_count = sumPolicyCounts(policy);
+  updateData.od_count = customTotal !== null ? parseInt(customTotal, 10) : sumPolicyCounts(policy);
 
   await updateStudent(studentDocId, updateData);
+}
+
+export async function resetStudentsByYearAtomic(year, role, customTotal = null) {
+  if (!ADMIN_SUDO_ROLES.includes(role)) {
+    throw new Error("Only admin and sudo can reset OD counts.");
+  }
+
+  const policy = await getODQuotaPolicy();
+  if (!policy) {
+    throw new Error("OD quota policy not found. Please configure it first.");
+  }
+
+  const updateData = {};
+  for (const field of OD_CATEGORY_FIELDS) {
+    updateData[field] = parseInt(policy[field] || 0, 10) || 0;
+  }
+  updateData.od_count = customTotal !== null ? parseInt(customTotal, 10) : sumPolicyCounts(policy);
+
+  const queries = [Query.equal("year", parseInt(year, 10))];
+  let offset = 0;
+  const limit = 100;
+  let hasMore = true;
+  let totalUpdated = 0;
+
+  while (hasMore) {
+    const response = await databases.listDocuments(
+      DATABASE_ID,
+      COLLECTIONS.STUDENTS,
+      [...queries, Query.limit(limit), Query.offset(offset)]
+    );
+
+    if (response.documents.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    await Promise.all(
+      response.documents.map((student) => updateStudent(student.$id, updateData))
+    );
+
+    totalUpdated += response.documents.length;
+    offset += limit;
+
+    if (response.documents.length < limit) {
+      hasMore = false;
+    }
+  }
+
+  return totalUpdated;
 }
