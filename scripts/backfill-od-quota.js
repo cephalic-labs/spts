@@ -2,15 +2,15 @@
 
 /**
  * Backfill Script: OD Quota and Category Migration
- * 
+ *
  * This script helps migrate existing student records from the flat od_count model
  * to the new per-category OD quota model.
- * 
+ *
  * Usage:
  *   node scripts/backfill-od-quota.js --seed-policy
  *   node scripts/backfill-od-quota.js --backfill-students
  *   node scripts/backfill-od-quota.js --all
- * 
+ *
  * Steps:
  * 1. Seed OD Quota Policy (if not exists)
  * 2. Backfill Student Category Fields from od_count
@@ -47,9 +47,7 @@ async function seedODQuotaPolicy() {
     );
 
     if (existing.documents.length > 0) {
-      console.log(
-        "✅ OD Quota Policy already exists. Skipping seed.",
-      );
+      console.log("✅ OD Quota Policy already exists. Skipping seed.");
       return existing.documents[0];
     }
 
@@ -124,8 +122,7 @@ async function backfillStudentCategories() {
     // Filter students that need backfill (missing category fields)
     const studentsNeedingBackfill = allStudents.filter((student) => {
       const hasAnyCategory = OD_CATEGORY_FIELDS.some(
-        (field) =>
-          student[field] !== undefined && student[field] !== null,
+        (field) => student[field] !== undefined && student[field] !== null,
       );
       return !hasAnyCategory;
     });
@@ -208,10 +205,7 @@ async function verifyBackfill() {
         categoryValues[field] = student[field] || 0;
       });
 
-      console.log(
-        `  ${student.roll_no || student.email}:`,
-        categoryValues,
-      );
+      console.log(`  ${student.roll_no || student.email}:`, categoryValues);
     }
 
     console.log("\n✅ Verification complete.");
@@ -231,9 +225,7 @@ async function main() {
   const hasVerify = args.includes("--verify") || hasAll;
 
   try {
-    console.log(
-      "🚀 Starting OD Quota Backfill...\n",
-    );
+    console.log("🚀 Starting OD Quota Backfill...\n");
 
     if (hasSeedPolicy) {
       await seedODQuotaPolicy();
