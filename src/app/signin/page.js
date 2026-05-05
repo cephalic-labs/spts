@@ -4,6 +4,7 @@ import { account, OAuthProvider } from "@/lib/appwrite";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { buildAbsoluteUrl } from "@/lib/utils/url";
 
 export default function SignIn() {
   const { user, loading } = useAuth();
@@ -16,8 +17,8 @@ export default function SignIn() {
   }, [user, loading, router]);
 
   const handleGoogleSignIn = () => {
-    const successUrl = `${window.location.origin}/dashboard`;
-    const failureUrl = `${window.location.origin}/signin`;
+    const successUrl = buildAbsoluteUrl('/dashboard');
+    const failureUrl = buildAbsoluteUrl('/signin');
 
     account.createOAuth2Session(OAuthProvider.Google, successUrl, failureUrl);
   };

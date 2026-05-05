@@ -1,5 +1,10 @@
 import { AuthProvider } from "@/lib/AuthContext";
+import { Inter, Poppins, Fira_Code } from "next/font/google";
 import "./app.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const poppins = Poppins({ weight: ["300", "400", "500", "600", "700"], subsets: ["latin"], variable: "--font-poppins" });
+const firaCode = Fira_Code({ subsets: ["latin"], variable: "--font-fira-code" });
 
 export const metadata = {
   title: "SPTS - Student Participation Tracking System SECE",
@@ -8,18 +13,11 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${inter.variable} ${poppins.variable} ${firaCode.variable}`}>
       <head>
         <link rel="icon" href="/favicon.svg" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:opsz,wght@14..32,100..900&family=Poppins:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </head>
-      <body className="bg-white font-[Inter] text-[#2B2B2B]">
+      <body className={`${inter.className} bg-white text-[#2B2B2B]`}>
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
