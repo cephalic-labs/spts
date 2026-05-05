@@ -308,13 +308,13 @@ export async function getAdminFacultyFromLabels() {
                     });
                 }
             } catch (e) {
-                console.warn("Failed fetching metadata for user:", u.email);
+                secureLog.warn("Failed fetching metadata for user");
             }
         }
 
         return dbAdmins;
     } catch (error) {
-        console.error("Error fetching getAdminFacultyFromLabels:", error);
+        secureLog.error("Error fetching getAdminFacultyFromLabels:", error);
         return [];
     }
 }
@@ -334,14 +334,14 @@ export async function syncUserLabels(email, newLabels) {
 
         if (authUsers.users.length > 0) {
             const targetUserId = authUsers.users[0].$id;
-            console.log(`Manually syncing labels for ${email}:`, newLabels);
+            secureLog.authEvent('Manual label sync', { success: true });
             await users.updateLabels(targetUserId, newLabels);
             return { success: true, userId: targetUserId, labels: newLabels };
         }
 
         return { success: false, error: "User not currently registered in Appwrite Auth System." };
     } catch (error) {
-        console.error("Failed to sync labels:", error);
+        secureLog.error("Failed to sync labels:", error);
         return { success: false, error: error.message };
     }
 }
