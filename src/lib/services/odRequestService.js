@@ -48,6 +48,11 @@ function normalizeCategoryField(value) {
   return "university";
 }
 
+function normalizeHostType(value) {
+  if (!value) return "university";
+  return String(value).trim().toLowerCase();
+}
+
 function getStudentODValue(studentRecord, field) {
   const value = studentRecord?.[field];
   if (value === undefined || value === null || value === "") return 0;
@@ -326,8 +331,6 @@ export async function createODRequest(data) {
         od_end_date: odEndDate,
         reason: data.reason,
         attachments: data.attachments || [],
-        host_type: eventHostType,
-        event_category: eventCategory,
         current_status: OD_STATUS.PENDING_MENTOR,
         mentor_id: data.mentor_id || studentRecord.mentor_id,
         advisor_id: advisor ? advisor.$id : advisorId || null,
