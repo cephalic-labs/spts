@@ -276,7 +276,7 @@ export default function ApprovalsPageContent({ role }) {
     async function handleApprove(odId) {
         try {
             setActionLoading(odId);
-            const result = await approveODRequestSecure(odId, user?.$id || user?.dbId, "Approved");
+            const result = await approveODRequestSecure(odId, user?.$id || user?.dbId, "Approved", user?.email);
             if (!result.success) {
                 throw new Error(result.error);
             }
@@ -319,7 +319,7 @@ export default function ApprovalsPageContent({ role }) {
 
         try {
             setActionLoading(rejectDialog.odId);
-            const result = await rejectODRequestSecure(rejectDialog.odId, user?.$id || user?.dbId, remarks);
+            const result = await rejectODRequestSecure(rejectDialog.odId, user?.$id || user?.dbId, remarks, user?.email);
             if (!result.success) {
                 throw new Error(result.error);
             }

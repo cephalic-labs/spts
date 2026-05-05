@@ -17,18 +17,48 @@ import {
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
-async function getFacultyByAppwriteUserId(userId) {
-  if (!userId) return null;
+async function getFacultyByAppwriteUserId(userId, userEmail = null) {
+  if (!userId && !userEmail) return null;
 
   try {
-    const response = await databases.listDocuments(
-      DATABASE_ID,
-      COLLECTIONS.FACULTIES,
-      [Query.equal("appwrite_user_id", userId), Query.limit(1)],
-    );
-    return response.documents[0] || null;
+    if (userId) {
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.FACULTIES,
+        [Query.equal("appwrite_user_id", userId), Query.limit(1)],
+      );
+      if (response.documents.length > 0) return response.documents[0];
+
+      try {
+        const doc = await databases.getDocument(DATABASE_ID, COLLECTIONS.FACULTIES, userId);
+        if (doc) return doc;
+      } catch (err) {
+        // Ignore, userId is not a valid faculty document ID
+      }
+    }
+
+    if (userEmail) {
+      const response2 = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.FACULTIES,
+        [Query.equal("email", userEmail), Query.limit(1)],
+      );
+      if (response2.documents.length > 0) return response2.documents[0];
+
+      const normalizedEmail = userEmail.trim().toLowerCase();
+      if (normalizedEmail !== userEmail) {
+        const response3 = await databases.listDocuments(
+          DATABASE_ID,
+          COLLECTIONS.FACULTIES,
+          [Query.equal("email", normalizedEmail), Query.limit(1)],
+        );
+        if (response3.documents.length > 0) return response3.documents[0];
+      }
+    }
+
+    return null;
   } catch (error) {
-    secureLog.error("Error fetching faculty by user ID:", error);
+    secureLog.error("Error fetching faculty by user ID/Email:", error);
     return null;
   }
 }
@@ -72,31 +102,39 @@ async function logApproval(
   }
 }
 
-export async function approveODRequestSecure(odId, userId, remarks = "") {
+export async function approveODRequestSecure(odId, userId, remarks = "", userEmail = null) {
   try {
-    if (!userId) throw new Error("User ID is required");
+    if (!userId && !userEmail) throw new Error("User ID or Email is required");
 
-    const faculty = await getFacultyByAppwriteUserId(userId);
+    const faculty = await getFacultyByAppwriteUserId(userId, userEmail);
     if (!faculty) {
       throw new Error("Faculty profile not found. Contact administrator.");
     }
 
-    const role = faculty.role;
+    const facultyRoles = Array.isArray(faculty.role) ? faculty.role : [faculty.role];
     const facultyIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
 
     // Get OD request
     const odRequest = await getODRequestById(odId);
     const fromStatus = odRequest.current_status;
 
-    // Verify role can approve this status
-    if (!canRoleApprove(role, fromStatus)) {
+    // Determine the required role based on the current status
+    const statusRoleMap = {
+      [OD_STATUS.PENDING_MENTOR]: "mentor",
+      [OD_STATUS.PENDING_ADVISOR]: "advisor",
+      [OD_STATUS.PENDING_COORDINATOR]: "coordinator",
+      [OD_STATUS.PENDING_HOD]: "hod",
+    };
+    const actingRole = statusRoleMap[fromStatus];
+
+    if (!actingRole || !facultyRoles.includes(actingRole)) {
       throw new Error(
-        `Your role (${role}) cannot approve requests in '${fromStatus}' status.`,
+        `Your role(s) (${facultyRoles.join(", ")}) cannot approve requests in '${fromStatus}' status.`,
       );
     }
 
     // Verify this faculty is assigned as the approver for this role
-    const assignedApproverId = odRequest[`${role}_id`];
+    const assignedApproverId = odRequest[`${actingRole}_id`];
     if (assignedApproverId && !facultyIds.includes(assignedApproverId)) {
       throw new Error("You are not assigned as the approver for this request.");
     }
@@ -111,7 +149,7 @@ export async function approveODRequestSecure(odId, userId, remarks = "") {
 
     // Update OD request
     const updateData = { current_status: toStatus };
-    if (role === "hod") {
+    if (actingRole === "hod") {
       updateData.final_decision = "granted";
     }
 
@@ -123,7 +161,7 @@ export async function approveODRequestSecure(odId, userId, remarks = "") {
     );
 
     // If HOD granted, decrement OD counts
-    if (role === "hod") {
+    if (actingRole === "hod") {
       // event_category contains the normalized category field name (e.g., "university", "nirf", etc.)
       // This will decrement both the category-specific count and the total od_count
       const categoryField = odRequest.event_category || null;
@@ -138,7 +176,7 @@ export async function approveODRequestSecure(odId, userId, remarks = "") {
       toStatus,
       "approve",
       userId,
-      role,
+      actingRole,
       remarks,
     );
 
@@ -149,32 +187,40 @@ export async function approveODRequestSecure(odId, userId, remarks = "") {
   }
 }
 
-export async function rejectODRequestSecure(odId, userId, remarks = "") {
+export async function rejectODRequestSecure(odId, userId, remarks = "", userEmail = null) {
   try {
-    if (!userId) throw new Error("User ID is required");
+    if (!userId && !userEmail) throw new Error("User ID or Email is required");
     if (!remarks?.trim()) throw new Error("Rejection reason is required");
 
-    const faculty = await getFacultyByAppwriteUserId(userId);
+    const faculty = await getFacultyByAppwriteUserId(userId, userEmail);
     if (!faculty) {
       throw new Error("Faculty profile not found. Contact administrator.");
     }
 
-    const role = faculty.role;
+    const facultyRoles = Array.isArray(faculty.role) ? faculty.role : [faculty.role];
     const facultyIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
 
     // Get OD request
     const odRequest = await getODRequestById(odId);
     const fromStatus = odRequest.current_status;
 
-    // Verify role can reject this status
-    if (!canRoleApprove(role, fromStatus)) {
+    // Determine the required role based on the current status
+    const statusRoleMap = {
+      [OD_STATUS.PENDING_MENTOR]: "mentor",
+      [OD_STATUS.PENDING_ADVISOR]: "advisor",
+      [OD_STATUS.PENDING_COORDINATOR]: "coordinator",
+      [OD_STATUS.PENDING_HOD]: "hod",
+    };
+    const actingRole = statusRoleMap[fromStatus];
+
+    if (!actingRole || !facultyRoles.includes(actingRole)) {
       throw new Error(
-        `Your role (${role}) cannot reject requests in '${fromStatus}' status.`,
+        `Your role(s) (${facultyRoles.join(", ")}) cannot reject requests in '${fromStatus}' status.`,
       );
     }
 
     // Verify this faculty is assigned as the approver for this role
-    const assignedApproverId = odRequest[`${role}_id`];
+    const assignedApproverId = odRequest[`${actingRole}_id`];
     if (assignedApproverId && !facultyIds.includes(assignedApproverId)) {
       throw new Error("You are not assigned as the approver for this request.");
     }
@@ -199,7 +245,7 @@ export async function rejectODRequestSecure(odId, userId, remarks = "") {
       OD_STATUS.REJECTED,
       "reject",
       userId,
-      role,
+      actingRole,
       remarks,
     );
 
