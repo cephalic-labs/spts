@@ -59,6 +59,12 @@ function getStudentTotalOD(student) {
   return Number.isNaN(legacyCount) ? 7 : legacyCount;
 }
 
+function hasCategoryBreakdown(student) {
+  return OD_CATEGORY_FIELDS.some(
+    (field) => student?.[field] !== undefined && student?.[field] !== null,
+  );
+}
+
 function getEventODField(event) {
   const category = String(
     event?.event_category || event?.event_host_type || "university",
@@ -136,8 +142,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
           if (studentData && s.$id === studentData.$id) return false;
           if (existingIds.has(s.$id)) return false;
           // Only show students with available OD count
-          const mCount =
-            s.od_count !== undefined && s.od_count !== null ? s.od_count : 7;
+          const mCount = getStudentTotalOD(s);
           if (mCount <= 0) return false;
           return true;
         });
@@ -314,11 +319,15 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       }, {})
     : {};
   const odCount = studentData ? getStudentTotalOD(studentData) : 7;
+  const usesLegacyCount = studentData ? !hasCategoryBreakdown(studentData) : false;
   const hasODsLeft = odCount > 0;
   const selectedEventCategoryField = getEventODField(selectedEvent);
   const selectedEventCategoryCount = studentData
     ? getODValue(studentData, selectedEventCategoryField)
     : 0;
+  const effectiveSelectedEventCategoryCount = usesLegacyCount
+    ? odCount
+    : selectedEventCategoryCount;
   const canSubmit =
     Boolean(studentData) &&
     participatedEvents.length > 0 &&
@@ -367,7 +376,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
       );
       return;
     }
-    if (selectedEvent && selectedEventCategoryCount <= 0) {
+    if (selectedEvent && effectiveSelectedEventCategoryCount <= 0) {
       setFormError(
         `You do not have any ${selectedEventCategoryField.replace("_", " ")} OD left for this semester.`,
       );
@@ -510,7 +519,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             </div>
           )}
 
-          {studentData && (
+          {studentData && !usesLegacyCount && (
             <div className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-gray-700">
@@ -540,6 +549,17 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {studentData && usesLegacyCount && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <p className="text-sm font-semibold text-amber-800">
+                Legacy OD balance
+              </p>
+              <p className="mt-1 text-xs text-amber-700">
+                This student record still uses the old single OD count. Current available OD: <span className="font-bold">{odCount}</span>.
+              </p>
             </div>
           )}
 

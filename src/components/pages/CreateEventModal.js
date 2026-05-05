@@ -99,8 +99,14 @@ export default function CreateEventModal({
       try {
         setNirfLoading(true);
         const response = await getNIRFColleges(100, 0, nirfSearch.trim());
+        const filteredColleges = (response.documents || []).filter(
+          (college) => {
+            const rank = parseInt(college.rank, 10);
+            return !Number.isNaN(rank) && rank > 0 && rank <= 100;
+          },
+        );
         if (!cancelled) {
-          setNirfColleges(response.documents || []);
+          setNirfColleges(filteredColleges);
         }
       } catch (error) {
         if (!cancelled) {
@@ -138,11 +144,18 @@ export default function CreateEventModal({
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      event_category: "nirf",
-      event_host: selectedNIRFCollege?.college_name || prev.event_host,
-    }));
+    setFormData((prev) => {
+      const nextHost = selectedNIRFCollege?.college_name || prev.event_host;
+      if (prev.event_category === "nirf" && prev.event_host === nextHost) {
+        return prev;
+      }
+
+      return {
+        ...prev,
+        event_category: "nirf",
+        event_host: nextHost,
+      };
+    });
   }, [formData.event_host_type, selectedNIRFCollege]);
 
   if (!isOpen) return null;
