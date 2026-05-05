@@ -7,7 +7,7 @@ import { approveODRequestSecure, rejectODRequestSecure } from "@/actions/odAppro
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
-import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo, getStudentsByAppwriteUserIds } from "@/lib/services/studentService";
+import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo, getStudentsByAppwriteUserIds, getStudentsByIds } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS, APPROVAL_ROLES } from "@/lib/dbConfig";
 import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
@@ -222,8 +222,20 @@ export default function ApprovalsPageContent({ role }) {
 
             // Batch fetch student details
             const studentIds = [...new Set(requests.map(r => r.student_id).filter(Boolean))];
-            const students = await getStudentsByAppwriteUserIds(studentIds, studentIds.length);
-            const studentMap = new Map(students.map(s => [s.appwrite_user_id, s]));
+            
+            // Fetch by both ID types to support older records (appwrite_user_id) and newer records (document $id)
+            const [studentsByDocId, studentsByAppwriteId] = await Promise.all([
+                getStudentsByIds(studentIds).catch(() => []),
+                getStudentsByAppwriteUserIds(studentIds, studentIds.length).catch(() => [])
+            ]);
+
+            const allStudents = [...(studentsByDocId || []), ...(studentsByAppwriteId || [])];
+            
+            const studentMap = new Map();
+            allStudents.forEach(s => {
+                if (s.$id) studentMap.set(s.$id, s);
+                if (s.appwrite_user_id) studentMap.set(s.appwrite_user_id, s);
+            });
 
             const enhancedRequests = requests.map(req => {
                 if (req.student_id && studentMap.has(req.student_id)) {

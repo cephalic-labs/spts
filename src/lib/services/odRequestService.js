@@ -325,7 +325,7 @@ export async function createODRequest(data) {
       ID.unique(),
       {
         od_id: ID.unique(),
-        student_id: data.student_id,
+        student_id: studentRecord.$id,
         event_id: data.event_id,
         od_start_date: odStartDate,
         od_end_date: odEndDate,
@@ -400,12 +400,20 @@ export async function getStudentODRequests(
   }
 
   try {
+    let searchStudentIds = [studentId];
+    try {
+      const studentRecord = await getStudentRecordForOD(studentId, null);
+      if (studentRecord) {
+        searchStudentIds.push(studentRecord.$id);
+      }
+    } catch (err) {}
+
     // Query for requests where the student is the creator
     const responseData = await databases.listDocuments(
       DATABASE_ID,
       COLLECTIONS.OD_REQUESTS,
       [
-        Query.equal("student_id", studentId),
+        Query.equal("student_id", searchStudentIds),
         Query.orderDesc("$createdAt"),
         Query.limit(limit),
       ],
@@ -719,7 +727,15 @@ export async function cancelODRequest(
     const odRequest = await getODRequestById(odId);
     const fromStatus = odRequest.current_status;
 
-    if (odRequest.student_id !== studentUserId) {
+    let validStudentIds = [studentUserId];
+    try {
+      const studentRecord = await getStudentRecordForOD(studentUserId, null);
+      if (studentRecord) {
+        validStudentIds.push(studentRecord.$id);
+      }
+    } catch (err) {}
+
+    if (!validStudentIds.includes(odRequest.student_id)) {
       throw new Error("You can only cancel your own OD request.");
     }
 
@@ -879,7 +895,14 @@ export async function getODStats(filter = {}) {
   try {
     const queries = [];
     if (filter.student_id) {
-      queries.push(Query.equal("student_id", filter.student_id));
+      let validStudentIds = [filter.student_id];
+      try {
+        const studentRecord = await getStudentRecordForOD(filter.student_id, null);
+        if (studentRecord) {
+          validStudentIds.push(studentRecord.$id);
+        }
+      } catch (err) {}
+      queries.push(Query.equal("student_id", validStudentIds));
     }
 
     // Fetch all documents using pagination
