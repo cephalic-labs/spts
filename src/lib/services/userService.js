@@ -98,10 +98,12 @@ export async function syncUserToDatabase(appwriteUser) {
         } catch (error) {
             if (attempt === MAX_RETRIES - 1) {
                 secureLog.error("Error syncing user to database after retries:", error);
-                throw error;
+                return null;
             }
         }
     }
+    
+    return null;
 }
 
 /**
