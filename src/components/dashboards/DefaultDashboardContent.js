@@ -301,7 +301,8 @@ export default function DefaultDashboardContent({ role }) {
         return {
           bgGradient: "from-indigo-600 via-purple-600 to-fuchsia-600",
           greeting: "Ready to learn?",
-          emoji: "🎓",
+          icon: <Icons.GraduationCap className="w-8 h-8" />,
+
           primaryAction: "Browse Events",
           statsColors: [
             "text-indigo-600",
@@ -314,7 +315,8 @@ export default function DefaultDashboardContent({ role }) {
         return {
           bgGradient: "from-slate-800 via-slate-700 to-slate-900",
           greeting: "System Overview",
-          emoji: "⚙️",
+          icon: <Icons.Settings className="w-8 h-8" />,
+
           primaryAction: "Manage Users",
           statsColors: [
             "text-slate-600",
@@ -327,7 +329,8 @@ export default function DefaultDashboardContent({ role }) {
         return {
           bgGradient: "from-blue-600 via-cyan-600 to-teal-500",
           greeting: "Empowering Students",
-          emoji: "🌟",
+          icon: <Icons.Star className="w-8 h-8" />,
+
           primaryAction: "Review Pending",
           statsColors: [
             "text-blue-600",
@@ -423,9 +426,10 @@ export default function DefaultDashboardContent({ role }) {
           <div className="absolute top-0 right-0 -mt-4 -mr-4 h-32 w-32 rounded-full bg-white opacity-10 blur-2xl"></div>
           <div className="relative z-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
             <div>
-              <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-                {displayName} Portal {config.emoji}
+              <h1 className="mb-1 flex items-center gap-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+                {displayName} Portal {config.icon}
               </h1>
+
               <p className="font-medium text-white/80">{config.greeting}</p>
             </div>
             <div className="flex flex-wrap gap-4">
@@ -698,9 +702,10 @@ export default function DefaultDashboardContent({ role }) {
         <div className="absolute top-0 right-0 -mt-4 -mr-4 h-32 w-32 rounded-full bg-white opacity-10 blur-2xl"></div>
         <div className="relative z-10 flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
           <div>
-            <h1 className="mb-1 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
-              {displayName} Portal {config.emoji}
+            <h1 className="mb-1 flex items-center gap-3 text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
+              {displayName} Portal {config.icon}
             </h1>
+
             <p className="font-medium text-white/80">{config.greeting}</p>
           </div>
           <div className="flex flex-wrap gap-4">
@@ -766,8 +771,9 @@ export default function DefaultDashboardContent({ role }) {
             </p>
           </div>
           <div className="flex items-center gap-1.5 rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-600 shadow-sm">
-            <span>📈</span> Live Feed
+            <Icons.TrendingUp className="w-3.5 h-3.5" /> Live Feed
           </div>
+
         </div>
         <div className="h-[280px] w-full">
           <Line data={lineChartData} options={lineChartOptions} />
@@ -788,9 +794,10 @@ export default function DefaultDashboardContent({ role }) {
                 Highest to lowest demand
               </p>
             </div>
-            <div className="flex items-center gap-1 rounded border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-600 shadow-sm">
-              🔥 Most Popular
+            <div className="flex items-center gap-1.5 rounded border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-bold text-orange-600 shadow-sm">
+              <Icons.Fire className="w-3.5 h-3.5" /> Most Popular
             </div>
+
           </div>
 
           <div className="relative -ml-4 h-[260px] w-full">

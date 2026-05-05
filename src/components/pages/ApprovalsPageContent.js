@@ -396,7 +396,10 @@ export default function ApprovalsPageContent({ role }) {
             {/* Approver Error Banner */}
             {approverError && (
                 <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                    <p className="text-sm font-semibold text-amber-800 mb-1">⚠️ Faculty Profile Issue</p>
+                    <p className="text-sm font-semibold text-amber-800 mb-1">
+                        <Icons.Warning className="w-4 h-4 text-amber-600 inline mr-1" />
+                        Faculty Profile Issue
+                    </p>
                     <p className="text-xs text-amber-700">{approverError}</p>
                 </div>
             )}
@@ -430,7 +433,8 @@ export default function ApprovalsPageContent({ role }) {
                                                     {req.student?.department} • {req.student?.year} Year
                                                     {req.team && req.team.length > 0 && (
                                                         <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold">
-                                                            👥 +{req.team.length} team
+                                                            <Icons.Users className="w-3 h-3" />
+                                                            +{req.team.length} team
                                                         </span>
                                                     )}
                                                 </span>
@@ -585,7 +589,10 @@ export default function ApprovalsPageContent({ role }) {
                                 {/* Team Members Section */}
                                 {teamMembersData.length > 0 && (
                                     <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-indigo-100 pb-2">👥 Team Members ({teamMembersData.length})</h4>
+                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-indigo-100 pb-2 flex items-center">
+                                            <Icons.Users className="w-4 h-4 mr-2" />
+                                            Team Members ({teamMembersData.length})
+                                        </h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             {teamMembersData.map((member, idx) => (
                                                 <div key={member.$id || idx} className="flex items-center gap-2 bg-white border border-indigo-100 rounded-lg px-3 py-2">

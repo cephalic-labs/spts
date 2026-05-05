@@ -3,6 +3,8 @@
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Icons } from "@/components/layout";
+
 
 export default function UnassignedPage() {
     const { user, logout, checkUser } = useAuth();
@@ -30,8 +32,8 @@ export default function UnassignedPage() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white to-[#E6E9EE] p-4">
             <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center">
-                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <span className="text-4xl">⏳</span>
+                <div className="w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mx-auto mb-6 text-[#1E2761]">
+                    <Icons.Clock className="w-10 h-10" />
                 </div>
 
                 <h1 className="text-2xl font-bold text-[#1E2761] mb-3">
@@ -73,7 +75,13 @@ export default function UnassignedPage() {
                         disabled={checking}
                         className="w-full px-6 py-3 bg-[#1E2761] text-white font-bold rounded-xl hover:bg-[#2d3a7d] transition-all disabled:opacity-50"
                     >
-                        {checking ? "Checking..." : "🔄 Check Again"}
+                        {checking ? "Checking..." : (
+                            <div className="flex items-center justify-center gap-2">
+                                <Icons.Refresh className={checking ? "animate-spin" : ""} />
+                                Check Again
+                            </div>
+                        )}
+
                     </button>
                     <button
                         onClick={handleLogout}

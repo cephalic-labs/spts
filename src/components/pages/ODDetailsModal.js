@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import jsPDF from "jspdf";
+import { Icons } from "@/components/layout";
 
 import {
   getODRequestById,
@@ -713,7 +714,7 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                       </svg>
                     </div>
                     <h3 className="mb-1 text-xl font-black text-green-700">
-                      OD Granted! 🎉
+                      OD Granted!
                     </h3>
                     <p className="text-sm text-green-600">
                       Your OD request has been approved by all approvers.
@@ -967,8 +968,9 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
                 {/* Team Members Section */}
                 {teamMembersData.length > 0 && (
                   <div className="rounded-2xl border border-purple-100 bg-purple-50/50 p-6">
-                    <h4 className="mb-4 text-[10px] font-black tracking-[0.2em] text-purple-400 uppercase">
-                      👥 Team Members ({teamMembersData.length})
+                    <h4 className="mb-4 text-[10px] font-black tracking-[0.2em] text-purple-400 uppercase flex items-center">
+                      <Icons.Users className="w-4 h-4 mr-2" />
+                      Team Members ({teamMembersData.length})
                     </h4>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {teamMembersData.map((member, idx) => (

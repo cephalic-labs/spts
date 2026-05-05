@@ -7,6 +7,7 @@ import {
   getStudentEventParticipations,
   PARTICIPATION_STATUS,
 } from "@/lib/services/eventParticipationService";
+import { Icons } from "@/components/layout";
 import {
   createODRequest,
   getStudentODRequests,
@@ -453,8 +454,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
           {/* Student profile warning */}
           {!studentDataLoading && !studentData && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="mb-1 text-sm font-semibold text-amber-800">
-                ⚠️ Student Profile Not Found
+              <p className="mb-1 text-sm font-semibold text-amber-800 flex items-center gap-1.5">
+                <Icons.Warning className="w-4 h-4 text-amber-600" />
+                Student Profile Not Found
               </p>
               <p className="text-xs text-amber-700">
                 Your email ({user?.email}) was not found in the student
@@ -467,8 +469,9 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
           {/* Missing advisor warning */}
           {studentData && !studentData.advisor_id && (
             <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3">
-              <p className="mb-1 text-sm font-semibold text-orange-800">
-                ⚠️ No Advisor Assigned
+              <p className="mb-1 text-sm font-semibold text-orange-800 flex items-center gap-1.5">
+                <Icons.Warning className="w-4 h-4 text-orange-600" />
+                No Advisor Assigned
               </p>
               <p className="text-xs text-orange-700">
                 Your profile does not have a class advisor assigned. OD
@@ -488,11 +491,19 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
             >
               <div>
                 <p
-                  className={`text-sm font-semibold ${hasODsLeft ? "text-blue-800" : "text-red-800"}`}
+                  className={`text-sm font-semibold flex items-center gap-1.5 ${hasODsLeft ? "text-blue-800" : "text-red-800"}`}
                 >
-                  {hasODsLeft
-                    ? "📋 OD Requests Remaining"
-                    : "🚫 No OD Requests Left"}
+                  {hasODsLeft ? (
+                    <>
+                      <Icons.Clipboard className="w-4 h-4" />
+                      OD Requests Remaining
+                    </>
+                  ) : (
+                    <>
+                      <Icons.Ban className="w-4 h-4" />
+                      No OD Requests Left
+                    </>
+                  )}
                 </p>
                 <p
                   className={`text-xs ${hasODsLeft ? "text-blue-600" : "text-red-600"}`}
@@ -726,9 +737,10 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span
-                      className={`text-sm font-black transition-colors ${isTeamRequest ? "text-indigo-900" : "text-gray-700"}`}
+                      className={`text-sm font-black transition-colors flex items-center gap-1.5 ${isTeamRequest ? "text-indigo-900" : "text-gray-700"}`}
                     >
-                      👥 Group / Team Request
+                      <Icons.Users className="w-4 h-4" />
+                      Group / Team Request
                     </span>
                     {isTeamRequest && (
                       <span className="animate-pulse rounded-full bg-indigo-600 px-2 py-0.5 text-[9px] font-black tracking-tighter text-white uppercase">

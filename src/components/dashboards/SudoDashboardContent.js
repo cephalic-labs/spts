@@ -169,8 +169,9 @@ export default function SudoDashboardContent() {
     const config = {
         bgGradient: "from-slate-800 via-slate-700 to-slate-900",
         greeting: "System Overview",
-        emoji: "⚙️",
+        icon: Icons.Settings,
         primaryAction: "Manage Users",
+        href: "/dashboard/admin/settings",
         statsColors: [
             "text-slate-600", "text-gray-700", "text-zinc-600", "text-neutral-600", "text-stone-600", "text-slate-700"
         ]
@@ -370,6 +371,7 @@ export default function SudoDashboardContent() {
                         <p className="text-sm text-slate-500 font-medium mt-1">Application trend over the current month</p>
                     </div>
                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-100 shadow-sm">
+                         <Icons.TrendingUp className="w-3.5 h-3.5" />
                          Live Feed
                     </div>
                 </div>
@@ -390,7 +392,8 @@ export default function SudoDashboardContent() {
                             <p className="text-sm text-slate-500 font-medium mt-1">Highest to lowest demand</p>
                         </div>
                         <div className="bg-orange-50 text-orange-600 px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 border border-orange-100 shadow-sm">
-                             Most Popular
+                            <Icons.Fire className="w-3.5 h-3.5" />
+                            Most Popular
                         </div>
                     </div>
 

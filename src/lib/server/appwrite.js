@@ -10,7 +10,7 @@ if (apiKey) {
     client.setKey(apiKey);
 } else {
     // This is a critical configuration warning that should always be visible
-    secureLog.error("⚠️ WARNING: No APPWRITE_API_KEY found. Server actions requiring admin privileges will fail.");
+    secureLog.error("WARNING: No APPWRITE_API_KEY found. Server actions requiring admin privileges will fail.");
 }
 
 const databases = new Databases(client);
