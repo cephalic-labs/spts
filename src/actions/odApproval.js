@@ -9,16 +9,6 @@ import { decrementODCountAtomic, decrementTeamODCountsAtomic } from "./odCountMa
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
-async function getSessionUserId() {
-    const cookieStore = await cookies();
-    const session = cookieStore.get("appwrite-session");
-    if (!session) throw new Error("Unauthorized: No active session");
-    
-    // Extract user ID from session (you may need to decode/verify the session)
-    // For now, we'll need to get it from the auth context
-    return null; // This will be populated by the calling function
-}
-
 async function getFacultyByAppwriteUserId(userId) {
     if (!userId) return null;
     
@@ -64,16 +54,16 @@ async function logApproval(odId, fromStatus, toStatus, action, userId, role, rem
 
 
 
-export async function approveODRequestSecure(odId, role, userId, remarks = "") {
+export async function approveODRequestSecure(odId, userId, remarks = "") {
     try {
         if (!userId) throw new Error("User ID is required");
         
-        // Get faculty record from server-side using session user ID
         const faculty = await getFacultyByAppwriteUserId(userId);
         if (!faculty) {
             throw new Error("Faculty profile not found. Contact administrator.");
         }
         
+        const role = faculty.role;
         const facultyIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
         
         // Get OD request
@@ -126,17 +116,17 @@ export async function approveODRequestSecure(odId, role, userId, remarks = "") {
     }
 }
 
-export async function rejectODRequestSecure(odId, role, userId, remarks = "") {
+export async function rejectODRequestSecure(odId, userId, remarks = "") {
     try {
         if (!userId) throw new Error("User ID is required");
         if (!remarks?.trim()) throw new Error("Rejection reason is required");
         
-        // Get faculty record from server-side using session user ID
         const faculty = await getFacultyByAppwriteUserId(userId);
         if (!faculty) {
             throw new Error("Faculty profile not found. Contact administrator.");
         }
         
+        const role = faculty.role;
         const facultyIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
         
         // Get OD request

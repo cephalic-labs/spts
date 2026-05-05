@@ -7,32 +7,23 @@ import { secureLog } from "@/lib/secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
 
-// In-memory lock map for serializing updates per student
-const locks = new Map();
-
-async function acquireLock(key) {
-    while (locks.has(key)) {
-        await locks.get(key);
-    }
-    let release;
-    const promise = new Promise(resolve => { release = resolve; });
-    locks.set(key, promise);
-    return () => {
-        locks.delete(key);
-        release();
-    };
-}
-
 async function decrementStudentODCount(studentDocId) {
-    const release = await acquireLock(studentDocId);
-    try {
-        const student = await databases.getDocument(DATABASE_ID, COLLECTIONS.STUDENTS, studentDocId);
-        const currentCount = student.od_count ?? 7;
-        const newCount = Math.max(0, currentCount - 1);
-        
-        await databases.updateDocument(DATABASE_ID, COLLECTIONS.STUDENTS, studentDocId, { od_count: newCount });
-    } finally {
-        release();
+    const MAX_RETRIES = 3;
+    
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            const student = await databases.getDocument(DATABASE_ID, COLLECTIONS.STUDENTS, studentDocId);
+            const currentCount = student.od_count ?? 7;
+            const newCount = Math.max(0, currentCount - 1);
+            
+            await databases.updateDocument(DATABASE_ID, COLLECTIONS.STUDENTS, studentDocId, { od_count: newCount });
+            return;
+        } catch (error) {
+            if (attempt === MAX_RETRIES - 1) {
+                throw error;
+            }
+            await new Promise(resolve => setTimeout(resolve, 100 * Math.pow(2, attempt)));
+        }
     }
 }
 
@@ -55,7 +46,7 @@ export async function decrementODCountAtomic(studentId) {
 export async function decrementTeamODCountsAtomic(teamRollNumbers) {
     if (!teamRollNumbers?.length) return;
     
-    await Promise.all(teamRollNumbers.map(async (rollNo) => {
+    const results = await Promise.allSettled(teamRollNumbers.map(async (rollNo) => {
         try {
             const response = await databases.listDocuments(
                 DATABASE_ID,
@@ -68,6 +59,12 @@ export async function decrementTeamODCountsAtomic(teamRollNumbers) {
             }
         } catch (error) {
             secureLog.warn("Failed to decrement team member OD count:", error);
+            throw error;
         }
     }));
+    
+    const failures = results.filter(r => r.status === 'rejected');
+    if (failures.length > 0) {
+        secureLog.warn(`${failures.length}/${teamRollNumbers.length} team OD count updates failed`);
+    }
 }

@@ -36,6 +36,9 @@ export async function middleware(request) {
 
   // Verify session with Appwrite
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/account`,
       {
@@ -43,11 +46,17 @@ export async function middleware(request) {
           "X-Appwrite-Project": process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID,
           Cookie: `a_session_${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}=${sessionCookie.value}`,
         },
+        signal: controller.signal,
       }
     );
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
-      return NextResponse.redirect(new URL("/signin", request.url));
+      if (response.status === 401 || response.status === 403) {
+        return NextResponse.redirect(new URL("/signin", request.url));
+      }
+      return NextResponse.next();
     }
 
     const user = await response.json();
@@ -79,8 +88,19 @@ export async function middleware(request) {
 
     return NextResponse.next();
   } catch (error) {
-    console.error("Middleware auth error:", error);
-    return NextResponse.redirect(new URL("/signin", request.url));
+    if (process.env.NODE_ENV !== 'production') {
+      console.error("[Middleware]", error.name, error.message);
+    }
+    
+    if (error.name === 'AbortError' || error.message?.includes('fetch') || error.message?.includes('network')) {
+      return NextResponse.next();
+    }
+    
+    if (error.status === 401 || error.status === 403) {
+      return NextResponse.redirect(new URL("/signin", request.url));
+    }
+    
+    return NextResponse.next();
   }
 }
 
