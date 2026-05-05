@@ -13,10 +13,7 @@ import {
   getODQuotaPolicy,
   saveODQuotaPolicy,
 } from "@/lib/services/odQuotaService";
-import {
-  deleteNIRFCollege,
-  getNIRFColleges,
-} from "@/lib/services/nirfCollegeService";
+import { deleteNIRFCollege } from "@/lib/services/nirfCollegeService";
 import { getStudentByRollNo } from "@/lib/services/studentService";
 import { resetStudentODCountsAtomic } from "@/actions/odCountManager";
 import NIRFCollegeModal from "./NIRFCollegeModal";
@@ -87,7 +84,8 @@ export default function SettingsPageContent({ role }) {
       if (canManageNirf) {
         try {
           setNirfLoading(true);
-          const response = await getNIRFColleges(100, 0);
+          const res = await fetch("/api/nirf-colleges?limit=100&offset=0");
+          const response = await res.json();
           setNirfColleges(response.documents || []);
         } catch (error) {
           setNirfMessage({
@@ -140,7 +138,8 @@ export default function SettingsPageContent({ role }) {
   };
 
   const refreshNIRFColleges = async () => {
-    const response = await getNIRFColleges(100, 0);
+    const res = await fetch("/api/nirf-colleges?limit=100&offset=0");
+    const response = await res.json();
     setNirfColleges(response.documents || []);
   };
 

@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createEvent, updateEvent } from "@/lib/services/eventService";
-import { getNIRFColleges } from "@/lib/services/nirfCollegeService";
 import { OD_HOST_TYPES } from "@/lib/dbConfig";
 import { Icons } from "@/components/layout";
 
@@ -98,7 +97,13 @@ export default function CreateEventModal({
     async function loadNIRFColleges() {
       try {
         setNirfLoading(true);
-        const response = await getNIRFColleges(100, 0, nirfSearch.trim());
+        const params = new URLSearchParams({
+          limit: "100",
+          offset: "0",
+          search: nirfSearch.trim(),
+        });
+        const res = await fetch(`/api/nirf-colleges?${params}`);
+        const response = await res.json();
         const filteredColleges = (response.documents || []).filter(
           (college) => {
             const rank = parseInt(college.rank, 10);
