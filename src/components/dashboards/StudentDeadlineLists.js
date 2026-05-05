@@ -27,6 +27,16 @@ function sortByRecentCompletion(a, b) {
   return bDate - aDate;
 }
 
+function sortByRecentUpload(a, b) {
+  const aDate = new Date(
+    a.$createdAt || a.event_time || a.event_reg_deadline || 0,
+  ).getTime();
+  const bDate = new Date(
+    b.$createdAt || b.event_time || b.event_reg_deadline || 0,
+  ).getTime();
+  return bDate - aDate;
+}
+
 function DeadlineSection({
   title,
   subtitle,
@@ -35,6 +45,9 @@ function DeadlineSection({
   emptyMessage,
   accentClasses,
   onViewEvent,
+  metaLabel = "Deadline:",
+  metaValueAccessor = (event) => formatEventDate(event.event_reg_deadline),
+  metaIcon = <Icons.Clock />,
 }) {
   return (
     <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
@@ -85,11 +98,11 @@ function DeadlineSection({
                       <span>{formatEventDate(event.event_time)}</span>
                     </div>
                     <div className="inline-flex items-center gap-2 rounded-xl border border-slate-100 bg-white px-3 py-2">
-                      <Icons.Clock />
+                      {metaIcon}
                       <span className="font-semibold text-slate-400">
-                        Deadline:
+                        {metaLabel}
                       </span>
-                      <span>{formatEventDate(event.event_reg_deadline)}</span>
+                      <span>{metaValueAccessor(event)}</span>
                     </div>
                   </div>
                 </div>
@@ -114,16 +127,36 @@ function DeadlineSection({
 }
 
 export default function StudentDeadlineLists({ events, onViewEvent }) {
-  const nearDeadlineEvents = events
-    .filter((event) => isNearDeadlineEvent(event))
-    .sort(sortBySoonestDeadline);
-
   const completedDeadlineEvents = events
     .filter((event) => isCompletedDeadlineEvent(event))
     .sort(sortByRecentCompletion);
 
+  const activeEvents = events.filter(
+    (event) => !isCompletedDeadlineEvent(event),
+  );
+
+  const nearDeadlineEvents = activeEvents
+    .filter((event) => isNearDeadlineEvent(event))
+    .sort(sortBySoonestDeadline);
+
+  const recentlyUploadedEvents = [...activeEvents]
+    .sort(sortByRecentUpload)
+    .slice(0, 5);
+
   return (
     <div className="space-y-6">
+      <DeadlineSection
+        title="Recently Uploaded"
+        subtitle="Newest events based on the upload date"
+        badge="New"
+        events={recentlyUploadedEvents}
+        emptyMessage="No recently uploaded events to show yet."
+        accentClasses="bg-emerald-50 text-emerald-700 border-emerald-100"
+        onViewEvent={onViewEvent}
+        metaLabel="Uploaded:"
+        metaValueAccessor={(event) => formatEventDate(event.$createdAt)}
+        metaIcon={<Icons.Clock />}
+      />
       <DeadlineSection
         title="Near Deadlines"
         subtitle="Events with deadlines coming up soon"

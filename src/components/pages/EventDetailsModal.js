@@ -172,23 +172,25 @@ export default function EventDetailsModal({
               </div>
             )}
 
-            {event.event_url && (
-              <div className="rounded-2xl border border-blue-100 bg-blue-50/30 bg-white p-6 shadow-sm">
-                <h3 className="mb-4 text-center text-[11px] font-black tracking-widest text-blue-400 uppercase">
-                  Ready to participate?
-                </h3>
-                <Link
-                  href={event.event_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={onClose}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1E2761] px-8 py-4 text-lg font-bold text-white transition-all hover:bg-[#2d3a7d] hover:shadow-lg active:scale-95"
-                >
-                  Visit Event Destination
-                  <Icons.ExternalLink />
-                </Link>
-              </div>
-            )}
+            {event.event_url &&
+              currentParticipationStatus ===
+                PARTICIPATION_STATUS.PARTICIPATED && (
+                <div className="rounded-2xl border border-blue-100 bg-blue-50/30 bg-white p-6 shadow-sm">
+                  <h3 className="mb-4 text-center text-[11px] font-black tracking-widest text-blue-400 uppercase">
+                    Ready to participate?
+                  </h3>
+                  <Link
+                    href={event.event_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={onClose}
+                    className="flex w-full items-center justify-center gap-3 rounded-xl bg-[#1E2761] px-8 py-4 text-lg font-bold text-white transition-all hover:bg-[#2d3a7d] hover:shadow-lg active:scale-95"
+                  >
+                    Visit Event Destination
+                    <Icons.ExternalLink />
+                  </Link>
+                </div>
+              )}
           </div>
         </div>
       </div>
