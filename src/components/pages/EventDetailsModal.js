@@ -117,6 +117,9 @@ export default function EventDetailsModal({
                 </div>
               </div>
             </div>
+            <div className="text-red-500 text-[15px]">
+                *Click Mark participated Button to get Event Url*
+            </div>
 
             {canSelfReportParticipation && (
               <div className="rounded-2xl border border-emerald-100 bg-emerald-50/10 bg-white p-6 shadow-sm">
