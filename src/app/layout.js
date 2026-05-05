@@ -1,4 +1,5 @@
 import { AuthProvider } from "@/lib/AuthContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Inter, Poppins, Fira_Code } from "next/font/google";
 import "./app.css";
 
@@ -18,7 +19,9 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon.svg" />
       </head>
       <body className={`${inter.className} bg-white text-[#2B2B2B]`}>
-        <AuthProvider>{children}</AuthProvider>
+        <ErrorBoundary>
+          <AuthProvider>{children}</AuthProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
