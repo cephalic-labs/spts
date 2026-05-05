@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
 
   useEffect(() => {
     checkUser();
@@ -18,6 +19,7 @@ export function AuthProvider({ children }) {
 
   async function checkUser() {
     try {
+      setConnectionError(null);
       // Get Appwrite auth user
       let currentUser = await account.get();
 
@@ -63,9 +65,19 @@ export function AuthProvider({ children }) {
         // Continue without DB sync - basic auth still works
       }
     } catch (error) {
-      // Not logged in
-      setUser(null);
-      setDbUser(null);
+      // Check if it's a connection/network error vs authentication error
+      if (error.code === 'network_error' || 
+          error.message?.includes('fetch') || 
+          error.message?.includes('Network') ||
+          error.type === 'network_request_failed') {
+        setConnectionError('Unable to connect to authentication service. Please check your network connection.');
+      } else if (error.code >= 500) {
+        setConnectionError('Authentication service is currently unavailable. Please try again later.');
+      } else {
+        // Not logged in (401, 403, etc.)
+        setUser(null);
+        setDbUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -116,6 +128,7 @@ export function AuthProvider({ children }) {
     user,
     dbUser,
     loading,
+    connectionError,
     checkUser,
     refreshUser,
     logout,
