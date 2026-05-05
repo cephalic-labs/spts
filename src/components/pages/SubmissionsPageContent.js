@@ -64,7 +64,13 @@ export default function SubmissionsPageContent({ role }) {
 
         async function resolveStudentProfile() {
             try {
-                const profile = await getStudentByAppwriteUserId(user.$id);
+                let profile = null;
+                if (user.$id) {
+                    profile = await getStudentByAppwriteUserId(user.$id);
+                }
+                if (!profile && user.email) {
+                    profile = await getStudentByEmail(user.email);
+                }
                 if (profile) {
                     setCurrentStudentProfile(profile);
                 }
@@ -91,7 +97,7 @@ export default function SubmissionsPageContent({ role }) {
             let currentStudentMap = { ...studentMap };
 
             if (role === "student") {
-                const studentId = user?.$id;
+                const studentId = currentStudentProfile?.$id || user?.$id;
                 if (!studentId) {
                     setSubmissions([]);
                     return;
@@ -204,7 +210,7 @@ export default function SubmissionsPageContent({ role }) {
         const submission = cancelDialogSubmission;
         if (!submission) return;
 
-        const studentId = user?.$id || user?.dbId;
+        const studentId = currentStudentProfile?.$id || user?.$id || user?.dbId;
         if (!studentId) {
             setError("Unable to identify your account. Please sign in again.");
             return;

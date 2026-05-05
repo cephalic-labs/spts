@@ -46,10 +46,17 @@ export default function EventsPageContent({ role }) {
 
   useEffect(() => {
     if (role === "student" && user?.$id) {
-      loadStudentParticipations(user.$id);
       loadStudentProfile(user.$id);
     }
   }, [role, user?.$id]);
+
+  useEffect(() => {
+    if (role === "student" && user?.$id) {
+      const idsToLoad = [user.$id];
+      if (studentProfile?.$id) idsToLoad.push(studentProfile.$id);
+      loadStudentParticipations(idsToLoad);
+    }
+  }, [role, user?.$id, studentProfile]);
 
   useEffect(() => {
     if (role === "student" && user?.$id) {
@@ -158,7 +165,7 @@ export default function EventsPageContent({ role }) {
   };
 
   const handleParticipationChange = async (eventId, status) => {
-    const studentId = user?.$id;
+    const studentId = studentProfile?.$id || user?.$id;
     if (!studentId) return;
 
     setSavingParticipationFor(eventId);

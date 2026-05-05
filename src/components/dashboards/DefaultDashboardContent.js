@@ -139,7 +139,7 @@ export default function DefaultDashboardContent({ role }) {
               setStudentEvents(studentEventsResponse.documents || []);
 
               const participationResponse = await getStudentEventParticipations(
-                user.$id,
+                [user.$id, student.$id].filter(Boolean)
               );
               const nextParticipationMap = {};
               for (const participation of participationResponse.documents ||
@@ -150,7 +150,7 @@ export default function DefaultDashboardContent({ role }) {
 
               if (student.roll_no) {
                 const response = await getStudentODRequests(
-                  user.$id,
+                  student.$id || user.$id,
                   100,
                   student.roll_no,
                 );
@@ -365,7 +365,7 @@ export default function DefaultDashboardContent({ role }) {
   };
 
   const handleParticipationChange = async (eventId, status) => {
-    const studentId = user?.$id;
+    const studentId = student?.$id || user?.$id;
     if (!studentId) return;
 
     setSavingParticipationFor(eventId);

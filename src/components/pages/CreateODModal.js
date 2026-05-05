@@ -196,7 +196,13 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
 
     try {
       setFetchingParticipation(true);
-      const response = await getStudentEventParticipations(user.$id);
+      // Search by both Appwrite user ID and student document ID
+      // to find participation records regardless of which ID was used to create them
+      const idsToSearch = [user.$id];
+      if (studentData?.$id && studentData.$id !== user.$id) {
+        idsToSearch.push(studentData.$id);
+      }
+      const response = await getStudentEventParticipations(idsToSearch);
       const participatedIds = new Set(
         (response.documents || [])
           .filter((item) => item.status === PARTICIPATION_STATUS.PARTICIPATED)
@@ -208,7 +214,7 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
     } finally {
       setFetchingParticipation(false);
     }
-  }, [user?.$id]);
+  }, [user?.$id, studentData?.$id]);
 
   const loadPendingODRequests = useCallback(async (studentId, rollNo) => {
     if (!studentId) return;
@@ -378,7 +384,8 @@ export default function CreateODModal({ isOpen, onClose, onSuccess }) {
 
       await createODRequest({
         ...formData,
-        student_id: user?.$id,
+        student_id: studentData?.$id || user?.$id,
+        appwrite_user_id: user?.$id,
         student_email: user?.email || null,
         team: teamRollNumbers,
       });

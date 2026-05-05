@@ -2,6 +2,7 @@ import { ID, Query } from "appwrite";
 import { databases } from "../appwrite";
 import { DB_CONFIG } from "../dbConfig";
 import { decrementParticipationCount, incrementParticipationCount } from "./eventService";
+import { getStudentById, getStudentByAppwriteUserId } from "./studentService";
 import { secureLog } from "../secureLogger";
 
 const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
@@ -30,17 +31,42 @@ function validateStatus(status) {
 }
 
 async function getParticipationRecord(eventId, studentId) {
-    const response = await databases.listDocuments(
-        DATABASE_ID,
-        COLLECTIONS.EVENT_PARTICIPATIONS,
-        [
-            Query.equal("event_id", eventId),
-            Query.equal("student_id", studentId),
-            Query.limit(1),
-        ]
-    );
+    let searchStudentIds = [studentId];
+    try {
+        let studentRecord = await getStudentById(studentId).catch(() => null);
+        if (!studentRecord) {
+            studentRecord = await getStudentByAppwriteUserId(studentId).catch(() => null);
+        }
+        if (studentRecord) {
+            searchStudentIds.push(studentRecord.$id);
+            if (studentRecord.appwrite_user_id) {
+                searchStudentIds.push(studentRecord.appwrite_user_id);
+            }
+        }
+    } catch (err) {}
 
-    return response.documents?.[0] || null;
+    const uniqueIds = [...new Set(searchStudentIds)].filter(Boolean);
+
+    for (const idToSearch of uniqueIds) {
+        try {
+            const response = await databases.listDocuments(
+                DATABASE_ID,
+                COLLECTIONS.EVENT_PARTICIPATIONS,
+                [
+                    Query.equal("event_id", eventId),
+                    Query.equal("student_id", idToSearch),
+                    Query.limit(1),
+                ]
+            );
+            if (response.documents && response.documents.length > 0) {
+                return response.documents[0];
+            }
+        } catch (err) {
+            // continue
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -48,16 +74,43 @@ async function getParticipationRecord(eventId, studentId) {
  */
 export async function getStudentEventParticipations(studentId, limit = 100) {
     try {
-        const response = await databases.listDocuments(
-            DATABASE_ID,
-            COLLECTIONS.EVENT_PARTICIPATIONS,
-            [
-                Query.equal("student_id", studentId),
-                Query.limit(limit),
-                Query.orderDesc("$updatedAt"),
-            ]
-        );
-        return response;
+        const idsToSearch = Array.isArray(studentId) ? studentId : [studentId];
+        const uniqueIds = [...new Set(idsToSearch)].filter(Boolean);
+        
+        let allDocuments = [];
+        
+        for (const id of uniqueIds) {
+            try {
+                const response = await databases.listDocuments(
+                    DATABASE_ID,
+                    COLLECTIONS.EVENT_PARTICIPATIONS,
+                    [
+                        Query.equal("student_id", id),
+                        Query.limit(limit),
+                        Query.orderDesc("$updatedAt"),
+                    ]
+                );
+                if (response.documents) {
+                    allDocuments = [...allDocuments, ...response.documents];
+                }
+            } catch (err) {
+                // Continue to next ID
+            }
+        }
+        
+        // Remove duplicates if any (based on event_id)
+        const uniqueDocsMap = new Map();
+        for (const doc of allDocuments) {
+            if (!uniqueDocsMap.has(doc.event_id)) {
+                uniqueDocsMap.set(doc.event_id, doc);
+            }
+        }
+        
+        const finalDocs = Array.from(uniqueDocsMap.values())
+            .sort((a, b) => new Date(b.$updatedAt) - new Date(a.$updatedAt))
+            .slice(0, limit);
+
+        return { documents: finalDocs, total: finalDocs.length };
     } catch (error) {
         secureLog.error("Error getting student event participations:", error);
         throw error;

@@ -9,6 +9,7 @@ import {
 } from "@/lib/services/odRequestService";
 import { getEventById } from "@/lib/services/eventService";
 import {
+  getStudentById,
   getStudentByAppwriteUserId,
   getStudentByEmail,
   getStudentByRollNo,
@@ -185,9 +186,12 @@ export default function ODDetailsModal({ isOpen, onClose, odId }) {
         studentData = await getStudentByEmail(resolvedEmail).catch(() => null);
       }
       if (!studentData && data.student_id) {
-        studentData = await getStudentByAppwriteUserId(data.student_id).catch(
-          () => null,
-        );
+        studentData = await getStudentById(data.student_id).catch(() => null);
+        if (!studentData) {
+          studentData = await getStudentByAppwriteUserId(data.student_id).catch(
+            () => null,
+          );
+        }
       }
 
       const [logsData, eventData] = await Promise.all([

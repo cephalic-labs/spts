@@ -72,6 +72,14 @@ async function getStudentRecordForOD(studentAppwriteId, studentEmail) {
   if (!studentAppwriteId && !studentEmail) return null;
 
   if (studentAppwriteId) {
+    // Try to get by Document ID first
+    try {
+      const doc = await databases.getDocument(DATABASE_ID, COLLECTIONS.STUDENTS, studentAppwriteId);
+      if (doc) return doc;
+    } catch (err) {
+      // Ignore, continue to search by appwrite_user_id
+    }
+
     try {
       const byAppwriteId = await databases.listDocuments(
         DATABASE_ID,
@@ -122,18 +130,40 @@ async function getStudentRecordForOD(studentAppwriteId, studentEmail) {
   return null;
 }
 
-async function getEventParticipation(eventId, studentId) {
-  const response = await databases.listDocuments(
-    DATABASE_ID,
-    COLLECTIONS.EVENT_PARTICIPATIONS,
-    [
-      Query.equal("event_id", eventId),
-      Query.equal("student_id", studentId),
-      Query.limit(1),
-    ],
-  );
+async function getEventParticipation(eventId, studentId, additionalIds = []) {
+  let searchStudentIds = [studentId, ...additionalIds];
+  try {
+    const studentRecord = await getStudentRecordForOD(studentId, null);
+    if (studentRecord) {
+      searchStudentIds.push(studentRecord.$id);
+      if (studentRecord.appwrite_user_id) {
+        searchStudentIds.push(studentRecord.appwrite_user_id);
+      }
+    }
+  } catch (err) {}
 
-  return response.documents?.[0] || null;
+  const uniqueIds = [...new Set(searchStudentIds)].filter(Boolean);
+
+  for (const idToSearch of uniqueIds) {
+    try {
+      const response = await databases.listDocuments(
+        DATABASE_ID,
+        COLLECTIONS.EVENT_PARTICIPATIONS,
+        [
+          Query.equal("event_id", eventId),
+          Query.equal("student_id", idToSearch),
+          Query.limit(1),
+        ],
+      );
+      if (response.documents && response.documents.length > 0) {
+        return response.documents[0];
+      }
+    } catch (err) {
+      // Continue to next ID if this one fails
+    }
+  }
+
+  return null;
 }
 
 async function getDepartmentApprover(department, role) {
@@ -236,10 +266,11 @@ export async function createODRequest(data) {
       throw new Error("OD dates must be on or before the event date.");
     }
 
-    // Validate participation
+    // Validate participation — search by student_id AND appwrite_user_id
     const participation = await getEventParticipation(
       data.event_id,
       data.student_id,
+      [data.appwrite_user_id].filter(Boolean),
     );
     if (!participation || participation.status !== "participated") {
       throw new Error(
