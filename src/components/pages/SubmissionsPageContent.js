@@ -9,9 +9,9 @@ import { OD_STATUS } from "@/lib/dbConfig";
 import CreateODModal from "./CreateODModal";
 import ODDetailsModal from "./ODDetailsModal";
 import { getStudents, getStudentsByAppwriteUserIds, getStudentsByIds, getStudentByEmail, getStudentByAppwriteUserId } from "@/lib/services/studentService";
-import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 
 const statusColors = {
     [OD_STATUS.PENDING_MENTOR]: "bg-yellow-100 text-yellow-700",
@@ -48,46 +48,16 @@ export default function SubmissionsPageContent({ role }) {
     const [cancelDialogSubmission, setCancelDialogSubmission] = useState(null);
     const [filterDept, setFilterDept] = useState("");
     const [filterSection, setFilterSection] = useState("");
-    const [userDepartment, setUserDepartment] = useState(null);
-    const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [studentMap, setStudentMap] = useState({});
     const [currentStudentProfile, setCurrentStudentProfile] = useState(null);
 
-    const needsDeptLock = !["sudo", "admin", "student"].includes(role);
+    const { userDepartment, deptResolved, needsDeptLock } = useDepartmentResolver(role, user);
 
-    // For all faculty roles (hod, coordinator, advisor, mentor, principal):
-    // fetch their faculty profile to resolve department and lock the filter
     useEffect(() => {
-        if (!needsDeptLock || !user?.$id) return;
-
-        async function resolveDepartment() {
-            try {
-                // Try 1: lookup by Appwrite user ID
-                let faculty = await getFacultyByAppwriteId(user.$id);
-                console.log("[Dept Resolution] By appwrite_user_id:", faculty?.department || "not found");
-
-                // Try 2: fallback to email lookup
-                if (!faculty && user.email) {
-                    faculty = await getFacultyByEmail(user.email);
-                    console.log("[Dept Resolution] By email:", faculty?.department || "not found");
-                }
-
-                if (faculty?.department) {
-                    console.log("[Dept Resolution] Locked to department:", faculty.department);
-                    setUserDepartment(faculty.department);
-                    setFilterDept(faculty.department);
-                } else {
-                    console.warn("[Dept Resolution] Could not resolve department for user:", user.$id, user.email);
-                }
-            } catch (err) {
-                console.error("[Dept Resolution] Error:", err);
-            } finally {
-                setDeptResolved(true);
-            }
+        if (userDepartment) {
+            setFilterDept(userDepartment);
         }
-
-        resolveDepartment();
-    }, [role, user?.$id, user?.email]);
+    }, [userDepartment]);
 
     // For student role: fetch their own student profile to resolve roll number for team requests
     useEffect(() => {

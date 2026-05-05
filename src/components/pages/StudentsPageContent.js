@@ -1,80 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { getStudents, deleteStudent } from "@/lib/services/studentService";
-import { getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
 import Pagination from "@/components/ui/Pagination";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
+import { usePaginatedData } from "@/lib/hooks/usePaginatedData";
 
 export default function StudentsPageContent({ role }) {
     const { user } = useAuth();
-    const [students, setStudents] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ department: "", year: "", section: "", search: "" });
-    const [userDepartment, setUserDepartment] = useState(null);
-    const [deptResolved, setDeptResolved] = useState(["sudo", "admin", "student"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedStudent, setSelectedStudent] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalStudents, setTotalStudents] = useState(0);
-    const itemsPerPage = 50;
 
-    const needsDeptLock = !["sudo", "admin", "student"].includes(role);
+    const { userDepartment, deptResolved, needsDeptLock } = useDepartmentResolver(role, user);
 
-    // Resolve department for faculty roles
+    const fetchStudents = useCallback((offset, limit) => 
+        getStudents(filter, limit, offset), 
+        [filter]
+    );
+
+    const { 
+        data: students, 
+        total: totalStudents, 
+        loading, 
+        currentPage, 
+        setCurrentPage, 
+        reload 
+    } = usePaginatedData(fetchStudents, [filter, deptResolved]);
+
     useEffect(() => {
-        if (!needsDeptLock || !user?.$id) return;
-
-        async function resolveDepartment() {
-            try {
-                let faculty = await getFacultyByAppwriteId(user.$id);
-                if (!faculty && user.email) {
-                    faculty = await getFacultyByEmail(user.email);
-                }
-
-                if (faculty?.department) {
-                    setUserDepartment(faculty.department);
-                    setFilter(prev => ({ ...prev, department: faculty.department }));
-                }
-            } catch (err) {
-                console.error("[Dept Resolution] Error:", err);
-            } finally {
-                setDeptResolved(true);
-            }
+        if (userDepartment) {
+            setFilter(prev => ({ ...prev, department: userDepartment }));
         }
-
-        resolveDepartment();
-    }, [role, user?.$id, user?.email]);
-
-    useEffect(() => {
-        if (!deptResolved) return;
-        setCurrentPage(1);
-        loadStudents();
-    }, [filter, deptResolved]);
-
-    useEffect(() => {
-        if (!deptResolved) return;
-        loadStudents();
-    }, [currentPage]);
-
-    async function loadStudents() {
-        try {
-            setLoading(true);
-            const offset = (currentPage - 1) * itemsPerPage;
-            const response = await getStudents(filter, itemsPerPage, offset);
-            setStudents(response.documents || []);
-            setTotalStudents(response.total || 0);
-        } catch (err) {
-            setError("Failed to load students");
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    }
+    }, [userDepartment]);
 
     const handleAdd = () => {
         setSelectedStudent(null);
@@ -90,7 +52,7 @@ export default function StudentsPageContent({ role }) {
         if (window.confirm("Are you sure you want to delete this student record?")) {
             try {
                 await deleteStudent(studentId);
-                loadStudents();
+                reload();
             } catch (error) {
                 alert("Failed to delete student");
                 console.error(error);
@@ -131,7 +93,7 @@ export default function StudentsPageContent({ role }) {
             <AddStudentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={loadStudents}
+                onSuccess={reload}
                 initialData={selectedStudent}
             />
 
@@ -281,7 +243,7 @@ export default function StudentsPageContent({ role }) {
                     <Pagination
                         currentPage={currentPage}
                         totalItems={totalStudents}
-                        itemsPerPage={itemsPerPage}
+                        itemsPerPage={50}
                         onPageChange={setCurrentPage}
                     />
                 )}

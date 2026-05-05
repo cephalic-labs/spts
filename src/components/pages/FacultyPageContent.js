@@ -1,88 +1,48 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getFaculties, deleteFaculty, getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
+import { getFaculties, deleteFaculty } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
 import Pagination from "@/components/ui/Pagination";
 import { getAdminFacultyFromLabels } from "@/actions/auth";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
+import { usePaginatedData } from "@/lib/hooks/usePaginatedData";
 
 export default function FacultyPageContent({ role, filterRole }) {
     const { user } = useAuth();
-    const [faculty, setFaculty] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ department: "", role: filterRole || "", search: "" });
-    const [userDepartment, setUserDepartment] = useState(null);
-    const [deptResolved, setDeptResolved] = useState(["sudo", "admin"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedFaculty, setSelectedFaculty] = useState(null);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [totalFaculty, setTotalFaculty] = useState(0);
-    const itemsPerPage = 50;
 
-    const needsDeptLock = !["sudo", "admin"].includes(role);
+    const { userDepartment, deptResolved, needsDeptLock } = useDepartmentResolver(role, user);
 
-    // Resolve department for faculty roles
-    useEffect(() => {
-        if (!needsDeptLock || !user?.$id) return;
-
-        async function resolveDepartment() {
-            try {
-                let currentFaculty = await getFacultyByAppwriteId(user.$id);
-                if (!currentFaculty && user.email) {
-                    currentFaculty = await getFacultyByEmail(user.email);
-                }
-
-                if (currentFaculty?.department) {
-                    setUserDepartment(currentFaculty.department);
-                    setFilter(prev => ({ ...prev, department: currentFaculty.department }));
-                }
-            } catch (err) {
-                console.error("[Dept Resolution] Error:", err);
-            } finally {
-                setDeptResolved(true);
-            }
+    const fetchFaculty = useCallback(async (offset, limit) => {
+        if (filterRole === "admin") {
+            const adminList = await getAdminFacultyFromLabels();
+            return { documents: adminList || [], total: adminList?.length || 0 };
         }
+        return getFaculties(filter, limit, offset);
+    }, [filter, filterRole]);
 
-        resolveDepartment();
-    }, [role, user?.$id, user?.email]);
+    const { 
+        data: faculty, 
+        total: totalFaculty, 
+        loading, 
+        currentPage, 
+        setCurrentPage, 
+        reload 
+    } = usePaginatedData(fetchFaculty, [filter, deptResolved]);
 
     useEffect(() => {
-        if (!deptResolved) return;
-        setCurrentPage(1);
-        loadFaculty();
-    }, [filter, deptResolved]);
-
-    useEffect(() => {
-        if (!deptResolved) return;
-        loadFaculty();
-    }, [currentPage]);
-
-    async function loadFaculty() {
-        try {
-            setLoading(true);
-            if (filterRole === "admin") {
-                const adminList = await getAdminFacultyFromLabels();
-                setFaculty(adminList || []);
-                setTotalFaculty(adminList?.length || 0);
-            } else {
-                const offset = (currentPage - 1) * itemsPerPage;
-                const response = await getFaculties(filter, itemsPerPage, offset);
-                setFaculty(response.documents || []);
-                setTotalFaculty(response.total || 0);
-            }
-        } catch (err) {
-            setError("Failed to load faculty");
-            console.error(err);
-        } finally {
-            setLoading(false);
+        if (userDepartment) {
+            setFilter(prev => ({ ...prev, department: userDepartment }));
         }
-    }
+    }, [userDepartment]);
 
     const handleAdd = () => {
         setSelectedFaculty(null);
@@ -98,7 +58,7 @@ export default function FacultyPageContent({ role, filterRole }) {
         if (window.confirm("Are you sure you want to delete this faculty record?")) {
             try {
                 await deleteFaculty(memberId);
-                loadFaculty();
+                reload();
             } catch (error) {
                 alert("Failed to delete faculty");
                 console.error(error);
@@ -152,7 +112,7 @@ export default function FacultyPageContent({ role, filterRole }) {
             <AddFacultyModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={loadFaculty}
+                onSuccess={reload}
                 initialData={selectedFaculty}
                 preselectedRole={filterRole}
             />
@@ -160,7 +120,7 @@ export default function FacultyPageContent({ role, filterRole }) {
             <AssignAdminModal
                 isOpen={isAssignModalOpen}
                 onClose={() => setIsAssignModalOpen(false)}
-                onSuccess={loadFaculty}
+                onSuccess={reload}
             />
 
             {/* Filters */}
@@ -289,7 +249,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                     <Pagination
                         currentPage={currentPage}
                         totalItems={totalFaculty}
-                        itemsPerPage={itemsPerPage}
+                        itemsPerPage={50}
                         onPageChange={setCurrentPage}
                     />
                 )}
