@@ -124,8 +124,9 @@ export async function approveODRequestSecure(odId, userId, remarks = "") {
 
     // If HOD granted, decrement OD counts
     if (role === "hod") {
-      const categoryField =
-        odRequest.event_category || odRequest.event_host_type || null;
+      // event_category contains the normalized category field name (e.g., "university", "nirf", etc.)
+      // This will decrement both the category-specific count and the total od_count
+      const categoryField = odRequest.event_category || null;
       await decrementODCountAtomic(odRequest.student_id, categoryField);
       await decrementTeamODCountsAtomic(odRequest.team || [], categoryField);
     }

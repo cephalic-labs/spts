@@ -95,18 +95,8 @@ function buildDecrementPayload(student, categoryField = null) {
     payload[categoryField] = Math.max(currentValue - 1, 0);
   }
 
-  const categoryFieldsPresent = OD_CATEGORY_FIELDS.some(
-    (field) => student?.[field] !== undefined && student?.[field] !== null,
-  );
-  if (categoryFieldsPresent) {
-    payload.od_count = OD_CATEGORY_FIELDS.reduce((total, field) => {
-      const nextValue =
-        field === categoryField && OD_CATEGORY_FIELDS.includes(categoryField)
-          ? Math.max(getStudentODValue(student, field) - 1, 0)
-          : getStudentODValue(student, field);
-      return total + nextValue;
-    }, 0);
-  } else if (student?.od_count !== undefined && student?.od_count !== null) {
+  // Always decrement od_count by 1
+  if (student?.od_count !== undefined && student?.od_count !== null) {
     const legacyCount = parseInt(student.od_count, 10);
     payload.od_count = Math.max(
       Number.isNaN(legacyCount) ? 0 : legacyCount - 1,
@@ -127,12 +117,8 @@ export async function decrementODCountAtomic(studentId, categoryField = null) {
 
     if (response.documents.length > 0) {
       const student = response.documents[0];
-      if (categoryField) {
-        const payload = buildDecrementPayload(student, categoryField);
-        await updateStudentServer(student.$id, payload);
-      } else {
-        await decrementStudentODCount(student.$id);
-      }
+      const payload = buildDecrementPayload(student, categoryField);
+      await updateStudentServer(student.$id, payload);
     }
   } catch (error) {
     secureLog.warn("Failed to decrement OD count:", error);
@@ -156,12 +142,8 @@ export async function decrementTeamODCountsAtomic(
 
         if (response.documents.length > 0) {
           const student = response.documents[0];
-          if (categoryField) {
-            const payload = buildDecrementPayload(student, categoryField);
-            await updateStudentServer(student.$id, payload);
-          } else {
-            await decrementStudentODCount(student.$id);
-          }
+          const payload = buildDecrementPayload(student, categoryField);
+          await updateStudentServer(student.$id, payload);
         }
       } catch (error) {
         secureLog.warn("Failed to decrement team member OD count:", error);

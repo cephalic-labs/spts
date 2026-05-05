@@ -226,9 +226,7 @@ export async function createODRequest(data) {
     }
 
     const eventDate = normalizeDateOnly(event?.event_time);
-    const eventCategory = normalizeCategoryField(
-      event?.event_category || event?.event_host_type,
-    );
+    const eventCategory = normalizeCategoryField(event?.host_type);
     const odStartDate = normalizeDateOnly(data.od_start_date);
     const odEndDate = normalizeDateOnly(data.od_end_date);
 
@@ -350,7 +348,7 @@ export async function createODRequest(data) {
         reason: data.reason,
         attachments: data.attachments || [],
         event_category: eventCategory,
-        event_host_type: event?.event_host_type || eventCategory,
+        event_host_type: event?.host_type || eventCategory,
         current_status: OD_STATUS.PENDING_MENTOR,
         mentor_id: data.mentor_id || studentRecord.mentor_id,
         advisor_id: advisor ? advisor.$id : advisorId || null,

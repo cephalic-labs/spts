@@ -42,7 +42,6 @@ export default function CreateEventModal({
     event_name: "",
     event_host: "",
     event_host_type: "university",
-    event_category: "university",
     nirf_college_id: "",
     event_description: "",
     event_time: "",
@@ -56,14 +55,8 @@ export default function CreateEventModal({
         event_name: initialData.event_name || "",
         event_host: initialData.event_host || "",
         event_host_type:
-          initialData.event_host_type ||
-          initialData.event_category ||
-          "university",
-        event_category:
-          initialData.event_category ||
-          initialData.event_host_type ||
-          "university",
-        nirf_college_id: initialData.nirf_college_id || "",
+          initialData.host_type || initialData.event_host_type || "university",
+        nirf_college_id: "",
         event_description: initialData.event_description || "",
         event_time: formatDateOnly(initialData.event_time),
         event_reg_deadline: formatDateOnly(initialData.event_reg_deadline),
@@ -76,7 +69,6 @@ export default function CreateEventModal({
       event_name: "",
       event_host: "",
       event_host_type: "university",
-      event_category: "university",
       nirf_college_id: "",
       event_description: "",
       event_time: "",
@@ -143,7 +135,6 @@ export default function CreateEventModal({
     if (formData.event_host_type !== "nirf") {
       setFormData((prev) => ({
         ...prev,
-        event_category: formData.event_host_type || "university",
         nirf_college_id: "",
       }));
       return;
@@ -151,13 +142,12 @@ export default function CreateEventModal({
 
     setFormData((prev) => {
       const nextHost = selectedNIRFCollege?.college_name || prev.event_host;
-      if (prev.event_category === "nirf" && prev.event_host === nextHost) {
+      if (prev.event_host === nextHost) {
         return prev;
       }
 
       return {
         ...prev,
-        event_category: "nirf",
         event_host: nextHost,
       };
     });
@@ -317,9 +307,6 @@ export default function CreateEventModal({
               />
             </div>
           )}
-
-          <input type="hidden" value={formData.event_category} readOnly />
-          <input type="hidden" value={formData.nirf_college_id} readOnly />
 
           <div className="space-y-2">
             <label className="text-sm font-semibold text-gray-700">

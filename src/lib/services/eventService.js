@@ -41,17 +41,10 @@ function normalizeEventPayload(data = {}, options = {}) {
   }
   if (
     !partial ||
-    data.event_category !== undefined ||
     data.event_host_type !== undefined ||
     data.host_type !== undefined
   ) {
-    payload.event_category = String(data.event_category || hostType)
-      .trim()
-      .toLowerCase();
-    payload.event_host_type = hostType;
-  }
-  if (!partial || data.nirf_college_id !== undefined) {
-    payload.nirf_college_id = data.nirf_college_id || null;
+    payload.host_type = hostType;
   }
   if (!partial || data.participation_count !== undefined) {
     payload.participation_count =

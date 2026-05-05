@@ -222,7 +222,7 @@ export default function StudentsPageContent({ role }) {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1400px]">
+            <table className="w-full min-w-[100px]">
               <thead className="border-b border-gray-100 bg-[#F8F9FA]">
                 <tr>
                   <th className="px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase">
@@ -240,19 +240,8 @@ export default function StudentsPageContent({ role }) {
                   <th className="px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase">
                     Contact
                   </th>
-                  {OD_CATEGORY_FIELDS.map((field) => (
-                    <th
-                      key={field}
-                      className="hidden px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase lg:table-cell"
-                    >
-                      {field.replace("_", " ")}
-                    </th>
-                  ))}
                   <th className="px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase">
                     Total OD
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-bold tracking-wider text-gray-500 uppercase">
-                    Status
                   </th>
                   {canManageStudents && (
                     <th className="px-6 py-4 text-right text-xs font-bold tracking-wider text-gray-500 uppercase">
@@ -288,22 +277,6 @@ export default function StudentsPageContent({ role }) {
                     <td className="px-6 py-4 text-xs text-gray-500">
                       {student.phone || "--"}
                     </td>
-                    {OD_CATEGORY_FIELDS.map((field) => (
-                      <td
-                        key={field}
-                        className="hidden px-6 py-4 lg:table-cell"
-                      >
-                        <span
-                          className={`rounded-full px-2 py-1 text-[10px] font-bold ${
-                            getStudentODValue(student, field) > 0
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
-                        >
-                          {getStudentODValue(student, field)}
-                        </span>
-                      </td>
-                    ))}
                     <td className="px-6 py-4">
                       <span
                         className={`rounded-full px-2 py-1 text-[10px] font-bold ${
@@ -313,13 +286,6 @@ export default function StudentsPageContent({ role }) {
                         }`}
                       >
                         {getStudentTotalOD(student)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${student.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"}`}
-                      >
-                        {student.status}
                       </span>
                     </td>
                     {canManageStudents && (
