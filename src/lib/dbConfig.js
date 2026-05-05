@@ -33,6 +33,9 @@ export const OD_STATUS = {
 // Role hierarchy for approval workflow
 export const APPROVAL_ROLES = ["mentor", "advisor", "coordinator", "hod"];
 
+// Valid roles for the entire system
+export const VALID_ROLES = ["sudo", "admin", "student", "mentor", "advisor", "coordinator", "hod", "principal"];
+
 // Get next status after approval
 export function getNextStatus(currentStatus) {
     const statusFlow = {
