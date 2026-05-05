@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createEvent, updateEvent } from "@/lib/services/eventService";
+import { Icons } from "@/components/layout";
 
 function formatDateOnly(value) {
     if (!value) return "";
@@ -95,9 +96,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, initialDa
                 <div className="px-4 sm:px-8 py-4 sm:py-6 border-b border-gray-100 flex justify-between items-center bg-[#1E2761]">
                     <h2 className="text-lg sm:text-xl font-bold text-white">{isEdit ? "Edit Event" : "Create New Event"}</h2>
                     <button onClick={onClose} className="text-white/80 hover:text-white">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <Icons.Close />
                     </button>
                 </div>
 

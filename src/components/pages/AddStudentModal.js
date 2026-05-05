@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { createStudent, updateStudent } from "@/lib/services/studentService";
 import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { Icons } from "@/components/layout";
 
 export default function AddStudentModal({ isOpen, onClose, onSuccess, initialData = null }) {
     const isEdit = !!initialData;
@@ -83,9 +84,7 @@ export default function AddStudentModal({ isOpen, onClose, onSuccess, initialDat
                         <p className="text-gray-400 text-sm font-medium">Capture student academic details</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <Icons.Close />
                     </button>
                 </div>
 

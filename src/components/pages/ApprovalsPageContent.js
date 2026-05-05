@@ -10,6 +10,7 @@ import { getUserByAppwriteId } from "@/lib/services/userService";
 import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo, getStudentsByAppwriteUserIds } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
+import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 
 const roleToStatus = {
     mentor: OD_STATUS.PENDING_MENTOR,
@@ -48,6 +49,7 @@ function getLogActionMeta(action) {
 
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
+    const { deptResolved } = useDepartmentResolver(role, user);
     const [pendingRequests, setPendingRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
@@ -67,10 +69,10 @@ export default function ApprovalsPageContent({ role }) {
     const [eventsMap, setEventsMap] = useState({});
 
     useEffect(() => {
-        if (user) {
+        if (user && deptResolved) {
             loadPendingRequests();
         }
-    }, [role, user?.$id]);
+    }, [role, user?.$id, deptResolved]);
 
     // Fetch student and event details when viewRequest changes
     useEffect(() => {
@@ -177,41 +179,18 @@ export default function ApprovalsPageContent({ role }) {
             setApproverError(null);
             const status = roleToStatus[role];
 
-            if (role === 'student') return; // Students don't approve
+            if (role === 'student') return;
 
             let currentFacultyId = null;
             let approverIds = [];
 
             if (status && user?.$id) {
-                // Try multiple methods to find the faculty record
-                let faculty = null;
-
-                // Method 1: Try by appwrite_user_id
-                try {
-                    faculty = await getFacultyByAppwriteId(user.$id);
-                } catch (e) {
-                    if (process.env.NODE_ENV !== 'production') {
-                        console.warn("Could not find faculty by Appwrite ID:", e);
-                    }
-                }
-
-                // Method 2: Try by email if method 1 failed
-                if (!faculty) {
-                    const dbUser = await getUserByAppwriteId(user.$id);
-                    const approverEmail = dbUser?.user_email || user?.email || null;
-                    if (approverEmail) {
-                        try {
-                            faculty = await getFacultyByEmail(approverEmail);
-                        } catch (e) {
-                            if (process.env.NODE_ENV !== 'production') {
-                                console.warn("Could not find faculty by email:", e);
-                            }
-                        }
-                    }
+                let faculty = await getFacultyByAppwriteId(user.$id).catch(() => null);
+                if (!faculty && user.email) {
+                    faculty = await getFacultyByEmail(user.email).catch(() => null);
                 }
 
                 if (faculty) {
-                    // Use both faculty_id (preferred) and $id (legacy) to catch all requests
                     approverIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
                     setApproverFacultyId(approverIds);
                     currentFacultyId = faculty.$id;
