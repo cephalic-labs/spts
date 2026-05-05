@@ -192,8 +192,15 @@ export async function resetStudentODCountsAtomic(
   for (const field of OD_CATEGORY_FIELDS) {
     updateData[field] = parseInt(policy[field] || 0, 10) || 0;
   }
-  updateData.od_count =
-    customTotal !== null ? parseInt(customTotal, 10) : sumPolicyCounts(policy);
+
+  const policySum = sumPolicyCounts(policy);
+  const finalTotal = customTotal !== null ? parseInt(customTotal, 10) : policySum;
+  updateData.od_count = finalTotal;
+
+  if (finalTotal > policySum) {
+    const diff = finalTotal - policySum;
+    updateData.others = (updateData.others || 0) + diff;
+  }
 
   await updateStudentServer(studentDocId, updateData);
 }
@@ -216,8 +223,15 @@ export async function resetStudentsByYearAtomic(
   for (const field of OD_CATEGORY_FIELDS) {
     updateData[field] = parseInt(policy[field] || 0, 10) || 0;
   }
-  updateData.od_count =
-    customTotal !== null ? parseInt(customTotal, 10) : sumPolicyCounts(policy);
+
+  const policySum = sumPolicyCounts(policy);
+  const finalTotal = customTotal !== null ? parseInt(customTotal, 10) : policySum;
+  updateData.od_count = finalTotal;
+
+  if (finalTotal > policySum) {
+    const diff = finalTotal - policySum;
+    updateData.others = (updateData.others || 0) + diff;
+  }
 
   const queries = [Query.equal("year", parseInt(year, 10))];
   let offset = 0;

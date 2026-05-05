@@ -73,7 +73,7 @@ export default function ImportPageContent({ role }) {
           CGPA: 8.5,
         },
       ];
-      fileName = "student_import_sample.csv";
+      fileName = "student_import_sample.xlsx";
     } else if (target === "Faculty") {
       sampleData = [
         {
@@ -101,7 +101,7 @@ export default function ImportPageContent({ role }) {
           "Event URL": "https://symposium.sece.ac.in",
         },
       ];
-      fileName = "event_import_sample.csv";
+      fileName = "event_import_sample.xlsx";
     }
 
     const worksheet = XLSX.utils.json_to_sheet(sampleData);
