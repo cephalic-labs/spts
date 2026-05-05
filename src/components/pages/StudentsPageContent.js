@@ -6,6 +6,7 @@ import { getStudents, deleteStudent } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import AddStudentModal from "./AddStudentModal";
 import Pagination from "@/components/ui/Pagination";
+import ActionButtons from "@/components/ui/ActionButtons";
 import {
   DEPARTMENTS_LIST,
   ADMIN_ADVISOR_ROLES,
@@ -43,6 +44,7 @@ export default function StudentsPageContent({ role }) {
     year: "",
     section: "",
     search: "",
+    searchType: "name",
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -138,7 +140,7 @@ export default function StudentsPageContent({ role }) {
         <div className="relative w-full sm:w-64">
           <input
             type="text"
-            placeholder="Search by name..."
+            placeholder={`Search by ${filter.searchType}...`}
             className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-4 pl-10 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
             value={filter.search}
             onChange={(e) => setFilter({ ...filter, search: e.target.value })}
@@ -147,6 +149,14 @@ export default function StudentsPageContent({ role }) {
             <Icons.Search />
           </div>
         </div>
+        <select
+          className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
+          value={filter.searchType}
+          onChange={(e) => setFilter({ ...filter, searchType: e.target.value, search: "" })}
+        >
+          <option value="name">Name</option>
+          <option value="roll_no">Roll Number</option>
+        </select>
         {!needsDeptLock ? (
           <select
             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
@@ -309,22 +319,12 @@ export default function StudentsPageContent({ role }) {
                     </td>
                     {canManageStudents && (
                       <td className="px-6 py-4 text-right">
-                        <div className="inline-flex items-center justify-end gap-3">
-                          <button
-                            onClick={() => handleEdit(student)}
-                            className="text-xs font-black tracking-widest text-[#1E2761] uppercase hover:underline"
-                          >
-                            Edit
-                          </button>
-                          {ADMIN_HOD_ADVISOR_ROLES.includes(role) && (
-                            <button
-                              onClick={() => handleDelete(student.$id)}
-                              className="text-xs font-black tracking-widest text-red-500 uppercase hover:underline"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
+                        <ActionButtons
+                          onEdit={() => handleEdit(student)}
+                          onDelete={ADMIN_HOD_ADVISOR_ROLES.includes(role) ? () => handleDelete(student.$id) : null}
+                          editTitle="Edit Student"
+                          deleteTitle="Delete Student"
+                        />
                       </td>
                     )}
                   </tr>

@@ -32,7 +32,11 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
       queries.push(Query.equal("mentor_id", filters.mentor_id));
     }
     if (filters.search) {
-      queries.push(Query.contains("name", filters.search));
+      if (filters.searchType === "roll_no") {
+        queries.push(Query.contains("roll_no", filters.search));
+      } else {
+        queries.push(Query.contains("name", filters.search));
+      }
     }
 
     const response = await databases.listDocuments(

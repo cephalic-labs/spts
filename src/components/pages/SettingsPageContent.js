@@ -17,6 +17,7 @@ import { deleteNIRFCollege } from "@/lib/services/nirfCollegeService";
 import { getStudentByRollNo } from "@/lib/services/studentService";
 import { resetStudentODCountsAtomic } from "@/actions/odCountManager";
 import NIRFCollegeModal from "./NIRFCollegeModal";
+import ActionButtons from "@/components/ui/ActionButtons";
 
 const emptyQuotaForm = OD_CATEGORY_FIELDS.reduce((accumulator, field) => {
   accumulator[field] = "";
@@ -457,24 +458,16 @@ export default function SettingsPageContent({ role }) {
                       <td className="px-4 py-3 text-sm text-gray-500">
                         #{college.rank}
                       </td>
-                      <td className="space-x-3 px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => {
+                      <td className="px-4 py-3 text-right">
+                        <ActionButtons
+                          onEdit={() => {
                             setEditingNirfCollege(college);
                             setNirfModalOpen(true);
                           }}
-                          className="text-xs font-black tracking-widest text-[#1E2761] uppercase"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteNIRFCollege(college.$id)}
-                          className="text-xs font-black tracking-widest text-red-600 uppercase"
-                        >
-                          Delete
-                        </button>
+                          onDelete={() => handleDeleteNIRFCollege(college.$id)}
+                          editTitle="Edit College"
+                          deleteTitle="Delete College"
+                        />
                       </td>
                     </tr>
                   ))}
