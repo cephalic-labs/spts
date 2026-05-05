@@ -7,7 +7,7 @@ import { approveODRequestSecure, rejectODRequestSecure } from "@/actions/odAppro
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
-import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo } from "@/lib/services/studentService";
+import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo, getStudentsByAppwriteUserIds } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
 import { OD_STATUS } from "@/lib/dbConfig";
 
@@ -229,48 +229,17 @@ export default function ApprovalsPageContent({ role }) {
                 }
             }
 
-            // Fetch Student Details for each request
-            const enhancedRequests = await Promise.all(requests.map(async (req) => {
-                try {
-                    if (req.student_id) {
-                        // Try fetching by Appwrite User ID first
-                        let studentBody = await getStudentByAppwriteUserId(req.student_id);
+            // Batch fetch student details
+            const studentIds = [...new Set(requests.map(r => r.student_id).filter(Boolean))];
+            const students = await getStudentsByAppwriteUserIds(studentIds, studentIds.length);
+            const studentMap = new Map(students.map(s => [s.appwrite_user_id, s]));
 
-                        // If not found, try fetching by Document ID
-                        if (!studentBody) {
-                            try {
-                                studentBody = await getStudentById(req.student_id);
-                            } catch (e) {
-                                // Quietly fail if not found by ID either
-                            }
-                        }
-
-                        // LAST RESORT: Try fetching from Users collection
-                        if (!studentBody) {
-                            try {
-                                const userRecord = await getUserByAppwriteId(req.student_id);
-                                if (userRecord) {
-                                    studentBody = {
-                                        name: userRecord.user_name || "Unknown User",
-                                        email: userRecord.user_email,
-                                        department: "Profile Incomplete",
-                                        section: "-",
-                                        year: null,
-                                        student_register_no: "Not Set"
-                                    };
-                                }
-                            } catch (e) {
-                                // Ignore
-                            }
-                        }
-
-                        return { ...req, student: studentBody };
-                    }
-                } catch (e) {
-                    console.error("Error fetching student for req:", req.$id, e);
+            const enhancedRequests = requests.map(req => {
+                if (req.student_id && studentMap.has(req.student_id)) {
+                    return { ...req, student: studentMap.get(req.student_id) };
                 }
                 return req;
-            }));
+            });
 
             setPendingRequests(enhancedRequests);
 
