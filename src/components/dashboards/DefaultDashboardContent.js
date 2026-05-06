@@ -300,7 +300,7 @@ export default function DefaultDashboardContent({ role }) {
       case "student":
         return {
           bgGradient: "from-indigo-600 via-purple-600 to-fuchsia-600",
-          greeting: "Ready to learn?",
+          greeting: "Ready to win?",
           icon: <Icons.GraduationCap className="w-8 h-8" />,
 
           primaryAction: "Browse Events",

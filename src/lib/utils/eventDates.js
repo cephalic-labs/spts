@@ -34,12 +34,16 @@ export function getEventDeadlineDate(event) {
 }
 
 export function isNearDeadlineEvent(event, now = new Date()) {
-  const deadline = getEventDeadlineDate(event);
-  if (!deadline) return false;
+  const regDeadline = parseEventDate(event?.event_reg_deadline);
+  const eventDate = parseEventDate(event?.event_time);
 
-  const diffInDays =
-    (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
-  return diffInDays >= 0 && diffInDays <= 7;
+  const isNear = (date) => {
+    if (!date) return false;
+    const diffInDays = (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+    return diffInDays >= 0 && diffInDays <= 2;
+  };
+
+  return isNear(regDeadline) || isNear(eventDate);
 }
 
 export function isCompletedDeadlineEvent(event, now = new Date()) {

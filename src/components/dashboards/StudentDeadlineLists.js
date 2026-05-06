@@ -3,6 +3,7 @@
 import { Icons } from "@/components/layout";
 import {
   formatEventDate,
+  parseEventDate,
   isCompletedDeadlineEvent,
   isNearDeadlineEvent,
 } from "@/lib/utils/eventDates";
@@ -165,6 +166,30 @@ export default function StudentDeadlineLists({ events, onViewEvent }) {
         emptyMessage="No events are nearing a deadline right now."
         accentClasses="bg-indigo-50 text-indigo-700 border-indigo-100"
         onViewEvent={onViewEvent}
+        metaLabel="Upcoming:"
+        metaValueAccessor={(event) => {
+          const reg = parseEventDate(event.event_reg_deadline);
+          const evt = parseEventDate(event.event_time);
+          const now = new Date();
+
+          const getDiff = (d) =>
+            d ? (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24) : Infinity;
+
+          const regDiff = getDiff(reg);
+          const evtDiff = getDiff(evt);
+
+          // If registration is within 2 days and in the future, show it
+          if (regDiff >= 0 && regDiff <= 2)
+            return formatEventDate(event.event_reg_deadline);
+          // Otherwise if event is within 2 days and in the future, show it
+          if (evtDiff >= 0 && evtDiff <= 2)
+            return formatEventDate(event.event_time);
+
+          // Fallback to whichever is soonest in the future
+          if (regDiff >= 0 && (evtDiff < 0 || regDiff < evtDiff))
+            return formatEventDate(event.event_reg_deadline);
+          return formatEventDate(event.event_time);
+        }}
       />
       <DeadlineSection
         title="Completed Deadlines"
