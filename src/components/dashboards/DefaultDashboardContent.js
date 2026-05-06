@@ -41,8 +41,9 @@ import {
   PointElement,
   LineElement,
   Filler,
+  RadialLinearScale,
 } from "chart.js";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
+import { Bar, Doughnut, Line, PolarArea } from "react-chartjs-2";
 
 // Register Chart.js components
 ChartJS.register(
@@ -56,6 +57,7 @@ ChartJS.register(
   Legend,
   ArcElement,
   Filler,
+  RadialLinearScale,
 );
 
 function getODValue(student, field) {
@@ -202,16 +204,25 @@ export default function DefaultDashboardContent({ role }) {
           let stackedAcc = [];
           let stackedRej = [];
           let stackedPen = [];
-
           try {
             // Fetch real events
             const eventsRes = await getEvents(20);
             const allEvents = eventsRes.documents || [];
+
+            const odsRes = await getAllODRequests(200);
+            const ods = odsRes?.documents || [];
+
+            // Calculate actual OD applications per event
+            const odCountMap = {};
+            ods.forEach((od) => {
+              if (od.event_id) {
+                odCountMap[od.event_id] = (odCountMap[od.event_id] || 0) + 1;
+              }
+            });
+
+            // Sort events by actual OD count
             const topEvents = [...allEvents]
-              .sort(
-                (a, b) =>
-                  (b.participation_count || 0) - (a.participation_count || 0),
-              )
+              .sort((a, b) => (odCountMap[b.$id] || 0) - (odCountMap[a.$id] || 0))
               .slice(0, 5);
 
             demandLabels = topEvents.map((e) =>
@@ -219,11 +230,7 @@ export default function DefaultDashboardContent({ role }) {
                 ? e.event_name.substring(0, 15) + "..."
                 : e.event_name,
             );
-            demandDataArr = topEvents.map((e) => e.participation_count || 0);
-
-            // Fetch real ODs for line & stacked chart
-            const odsRes = await getAllODRequests(200);
-            const ods = odsRes?.documents || [];
+            demandDataArr = topEvents.map((e) => odCountMap[e.$id] || 0);
 
             // Calculate Time Series
             const todayTime = startOfDay(new Date()).getTime();
@@ -567,35 +574,48 @@ export default function DefaultDashboardContent({ role }) {
   };
 
   // 2. Horizontal Bar: Applications Per Event (Demand)
-  const horizontalBarData = {
+  const polarAreaData = {
     labels: chartData.demand.labels,
     datasets: [
       {
         label: "Applications",
         data: chartData.demand.data,
         backgroundColor: [
-          "#4F46E5", // dark for top bar
-          "#E2E8F0", // light for others
-          "#E2E8F0",
-          "#E2E8F0",
-          "#E2E8F0",
+          "rgba(79, 70, 229, 0.7)", // Indigo
+          "rgba(244, 63, 94, 0.7)",  // Rose
+          "rgba(245, 158, 11, 0.7)", // Amber
+          "rgba(16, 185, 129, 0.7)", // Emerald
+          "rgba(14, 165, 233, 0.7)", // Sky
         ],
-        borderRadius: 4,
+        borderWidth: 2,
+        borderColor: "#ffffff",
       },
     ],
   };
 
-  const horizontalBarOptions = {
-    indexAxis: "y",
+  const polarAreaOptions = {
     responsive: true,
     maintainAspectRatio: false,
-    plugins: {
-      legend: { display: false },
-      tooltip: { backgroundColor: "#1E293B", padding: 10, cornerRadius: 8 },
-    },
     scales: {
-      x: { display: false, grid: { display: false } },
-      y: { grid: { display: false }, border: { display: false } },
+      r: {
+        ticks: { display: false },
+        grid: { color: "rgba(0, 0, 0, 0.05)" },
+      },
+    },
+    plugins: {
+      legend: {
+        position: "right",
+        labels: {
+          usePointStyle: true,
+          padding: 15,
+          font: { family: "Inter", size: 11 },
+        },
+      },
+      tooltip: {
+        backgroundColor: "#1E293B",
+        padding: 12,
+        cornerRadius: 8,
+      },
     },
   };
 
@@ -800,8 +820,8 @@ export default function DefaultDashboardContent({ role }) {
 
           </div>
 
-          <div className="relative -ml-4 h-[260px] w-full">
-            <Bar data={horizontalBarData} options={horizontalBarOptions} />
+          <div className="relative h-[280px] w-full">
+            <PolarArea data={polarAreaData} options={polarAreaOptions} />
           </div>
         </div>
 
