@@ -23,7 +23,18 @@ export default function FacultyPageContent({ role, filterRole }) {
 
     const fetchFaculty = useCallback(async (offset, limit) => {
         if (filterRole === "admin") {
-            const adminList = await getAdminFacultyFromLabels();
+            let adminList = await getAdminFacultyFromLabels();
+            if (filter.department) {
+                adminList = adminList.filter(f => f.department === filter.department);
+            }
+            if (filter.search) {
+                const s = filter.search.toLowerCase();
+                adminList = adminList.filter(f => 
+                    f.name?.toLowerCase().includes(s) || 
+                    f.email?.toLowerCase().includes(s) || 
+                    f.faculty_id?.toLowerCase().includes(s)
+                );
+            }
             return { documents: adminList || [], total: adminList?.length || 0 };
         }
         return getFaculties(filter, limit, offset);

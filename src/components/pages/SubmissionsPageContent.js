@@ -254,14 +254,18 @@ export default function SubmissionsPageContent({ role }) {
 
         if (role === 'student') return true;
         const student = studentMap[sub.student_id];
-        // Exclude submissions where student profile is missing or unresolved
-        if (!student || !student.department || student.department === "Profile Missing") return false;
-
+        
         // Department Filter
-        if (filterDept && student.department !== filterDept) return false;
+        if (filterDept) {
+            // If filtering by department, hide if student profile is missing or department doesn't match
+            if (!student || !student.department || student.department !== filterDept) return false;
+        }
 
         // Section Filter
-        if (filterSection && student.section !== filterSection) return false;
+        if (filterSection) {
+            // If filtering by section, hide if student profile is missing or section doesn't match
+            if (!student || !student.section || student.section !== filterSection) return false;
+        }
 
         return true;
     });
