@@ -30,14 +30,16 @@ export async function middleware(request) {
     `a_session_${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`
   );
 
+  // In production with cross-domain Appwrite, the cookie might not be available to middleware
+  // We let it proceed and let the client-side AuthProvider handle it.
   if (!sessionCookie) {
-    return NextResponse.redirect(new URL("/signin", request.url));
+    return NextResponse.next();
   }
 
   // Verify session with Appwrite
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout for production
     
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/account`,
@@ -53,19 +55,22 @@ export async function middleware(request) {
     clearTimeout(timeoutId);
 
     if (!response.ok) {
+      // Only redirect if we specifically get a 401/403 (invalid session)
       if (response.status === 401 || response.status === 403) {
         return NextResponse.redirect(new URL("/signin", request.url));
       }
+      // For other errors (500, etc.), let the client handle it
       return NextResponse.next();
     }
 
     const user = await response.json();
-    const userLabels = user.labels?.length > 0 ? user.labels : ["unassigned"];
+    const userLabels = user.labels && user.labels.length > 0 ? user.labels : ["unassigned"];
 
     // Handle unassigned users
     if (
       userLabels.includes("unassigned") &&
-      pathname !== "/dashboard/unassigned"
+      pathname !== "/dashboard/unassigned" &&
+      pathname.startsWith("/dashboard")
     ) {
       return NextResponse.redirect(new URL("/dashboard/unassigned", request.url));
     }
@@ -88,18 +93,16 @@ export async function middleware(request) {
 
     return NextResponse.next();
   } catch (error) {
-    if (process.env.NODE_ENV !== 'production') {
-      console.error("[Middleware]", error.name, error.message);
+    // Log errors in production if they are unexpected (not timeouts/network)
+    if (error.name !== 'AbortError' && !error.message?.includes('fetch') && !error.message?.includes('network')) {
+      console.error("[Middleware Error]", {
+        name: error.name,
+        message: error.message,
+        path: pathname
+      });
     }
     
-    if (error.name === 'AbortError' || error.message?.includes('fetch') || error.message?.includes('network')) {
-      return NextResponse.next();
-    }
-    
-    if (error.status === 401 || error.status === 403) {
-      return NextResponse.redirect(new URL("/signin", request.url));
-    }
-    
+    // Fail open on network/timeout errors to avoid blocking the user
     return NextResponse.next();
   }
 }
