@@ -10,12 +10,9 @@ const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
  */
 export async function getStudents(filters = {}, limit = 100, offset = 0) {
   try {
-    const queries = [
-      Query.orderAsc("name"),
-      Query.limit(limit),
-      Query.offset(offset),
-    ];
+    const queries = [];
 
+    // 1. Add Filters
     if (filters.department) {
       queries.push(Query.equal("department", filters.department));
     }
@@ -31,6 +28,8 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
     if (filters.mentor_id) {
       queries.push(Query.equal("mentor_id", filters.mentor_id));
     }
+
+    // 2. Add Search
     if (filters.search) {
       if (filters.searchType === "roll_no") {
         queries.push(Query.contains("roll_no", filters.search));
@@ -38,6 +37,11 @@ export async function getStudents(filters = {}, limit = 100, offset = 0) {
         queries.push(Query.contains("name", filters.search));
       }
     }
+
+    // 3. Add Ordering and Pagination
+    queries.push(Query.orderAsc("name"));
+    queries.push(Query.limit(limit));
+    queries.push(Query.offset(offset));
 
     const response = await databases.listDocuments(
       DATABASE_ID,

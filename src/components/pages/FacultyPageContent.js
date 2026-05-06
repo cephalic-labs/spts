@@ -22,6 +22,8 @@ export default function FacultyPageContent({ role, filterRole }) {
     const { userDepartment, deptResolved, needsDeptLock } = useDepartmentResolver(role, user);
 
     const fetchFaculty = useCallback(async (offset, limit) => {
+        // Wait for dept to be resolved before fetching (prevents showing all faculty before dept filter is applied)
+        if (!deptResolved) return { documents: [], total: 0 };
         if (filterRole === "admin") {
             let adminList = await getAdminFacultyFromLabels();
             if (filter.department) {
@@ -38,7 +40,7 @@ export default function FacultyPageContent({ role, filterRole }) {
             return { documents: adminList || [], total: adminList?.length || 0 };
         }
         return getFaculties(filter, limit, offset);
-    }, [filter, filterRole]);
+    }, [filter.department, filter.search, filterRole, deptResolved]);
 
     const { 
         data: faculty, 
@@ -47,7 +49,7 @@ export default function FacultyPageContent({ role, filterRole }) {
         currentPage, 
         setCurrentPage, 
         reload 
-    } = usePaginatedData(fetchFaculty, [filter, deptResolved]);
+    } = usePaginatedData(fetchFaculty, [fetchFaculty, deptResolved]);
 
     useEffect(() => {
         if (userDepartment) {
@@ -138,7 +140,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                         placeholder="Search by name..."
                         className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                         value={filter.search}
-                        onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                        onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
                     />
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                         <Icons.Search />
@@ -148,7 +150,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                     <select
                         className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                         value={filter.department}
-                        onChange={(e) => setFilter({ ...filter, department: e.target.value })}
+                        onChange={(e) => setFilter(prev => ({ ...prev, department: e.target.value }))}
                     >
                         <option value="">All Departments</option>
                         {DEPARTMENTS_LIST.map(dept => (

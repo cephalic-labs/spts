@@ -10,21 +10,25 @@ const { DATABASE_ID, COLLECTIONS } = DB_CONFIG;
  */
 export async function getFaculties(filters = {}, limit = 100, offset = 0) {
     try {
-        const queries = [
-            Query.orderAsc("name"),
-            Query.limit(limit),
-            Query.offset(offset),
-        ];
+        const queries = [];
 
+        // 1. Add Filters
         if (filters.department) {
             queries.push(Query.equal("department", filters.department));
         }
         if (filters.role) {
             queries.push(Query.contains("role", filters.role));
         }
+
+        // 2. Add Search
         if (filters.search) {
             queries.push(Query.contains("name", filters.search));
         }
+
+        // 3. Add Ordering and Pagination
+        queries.push(Query.orderAsc("name"));
+        queries.push(Query.limit(limit));
+        queries.push(Query.offset(offset));
 
         const response = await databases.listDocuments(
             DATABASE_ID,

@@ -41,8 +41,12 @@ export default function StudentsPageContent({ role }) {
   );
 
   const fetchStudents = useCallback(
-    (offset, limit) => getStudents(filter, limit, offset),
-    [filter],
+    (offset, limit) => {
+      // Wait for dept to be resolved before fetching (prevents showing all students before dept filter is applied)
+      if (!deptResolved) return Promise.resolve({ documents: [], total: 0 });
+      return getStudents(filter, limit, offset);
+    },
+    [filter.department, filter.year, filter.section, filter.search, filter.searchType, deptResolved],
   );
 
   const {
@@ -52,7 +56,7 @@ export default function StudentsPageContent({ role }) {
     currentPage,
     setCurrentPage,
     reload,
-  } = usePaginatedData(fetchStudents, [filter, deptResolved]);
+  } = usePaginatedData(fetchStudents, [fetchStudents, deptResolved]);
 
   useEffect(() => {
     if (userDepartment) {
@@ -129,7 +133,7 @@ export default function StudentsPageContent({ role }) {
             placeholder={`Search by ${filter.searchType}...`}
             className="w-full rounded-lg border border-gray-200 bg-white py-2 pr-4 pl-10 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
             value={filter.search}
-            onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+            onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
           />
           <div className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400">
             <Icons.Search />
@@ -150,7 +154,7 @@ export default function StudentsPageContent({ role }) {
             className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
             value={filter.department}
             onChange={(e) =>
-              setFilter({ ...filter, department: e.target.value })
+              setFilter(prev => ({ ...prev, department: e.target.value }))
             }
           >
             <option value="">All Departments</option>
@@ -171,7 +175,7 @@ export default function StudentsPageContent({ role }) {
         <select
           className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
           value={filter.year}
-          onChange={(e) => setFilter({ ...filter, year: e.target.value })}
+          onChange={(e) => setFilter(prev => ({ ...prev, year: e.target.value }))}
         >
           <option value="">All Years</option>
           <option value="1">1st Year</option>
@@ -182,7 +186,7 @@ export default function StudentsPageContent({ role }) {
         <select
           className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm focus:ring-2 focus:ring-[#1E2761]/20 focus:outline-none"
           value={filter.section}
-          onChange={(e) => setFilter({ ...filter, section: e.target.value })}
+          onChange={(e) => setFilter(prev => ({ ...prev, section: e.target.value }))}
         >
           <option value="">All Sections</option>
           <option value="A">Section A</option>

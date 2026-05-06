@@ -96,6 +96,7 @@ export default function DefaultDashboardContent({ role }) {
   const [studentEvents, setStudentEvents] = useState([]);
   const [participationByEvent, setParticipationByEvent] = useState({});
   const [savingParticipationFor, setSavingParticipationFor] = useState(null);
+  const [studentProfile, setStudentProfile] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [viewEventModalOpen, setViewEventModalOpen] = useState(false);
   const [pendingEventsRequest, setPendingEventsRequest] = useState(new Set());
@@ -105,26 +106,27 @@ export default function DefaultDashboardContent({ role }) {
       try {
         setLoading(true);
         const eventData = await getEventStats();
-        const student =
-          role === "student"
-            ? await getStudentByAppwriteUserId(user?.$id)
-            : null;
+        let studentData = null;
+        if (role === "student" && user) {
+          if (user.email) {
+            studentData = await getStudentByEmail(user.email);
+          }
+          if (!studentData && user.$id) {
+            studentData = await getStudentByAppwriteUserId(user.$id);
+          }
+        }
+        setStudentProfile(studentData);
+
         const odFilter =
           role === "student"
-            ? { student_id: user?.$id || user?.dbId, rollNo: student?.roll_no }
+            ? { student_id: user?.$id || user?.dbId, rollNo: studentData?.roll_no }
             : {};
         const odData = await getODStats(odFilter);
 
         // Fetch student OD count for student role
         if (role === "student" && user) {
           try {
-            let student = null;
-            if (user.email) {
-              student = await getStudentByEmail(user.email);
-            }
-            if (!student && user.$id) {
-              student = await getStudentByAppwriteUserId(user.$id);
-            }
+            const student = studentData;
             if (student) {
               const count = getStudentTotalOD(student);
               setOdCount(count);
@@ -375,7 +377,7 @@ export default function DefaultDashboardContent({ role }) {
   };
 
   const handleParticipationChange = async (eventId, status) => {
-    const studentId = student?.$id || user?.$id;
+    const studentId = studentProfile?.$id || user?.$id;
     if (!studentId) return;
 
     setSavingParticipationFor(eventId);
@@ -495,7 +497,7 @@ export default function DefaultDashboardContent({ role }) {
           isOpen={viewEventModalOpen}
           onClose={() => setViewEventModalOpen(false)}
           event={selectedEvent}
-          canSelfReportParticipation={Boolean(user?.$id)}
+          canSelfReportParticipation={role === "student" && Boolean(user?.$id)}
           currentParticipationStatus={
             selectedEvent
               ? participationByEvent[selectedEvent.$id]?.status
