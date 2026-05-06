@@ -1,6 +1,8 @@
 // Role-based sidebar navigation configuration
 // Each role has its own set of menu items with icons and routes
 
+import { VALID_ROLES } from "./dbConfig";
+
 export const sidebarConfig = {
     sudo: [
         { name: "Dashboard", path: "/dashboard/sudo", icon: "Dashboard" },
@@ -107,6 +109,6 @@ export const getRoleDisplayName = (role) => {
 };
 
 // Valid roles for validation
-export const validRoles = ["sudo", "admin", "student", "mentor", "advisor", "coordinator", "hod", "principal"];
+export const validRoles = VALID_ROLES;
 
 export default sidebarConfig;

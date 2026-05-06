@@ -1,6 +1,8 @@
 // Centralized page configuration for all dashboard pages
 // Used by dynamic routes to render appropriate content
 
+import { VALID_ROLES } from "./dbConfig";
+
 export const pageConfig = {
     // Sudo pages
     "sudo/events": { title: "Events", description: "Manage all system events.", icon: "Events" },
@@ -68,7 +70,7 @@ export const pageConfig = {
 };
 
 // Valid roles for validation
-export const validRoles = ["sudo", "admin", "student", "mentor", "advisor", "coordinator", "hod", "principal"];
+export const validRoles = VALID_ROLES;
 
 // Get page config by role and slug
 export function getPageConfig(role, slug) {

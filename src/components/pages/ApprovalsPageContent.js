@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getODRequestsByStatus, approveODRequest, rejectODRequest } from "@/lib/services/odRequestService";
+import { getODRequestsByStatus } from "@/lib/services/odRequestService";
+import { approveODRequestSecure, rejectODRequestSecure } from "@/actions/odApproval";
 import { getFacultyByEmail, getFacultyByAppwriteId } from "@/lib/services/facultyService";
 import { getEventById, getEventsByIds } from "@/lib/services/eventService";
 import { getUserByAppwriteId } from "@/lib/services/userService";
-import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo } from "@/lib/services/studentService";
+import { getStudentByAppwriteUserId, getStudentById, getStudentByRollNo, getStudentsByAppwriteUserIds, getStudentsByIds } from "@/lib/services/studentService";
 import { Icons } from "@/components/layout";
-import { OD_STATUS } from "@/lib/dbConfig";
+import { OD_STATUS, APPROVAL_ROLES } from "@/lib/dbConfig";
+import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
 
 const roleToStatus = {
     mentor: OD_STATUS.PENDING_MENTOR,
@@ -47,6 +49,7 @@ function getLogActionMeta(action) {
 
 export default function ApprovalsPageContent({ role }) {
     const { user } = useAuth();
+    const { deptResolved } = useDepartmentResolver(role, user);
     const [pendingRequests, setPendingRequests] = useState([]);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(null);
@@ -66,10 +69,10 @@ export default function ApprovalsPageContent({ role }) {
     const [eventsMap, setEventsMap] = useState({});
 
     useEffect(() => {
-        if (user) {
+        if (user && deptResolved) {
             loadPendingRequests();
         }
-    }, [role, user?.$id]);
+    }, [role, user?.$id, deptResolved]);
 
     // Fetch student and event details when viewRequest changes
     useEffect(() => {
@@ -88,8 +91,10 @@ export default function ApprovalsPageContent({ role }) {
                                 try {
                                     student = await getStudentById(viewRequest.student_id);
                                 } catch (innerErr) {
-                                    // Quietly fail if not found by ID either
-                                }
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.warn("Could not find student by ID:", innerErr);
+                    }
+                }
                             }
 
                             // LAST RESORT: Try fetching from Users collection to at least get the name
@@ -113,7 +118,9 @@ export default function ApprovalsPageContent({ role }) {
 
                             setStudentDetails(student);
                         } catch (err) {
-                            console.error("Error fetching student details:", err);
+                            if (process.env.NODE_ENV !== 'production') {
+                                console.error("Error fetching student details:", err);
+                            }
                         }
                     } else if (viewRequest.student) {
                         setStudentDetails(viewRequest.student);
@@ -143,11 +150,15 @@ export default function ApprovalsPageContent({ role }) {
                             const event = await getEventById(viewRequest.event_id);
                             setEventDetails(event);
                         } catch (err) {
-                            console.error("Error fetching event details:", err);
+                            if (process.env.NODE_ENV !== 'production') {
+                                console.error("Error fetching event details:", err);
+                            }
                         }
                     }
                 } catch (error) {
-                    console.error("Error fetching details:", error);
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.error("Error fetching details:", error);
+                    }
                 } finally {
                     setDetailsLoading(false);
                 }
@@ -168,37 +179,18 @@ export default function ApprovalsPageContent({ role }) {
             setApproverError(null);
             const status = roleToStatus[role];
 
-            if (role === 'student') return; // Students don't approve
+            if (role === 'student') return;
 
             let currentFacultyId = null;
             let approverIds = [];
 
             if (status && user?.$id) {
-                // Try multiple methods to find the faculty record
-                let faculty = null;
-
-                // Method 1: Try by appwrite_user_id
-                try {
-                    faculty = await getFacultyByAppwriteId(user.$id);
-                } catch (e) {
-                    console.warn("Could not find faculty by Appwrite ID:", e);
-                }
-
-                // Method 2: Try by email if method 1 failed
-                if (!faculty) {
-                    const dbUser = await getUserByAppwriteId(user.$id);
-                    const approverEmail = dbUser?.user_email || user?.email || null;
-                    if (approverEmail) {
-                        try {
-                            faculty = await getFacultyByEmail(approverEmail);
-                        } catch (e) {
-                            console.warn("Could not find faculty by email:", e);
-                        }
-                    }
+                let faculty = await getFacultyByAppwriteId(user.$id).catch(() => null);
+                if (!faculty && user.email) {
+                    faculty = await getFacultyByEmail(user.email).catch(() => null);
                 }
 
                 if (faculty) {
-                    // Use both faculty_id (preferred) and $id (legacy) to catch all requests
                     approverIds = [faculty.faculty_id, faculty.$id].filter(Boolean);
                     setApproverFacultyId(approverIds);
                     currentFacultyId = faculty.$id;
@@ -228,48 +220,29 @@ export default function ApprovalsPageContent({ role }) {
                 }
             }
 
-            // Fetch Student Details for each request
-            const enhancedRequests = await Promise.all(requests.map(async (req) => {
-                try {
-                    if (req.student_id) {
-                        // Try fetching by Appwrite User ID first
-                        let studentBody = await getStudentByAppwriteUserId(req.student_id);
+            // Batch fetch student details
+            const studentIds = [...new Set(requests.map(r => r.student_id).filter(Boolean))];
+            
+            // Fetch by both ID types to support older records (appwrite_user_id) and newer records (document $id)
+            const [studentsByDocId, studentsByAppwriteId] = await Promise.all([
+                getStudentsByIds(studentIds).catch(() => []),
+                getStudentsByAppwriteUserIds(studentIds, studentIds.length).catch(() => [])
+            ]);
 
-                        // If not found, try fetching by Document ID
-                        if (!studentBody) {
-                            try {
-                                studentBody = await getStudentById(req.student_id);
-                            } catch (e) {
-                                // Quietly fail if not found by ID either
-                            }
-                        }
+            const allStudents = [...(studentsByDocId || []), ...(studentsByAppwriteId || [])];
+            
+            const studentMap = new Map();
+            allStudents.forEach(s => {
+                if (s.$id) studentMap.set(s.$id, s);
+                if (s.appwrite_user_id) studentMap.set(s.appwrite_user_id, s);
+            });
 
-                        // LAST RESORT: Try fetching from Users collection
-                        if (!studentBody) {
-                            try {
-                                const userRecord = await getUserByAppwriteId(req.student_id);
-                                if (userRecord) {
-                                    studentBody = {
-                                        name: userRecord.user_name || "Unknown User",
-                                        email: userRecord.user_email,
-                                        department: "Profile Incomplete",
-                                        section: "-",
-                                        year: null,
-                                        student_register_no: "Not Set"
-                                    };
-                                }
-                            } catch (e) {
-                                // Ignore
-                            }
-                        }
-
-                        return { ...req, student: studentBody };
-                    }
-                } catch (e) {
-                    console.error("Error fetching student for req:", req.$id, e);
+            const enhancedRequests = requests.map(req => {
+                if (req.student_id && studentMap.has(req.student_id)) {
+                    return { ...req, student: studentMap.get(req.student_id) };
                 }
                 return req;
-            }));
+            });
 
             setPendingRequests(enhancedRequests);
 
@@ -284,11 +257,15 @@ export default function ApprovalsPageContent({ role }) {
                     });
                     setEventsMap(newEventsMap);
                 } catch (e) {
-                    console.error("Error fetching events for map:", e);
+                    if (process.env.NODE_ENV !== 'production') {
+                        console.error("Error fetching events for map:", e);
+                    }
                 }
             }
         } catch (err) {
-            console.error("Error loading pending requests:", err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error("Error loading pending requests:", err);
+            }
         } finally {
             setLoading(false);
         }
@@ -299,13 +276,18 @@ export default function ApprovalsPageContent({ role }) {
     async function handleApprove(odId) {
         try {
             setActionLoading(odId);
-            await approveODRequest(odId, role, user?.$id || user?.dbId, "Approved", approverFacultyId);
+            const result = await approveODRequestSecure(odId, user?.$id || user?.dbId, "Approved", user?.email);
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             await loadPendingRequests();
             if (viewRequest && viewRequest.$id === odId) {
                 setViewRequest(null);
             }
         } catch (err) {
-            console.error("Error approving request:", err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error("Error approving request:", err);
+            }
             setErrorModalMessage(err?.message || "Failed to approve request");
         } finally {
             setActionLoading(null);
@@ -337,14 +319,19 @@ export default function ApprovalsPageContent({ role }) {
 
         try {
             setActionLoading(rejectDialog.odId);
-            await rejectODRequest(rejectDialog.odId, role, user?.$id || user?.dbId, remarks, approverFacultyId);
+            const result = await rejectODRequestSecure(rejectDialog.odId, user?.$id || user?.dbId, remarks, user?.email);
+            if (!result.success) {
+                throw new Error(result.error);
+            }
             await loadPendingRequests();
             closeRejectDialog();
             if (viewRequest && viewRequest.$id === rejectDialog.odId) {
                 setViewRequest(null);
             }
         } catch (err) {
-            console.error("Error rejecting request:", err);
+            if (process.env.NODE_ENV !== 'production') {
+                console.error("Error rejecting request:", err);
+            }
             setErrorModalMessage(err?.message || "Failed to reject request");
         } finally {
             setActionLoading(null);
@@ -392,7 +379,7 @@ export default function ApprovalsPageContent({ role }) {
         );
     }
 
-    const canApprove = ["mentor", "advisor", "coordinator", "hod"].includes(role);
+    const canApprove = APPROVAL_ROLES.includes(role);
 
     return (
         <div>
@@ -409,7 +396,10 @@ export default function ApprovalsPageContent({ role }) {
             {/* Approver Error Banner */}
             {approverError && (
                 <div className="mb-6 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
-                    <p className="text-sm font-semibold text-amber-800 mb-1">⚠️ Faculty Profile Issue</p>
+                    <p className="text-sm font-semibold text-amber-800 mb-1">
+                        <Icons.Warning className="w-4 h-4 text-amber-600 inline mr-1" />
+                        Faculty Profile Issue
+                    </p>
                     <p className="text-xs text-amber-700">{approverError}</p>
                 </div>
             )}
@@ -443,7 +433,8 @@ export default function ApprovalsPageContent({ role }) {
                                                     {req.student?.department} • {req.student?.year} Year
                                                     {req.team && req.team.length > 0 && (
                                                         <span className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-[10px] font-bold">
-                                                            👥 +{req.team.length} team
+                                                            <Icons.Users className="w-3 h-3" />
+                                                            +{req.team.length} team
                                                         </span>
                                                     )}
                                                 </span>
@@ -598,7 +589,10 @@ export default function ApprovalsPageContent({ role }) {
                                 {/* Team Members Section */}
                                 {teamMembersData.length > 0 && (
                                     <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-indigo-100 pb-2">👥 Team Members ({teamMembersData.length})</h4>
+                                        <h4 className="text-sm font-bold text-[#1E2761] uppercase tracking-wide mb-3 border-b border-indigo-100 pb-2 flex items-center">
+                                            <Icons.Users className="w-4 h-4 mr-2" />
+                                            Team Members ({teamMembersData.length})
+                                        </h4>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                             {teamMembersData.map((member, idx) => (
                                                 <div key={member.$id || idx} className="flex items-center gap-2 bg-white border border-indigo-100 rounded-lg px-3 py-2">

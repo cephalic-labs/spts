@@ -1,75 +1,61 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getFaculties, deleteFaculty, getFacultyByAppwriteId, getFacultyByEmail } from "@/lib/services/facultyService";
+import { getFaculties, deleteFaculty } from "@/lib/services/facultyService";
 import { Icons } from "@/components/layout";
 import AddFacultyModal from "./AddFacultyModal";
 import AssignAdminModal from "./AssignAdminModal";
+import Pagination from "@/components/ui/Pagination";
 import { getAdminFacultyFromLabels } from "@/actions/auth";
-import { DEPARTMENTS_LIST } from "@/lib/dbConfig";
+import { DEPARTMENTS_LIST, ADMIN_HOD_ROLES } from "@/lib/dbConfig";
+import { useDepartmentResolver } from "@/lib/hooks/useDepartmentResolver";
+import { usePaginatedData } from "@/lib/hooks/usePaginatedData";
 
 export default function FacultyPageContent({ role, filterRole }) {
     const { user } = useAuth();
-    const [faculty, setFaculty] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
     const [filter, setFilter] = useState({ department: "", role: filterRole || "", search: "" });
-    const [userDepartment, setUserDepartment] = useState(null);
-    const [deptResolved, setDeptResolved] = useState(["sudo", "admin"].includes(role));
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [selectedFaculty, setSelectedFaculty] = useState(null);
 
-    const needsDeptLock = !["sudo", "admin"].includes(role);
+    const { userDepartment, deptResolved, needsDeptLock } = useDepartmentResolver(role, user);
 
-    // Resolve department for faculty roles
-    useEffect(() => {
-        if (!needsDeptLock || !user?.$id) return;
-
-        async function resolveDepartment() {
-            try {
-                let currentFaculty = await getFacultyByAppwriteId(user.$id);
-                if (!currentFaculty && user.email) {
-                    currentFaculty = await getFacultyByEmail(user.email);
-                }
-
-                if (currentFaculty?.department) {
-                    setUserDepartment(currentFaculty.department);
-                    setFilter(prev => ({ ...prev, department: currentFaculty.department }));
-                }
-            } catch (err) {
-                console.error("[Dept Resolution] Error:", err);
-            } finally {
-                setDeptResolved(true);
+    const fetchFaculty = useCallback(async (offset, limit) => {
+        // Wait for dept to be resolved before fetching (prevents showing all faculty before dept filter is applied)
+        if (!deptResolved) return { documents: [], total: 0 };
+        if (filterRole === "admin") {
+            let adminList = await getAdminFacultyFromLabels();
+            if (filter.department) {
+                adminList = adminList.filter(f => f.department === filter.department);
             }
+            if (filter.search) {
+                const s = filter.search.toLowerCase();
+                adminList = adminList.filter(f => 
+                    f.name?.toLowerCase().includes(s) || 
+                    f.email?.toLowerCase().includes(s) || 
+                    f.faculty_id?.toLowerCase().includes(s)
+                );
+            }
+            return { documents: adminList || [], total: adminList?.length || 0 };
         }
+        return getFaculties(filter, limit, offset);
+    }, [filter.department, filter.search, filterRole, deptResolved]);
 
-        resolveDepartment();
-    }, [role, user?.$id, user?.email]);
+    const { 
+        data: faculty, 
+        total: totalFaculty, 
+        loading, 
+        currentPage, 
+        setCurrentPage, 
+        reload 
+    } = usePaginatedData(fetchFaculty, [fetchFaculty, deptResolved]);
 
     useEffect(() => {
-        if (!deptResolved) return;
-        loadFaculty();
-    }, [filter, deptResolved]);
-
-    async function loadFaculty() {
-        try {
-            setLoading(true);
-            if (filterRole === "admin") {
-                const adminList = await getAdminFacultyFromLabels();
-                setFaculty(adminList || []);
-            } else {
-                const response = await getFaculties(filter, 100);
-                setFaculty(response.documents || []);
-            }
-        } catch (err) {
-            setError("Failed to load faculty");
-            console.error(err);
-        } finally {
-            setLoading(false);
+        if (userDepartment) {
+            setFilter(prev => ({ ...prev, department: userDepartment }));
         }
-    }
+    }, [userDepartment]);
 
     const handleAdd = () => {
         setSelectedFaculty(null);
@@ -85,7 +71,7 @@ export default function FacultyPageContent({ role, filterRole }) {
         if (window.confirm("Are you sure you want to delete this faculty record?")) {
             try {
                 await deleteFaculty(memberId);
-                loadFaculty();
+                reload();
             } catch (error) {
                 alert("Failed to delete faculty");
                 console.error(error);
@@ -93,7 +79,7 @@ export default function FacultyPageContent({ role, filterRole }) {
         }
     };
 
-    const canManageFaculty = ["sudo", "admin", "hod"].includes(role);
+    const canManageFaculty = ADMIN_HOD_ROLES.includes(role);
 
     if (loading && faculty.length === 0) {
         return (
@@ -116,9 +102,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                             onClick={handleAdd}
                             className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1E2761] text-white rounded-xl hover:bg-[#2d3a7d] transition-colors shadow-sm"
                         >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                            </svg>
+                            <Icons.Plus />
                             {filterRole === "admin" ? "Add New Admin" : "Add Faculty"}
                         </button>
                         {filterRole === "admin" && canManageFaculty && (
@@ -126,9 +110,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                                 onClick={() => setIsAssignModalOpen(true)}
                                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#1E2761] text-[#1E2761] rounded-xl hover:bg-gray-50 transition-colors shadow-sm font-bold"
                             >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                </svg>
+                                <Icons.UserPlus />
                                 Assign Existing
                             </button>
                         )}
@@ -139,7 +121,7 @@ export default function FacultyPageContent({ role, filterRole }) {
             <AddFacultyModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSuccess={loadFaculty}
+                onSuccess={reload}
                 initialData={selectedFaculty}
                 preselectedRole={filterRole}
             />
@@ -147,7 +129,7 @@ export default function FacultyPageContent({ role, filterRole }) {
             <AssignAdminModal
                 isOpen={isAssignModalOpen}
                 onClose={() => setIsAssignModalOpen(false)}
-                onSuccess={loadFaculty}
+                onSuccess={reload}
             />
 
             {/* Filters */}
@@ -158,19 +140,17 @@ export default function FacultyPageContent({ role, filterRole }) {
                         placeholder="Search by name..."
                         className="w-full pl-10 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                         value={filter.search}
-                        onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+                        onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
                     />
                     <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                        <Icons.Search />
                     </div>
                 </div>
                 {!needsDeptLock ? (
                     <select
                         className="bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E2761]/20"
                         value={filter.department}
-                        onChange={(e) => setFilter({ ...filter, department: e.target.value })}
+                        onChange={(e) => setFilter(prev => ({ ...prev, department: e.target.value }))}
                     >
                         <option value="">All Departments</option>
                         {DEPARTMENTS_LIST.map(dept => (
@@ -179,9 +159,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                     </select>
                 ) : userDepartment && (
                     <div className="flex items-center gap-2 px-4 py-2 bg-[#1E2761]/10 text-[#1E2761] rounded-lg text-sm font-bold">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                        </svg>
+                        <Icons.Filter />
                         {userDepartment}
                     </div>
                 )}
@@ -221,6 +199,7 @@ export default function FacultyPageContent({ role, filterRole }) {
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Department</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Role</th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Designation</th>
+                                    {canManageFaculty && <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
@@ -241,11 +220,39 @@ export default function FacultyPageContent({ role, filterRole }) {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500 italic">{member.designation}</td>
+                                        {canManageFaculty && (
+                                            <td className="px-6 py-4 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button
+                                                        onClick={() => handleEdit(member)}
+                                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                        title="Edit Faculty"
+                                                    >
+                                                        <Icons.Edit />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(member.$id)}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Delete Faculty"
+                                                    >
+                                                        <Icons.Trash />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
+                )}
+                {faculty.length > 0 && filterRole !== "admin" && (
+                    <Pagination
+                        currentPage={currentPage}
+                        totalItems={totalFaculty}
+                        itemsPerPage={50}
+                        onPageChange={setCurrentPage}
+                    />
                 )}
             </div>
         </div>

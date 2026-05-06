@@ -11,6 +11,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [dbUser, setDbUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [connectionError, setConnectionError] = useState(null);
 
   useEffect(() => {
     checkUser();
@@ -18,27 +19,33 @@ export function AuthProvider({ children }) {
 
   async function checkUser() {
     try {
+      setConnectionError(null);
       // Get Appwrite auth user
       let currentUser = await account.get();
 
       // If user has no labels, try to assign them based on DB records
       if (!currentUser.labels || currentUser.labels.length === 0) {
-        console.log("User has no labels, checking DB for role assignment...", currentUser.email);
+        if (process.env.NODE_ENV !== 'production') {
+          console.log("User has no labels, checking DB for role assignment...", currentUser.email);
+        }
         try {
           const result = await assignUserRole(currentUser.$id, currentUser.email);
-          console.log("Role assignment result:", result);
+          if (process.env.NODE_ENV !== 'production') {
+            console.log("Role assignment result:", result);
+          }
 
           if (result.success && result.labels) {
-            // Directly set the labels on currentUser from the server response
-            // instead of relying on account.get() which may return stale data
             currentUser = { ...currentUser, labels: result.labels };
-            console.log("Labels set from server response:", result.labels);
-          } else {
+            if (process.env.NODE_ENV !== 'production') {
+              console.log("Labels set from server response:", result.labels);
+            }
+          } else if (process.env.NODE_ENV !== 'production') {
             console.warn("Role assignment returned error or no match:", result.error);
           }
         } catch (roleErr) {
-          console.error("Role assignment failed (non-fatal):", roleErr);
-          // Continue - user just won't have a role yet
+          if (process.env.NODE_ENV !== 'production') {
+            console.error("Role assignment failed (non-fatal):", roleErr);
+          }
         }
       }
 
@@ -59,13 +66,24 @@ export function AuthProvider({ children }) {
           }));
         }
       } catch (syncErr) {
-        console.error("User sync failed (non-fatal):", syncErr);
-        // Continue without DB sync - basic auth still works
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("User sync failed (non-fatal):", syncErr);
+        }
       }
     } catch (error) {
-      // Not logged in
-      setUser(null);
-      setDbUser(null);
+      // Check if it's a connection/network error vs authentication error
+      if (error.code === 'network_error' || 
+          error.message?.includes('fetch') || 
+          error.message?.includes('Network') ||
+          error.type === 'network_request_failed') {
+        setConnectionError('Unable to connect to authentication service. Please check your network connection.');
+      } else if (error.code >= 500) {
+        setConnectionError('Authentication service is currently unavailable. Please try again later.');
+      } else {
+        // Not logged in (401, 403, etc.)
+        setUser(null);
+        setDbUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -78,7 +96,9 @@ export function AuthProvider({ children }) {
       try {
         userData = await getUserByAppwriteId(currentUser.$id);
       } catch (e) {
-        console.error("Error fetching user data during refresh:", e);
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Error fetching user data during refresh:", e);
+        }
       }
 
       if (userData) {
@@ -98,7 +118,9 @@ export function AuthProvider({ children }) {
         }));
       }
     } catch (error) {
-      console.error("Error refreshing user:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Error refreshing user:", error);
+      }
     }
   }
 
@@ -108,7 +130,9 @@ export function AuthProvider({ children }) {
       setUser(null);
       setDbUser(null);
     } catch (error) {
-      console.error("Logout error:", error);
+      if (process.env.NODE_ENV !== 'production') {
+        console.error("Logout error:", error);
+      }
     }
   }
 
@@ -116,6 +140,7 @@ export function AuthProvider({ children }) {
     user,
     dbUser,
     loading,
+    connectionError,
     checkUser,
     refreshUser,
     logout,

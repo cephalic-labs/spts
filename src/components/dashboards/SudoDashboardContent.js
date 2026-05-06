@@ -24,9 +24,10 @@ import {
     ArcElement,
     PointElement,
     LineElement,
-    Filler
+    Filler,
+    RadialLinearScale,
 } from 'chart.js';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
+import { Bar, Doughnut, Line, PolarArea } from 'react-chartjs-2';
 
 ChartJS.register(
     CategoryScale,
@@ -38,7 +39,8 @@ ChartJS.register(
     Tooltip,
     Legend,
     ArcElement,
-    Filler
+    Filler,
+    RadialLinearScale,
 );
 
 export default function SudoDashboardContent() {
@@ -94,13 +96,23 @@ export default function SudoDashboardContent() {
                 try {
                     const eventsRes = await getEvents(20);
                     const allEvents = eventsRes.documents || [];
-                    const topEvents = [...allEvents].sort((a, b) => (b.participation_count || 0) - (a.participation_count || 0)).slice(0, 5);
-
-                    demandLabels = topEvents.map(e => e.event_name?.length > 15 ? e.event_name.substring(0, 15) + '...' : e.event_name);
-                    demandDataArr = topEvents.map(e => e.participation_count || 0);
 
                     const odsRes = await getAllODRequests(200);
                     const ods = odsRes?.documents || [];
+
+                    // Calculate actual OD applications per event
+                    const odCountMap = {};
+                    ods.forEach(od => {
+                        if (od.event_id) {
+                            odCountMap[od.event_id] = (odCountMap[od.event_id] || 0) + 1;
+                        }
+                    });
+
+                    // Sort events by actual OD count
+                    const topEvents = [...allEvents].sort((a, b) => (odCountMap[b.$id] || 0) - (odCountMap[a.$id] || 0)).slice(0, 5);
+
+                    demandLabels = topEvents.map(e => e.event_name?.length > 15 ? e.event_name.substring(0, 15) + '...' : e.event_name);
+                    demandDataArr = topEvents.map(e => odCountMap[e.$id] || 0);
 
                     const todayTime = startOfDay(new Date()).getTime();
                     ods.forEach(od => {
@@ -169,8 +181,9 @@ export default function SudoDashboardContent() {
     const config = {
         bgGradient: "from-slate-800 via-slate-700 to-slate-900",
         greeting: "System Overview",
-        emoji: "⚙️",
+        icon: Icons.Settings,
         primaryAction: "Manage Users",
+        href: "/dashboard/admin/settings",
         statsColors: [
             "text-slate-600", "text-gray-700", "text-zinc-600", "text-neutral-600", "text-stone-600", "text-slate-700"
         ]
@@ -220,35 +233,44 @@ export default function SudoDashboardContent() {
         interaction: { mode: 'nearest', axis: 'x', intersect: false }
     };
 
-    const horizontalBarData = {
+    const polarAreaData = {
         labels: chartData.demand.labels,
         datasets: [
             {
                 label: 'Applications',
                 data: chartData.demand.data,
                 backgroundColor: [
-                    '#4F46E5',
-                    '#E2E8F0',
-                    '#E2E8F0',
-                    '#E2E8F0',
-                    '#E2E8F0',
+                    'rgba(79, 70, 229, 0.7)', // Indigo
+                    'rgba(244, 63, 94, 0.7)',  // Rose
+                    'rgba(245, 158, 11, 0.7)', // Amber
+                    'rgba(16, 185, 129, 0.7)', // Emerald
+                    'rgba(14, 165, 233, 0.7)', // Sky
                 ],
-                borderRadius: 4,
+                borderWidth: 2,
+                borderColor: '#ffffff',
             }
         ]
     };
 
-    const horizontalBarOptions = {
-        indexAxis: 'y',
+    const polarAreaOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-            legend: { display: false },
-            tooltip: { backgroundColor: '#1E293B', padding: 10, cornerRadius: 8, }
-        },
         scales: {
-            x: { display: false, grid: { display: false } },
-            y: { grid: { display: false }, border: { display: false } }
+            r: {
+                ticks: { display: false },
+                grid: { color: 'rgba(0, 0, 0, 0.05)' }
+            }
+        },
+        plugins: {
+            legend: { 
+                position: 'right', 
+                labels: { 
+                    usePointStyle: true, 
+                    padding: 15, 
+                    font: { family: 'Inter', size: 11 } 
+                } 
+            },
+            tooltip: { backgroundColor: '#1E293B', padding: 12, cornerRadius: 8, }
         }
     };
 
@@ -370,6 +392,7 @@ export default function SudoDashboardContent() {
                         <p className="text-sm text-slate-500 font-medium mt-1">Application trend over the current month</p>
                     </div>
                     <div className="bg-emerald-50 text-emerald-600 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-100 shadow-sm">
+                         <Icons.TrendingUp className="w-3.5 h-3.5" />
                          Live Feed
                     </div>
                 </div>
@@ -390,12 +413,13 @@ export default function SudoDashboardContent() {
                             <p className="text-sm text-slate-500 font-medium mt-1">Highest to lowest demand</p>
                         </div>
                         <div className="bg-orange-50 text-orange-600 px-2.5 py-1 rounded text-xs font-bold flex items-center gap-1 border border-orange-100 shadow-sm">
-                             Most Popular
+                            <Icons.Fire className="w-3.5 h-3.5" />
+                            Most Popular
                         </div>
                     </div>
 
-                    <div className="h-[260px] w-full relative -ml-4">
-                        <Bar data={horizontalBarData} options={horizontalBarOptions} />
+                    <div className="h-[280px] w-full relative">
+                        <PolarArea data={polarAreaData} options={polarAreaOptions} />
                     </div>
                 </div>
 

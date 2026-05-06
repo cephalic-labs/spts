@@ -3,13 +3,14 @@
 import { databases, users } from "@/lib/server/appwrite";
 import { DB_CONFIG } from "@/lib/dbConfig";
 import { Query } from "node-appwrite";
+import { secureLog } from "@/lib/secureLogger";
 
 export async function assignUserRole(userId, email) {
     if (!email || !userId) return { success: false, error: "Invalid user data" };
 
     try {
         const normalizedEmail = email.trim().toLowerCase();
-        console.log(`Checking roles for: ${normalizedEmail}`);
+        secureLog.emailLog('Checking roles for', normalizedEmail);
 
         // 1. Check Faculty Table FIRST
         let facultyDocs = { total: 0, documents: [] };
@@ -23,7 +24,7 @@ export async function assignUserRole(userId, email) {
             );
 
             if (facultyDocs.total === 0 && email !== normalizedEmail) {
-                console.log("Normalized email not found in faculty, checking original:", email);
+                secureLog.info("Normalized email not found in faculty, checking original");
                 facultyDocs = await databases.listDocuments(
                     DB_CONFIG.DATABASE_ID,
                     DB_CONFIG.COLLECTIONS.FACULTIES,
@@ -31,33 +32,43 @@ export async function assignUserRole(userId, email) {
                 );
             }
         } catch (e) {
-            console.error("Error querying faculty table:", e);
+            secureLog.error("Error querying faculty table:", e);
         }
 
         if (facultyDocs.total === 0) {
-            // Fallback: Manual scan in case of casing issues that queries missed
-            // Fetch a batch of faculties to check manually
+            // Fallback: Manual scan with pagination
             try {
-                const allFaculty = await databases.listDocuments(
-                    DB_CONFIG.DATABASE_ID,
-                    DB_CONFIG.COLLECTIONS.FACULTIES,
-                    [Query.limit(1000)] // Limit to 1000 for safety, loop if needed but usually sufficient
-                );
-                const found = allFaculty.documents.find(f =>
-                    String(f.email).trim().toLowerCase() === normalizedEmail
-                );
+                let offset = 0;
+                const limit = 1000;
+                let found = null;
+
+                while (!found) {
+                    const batch = await databases.listDocuments(
+                        DB_CONFIG.DATABASE_ID,
+                        DB_CONFIG.COLLECTIONS.FACULTIES,
+                        [Query.limit(limit), Query.offset(offset)]
+                    );
+                    
+                    found = batch.documents.find(f =>
+                        String(f.email).trim().toLowerCase() === normalizedEmail
+                    );
+                    
+                    if (found || batch.documents.length < limit) break;
+                    offset += limit;
+                }
+
                 if (found) {
-                    console.log("Found in faculty table via manual scan:", found.email);
+                    secureLog.info("Found in faculty table via manual scan");
                     facultyDocs = { total: 1, documents: [found] };
                 }
             } catch (scanErr) {
-                console.warn("Manual faculty scan failed:", scanErr);
+                secureLog.warn("Manual faculty scan failed:", scanErr);
             }
         }
 
         if (facultyDocs.total > 0) {
             const faculty = facultyDocs.documents[0];
-            console.log("Processing faculty record:", faculty.email);
+            secureLog.info("Processing faculty record");
 
             // Link Appwrite user ID if missing
             if (!faculty.appwrite_user_id) {
@@ -68,9 +79,9 @@ export async function assignUserRole(userId, email) {
                         faculty.$id,
                         { appwrite_user_id: userId }
                     );
-                    console.log("Linked Appwrite user ID to faculty record.");
+                    secureLog.info("Linked Appwrite user ID to faculty record");
                 } catch (linkErr) {
-                    console.warn("Could not link appwrite_user_id to faculty:", linkErr.message);
+                    secureLog.warn("Could not link appwrite_user_id to faculty:", linkErr.message);
                 }
             }
 
@@ -110,7 +121,7 @@ export async function assignUserRole(userId, email) {
                 }
             }
 
-            console.log(`Found in faculty table. Assigning labels: ${roles.join(", ")}`);
+            secureLog.authEvent('Role assignment', { roles: roles.join(", "), success: true });
             await users.updateLabels(userId, roles);
             return { success: true, role: roles[0], labels: roles };
         }
@@ -125,7 +136,7 @@ export async function assignUserRole(userId, email) {
             );
 
             if (studentDocs.total === 0 && email !== normalizedEmail) {
-                console.log("Normalized email not found in students, checking original:", email);
+                secureLog.info("Normalized email not found in students, checking original");
                 studentDocs = await databases.listDocuments(
                     DB_CONFIG.DATABASE_ID,
                     DB_CONFIG.COLLECTIONS.STUDENTS,
@@ -133,31 +144,42 @@ export async function assignUserRole(userId, email) {
                 );
             }
         } catch (e) {
-            console.error("Error querying student table:", e);
+            secureLog.error("Error querying student table:", e);
         }
 
         if (studentDocs.total === 0) {
-            // Fallback: Manual scan for students
+            // Fallback: Manual scan with pagination
             try {
-                const allStudents = await databases.listDocuments(
-                    DB_CONFIG.DATABASE_ID,
-                    DB_CONFIG.COLLECTIONS.STUDENTS,
-                    [Query.limit(1000)]
-                );
-                const found = allStudents.documents.find(s =>
-                    String(s.email).trim().toLowerCase() === normalizedEmail
-                );
+                let offset = 0;
+                const limit = 1000;
+                let found = null;
+
+                while (!found) {
+                    const batch = await databases.listDocuments(
+                        DB_CONFIG.DATABASE_ID,
+                        DB_CONFIG.COLLECTIONS.STUDENTS,
+                        [Query.limit(limit), Query.offset(offset)]
+                    );
+                    
+                    found = batch.documents.find(s =>
+                        String(s.email).trim().toLowerCase() === normalizedEmail
+                    );
+                    
+                    if (found || batch.documents.length < limit) break;
+                    offset += limit;
+                }
+
                 if (found) {
-                    console.log("Found in student table via manual scan:", found.email);
+                    secureLog.info("Found in student table via manual scan");
                     studentDocs = { total: 1, documents: [found] };
                 }
             } catch (scanErr) {
-                console.warn("Manual student scan failed:", scanErr);
+                secureLog.warn("Manual student scan failed:", scanErr);
             }
         }
 
         if (studentDocs.total > 0) {
-            console.log("Found in students table. Assigning 'student' label.");
+            secureLog.authEvent('Role assignment', { role: 'student', success: true });
 
             const studentDoc = studentDocs.documents[0];
             if (!studentDoc.appwrite_user_id) {
@@ -168,9 +190,9 @@ export async function assignUserRole(userId, email) {
                         studentDoc.$id,
                         { appwrite_user_id: userId }
                     );
-                    console.log("Linked Appwrite user ID to student record.");
+                    secureLog.info("Linked Appwrite user ID to student record");
                 } catch (linkErr) {
-                    console.warn("Could not link appwrite_user_id to student:", linkErr.message);
+                    secureLog.warn("Could not link appwrite_user_id to student:", linkErr.message);
                 }
             }
 
@@ -179,12 +201,11 @@ export async function assignUserRole(userId, email) {
         }
 
         // 3. Not found in either
-        console.log("User not found in any academic table. Leaving labels empty.");
-        console.log(`Checked emails: ${normalizedEmail} and ${email}`);
+        secureLog.authEvent('User not found', { success: false });
         return { success: false, error: "User not found in records" };
 
     } catch (error) {
-        console.error("Error assigning role:", error);
+        secureLog.error("Error assigning role:", error);
         return { success: false, error: error.message };
     }
 }
@@ -225,7 +246,7 @@ export async function getAdminSudoCounts() {
 
         return { admins, sudos };
     } catch (error) {
-        console.error("Error computing label counts:", error);
+        secureLog.error("Error computing label counts:", error);
         return { admins: 0, sudos: 0 };
     }
 }
@@ -287,13 +308,13 @@ export async function getAdminFacultyFromLabels() {
                     });
                 }
             } catch (e) {
-                console.warn("Failed fetching metadata for user:", u.email);
+                secureLog.warn("Failed fetching metadata for user");
             }
         }
 
         return dbAdmins;
     } catch (error) {
-        console.error("Error fetching getAdminFacultyFromLabels:", error);
+        secureLog.error("Error fetching getAdminFacultyFromLabels:", error);
         return [];
     }
 }
@@ -313,14 +334,14 @@ export async function syncUserLabels(email, newLabels) {
 
         if (authUsers.users.length > 0) {
             const targetUserId = authUsers.users[0].$id;
-            console.log(`Manually syncing labels for ${email}:`, newLabels);
+            secureLog.authEvent('Manual label sync', { success: true });
             await users.updateLabels(targetUserId, newLabels);
             return { success: true, userId: targetUserId, labels: newLabels };
         }
 
         return { success: false, error: "User not currently registered in Appwrite Auth System." };
     } catch (error) {
-        console.error("Failed to sync labels:", error);
+        secureLog.error("Failed to sync labels:", error);
         return { success: false, error: error.message };
     }
 }
